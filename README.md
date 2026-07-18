@@ -72,6 +72,9 @@ Key invariants:
    which rule versions produced every figure.
 3. **Scenarios are overlays.** `scenario_transactions` are validated payloads applied at read time
    by the projector. Official tables are never touched by a simulation (enforced and tested).
+   The only crossing point is the explicit apply flow: preview → confirm (manage_team role,
+   no blocking violations) → atomic write of official records + transaction log + audit, after
+   which the scenario is read-only.
 4. **Every figure is explainable.** The engine emits line items with formula text, input records,
    and applied rule versions, surfaced in the dashboard's calculation-detail table and reports.
 5. **Isolation is server-side.** Every read/write is scoped by organization membership checked in
@@ -170,8 +173,8 @@ would plug in behind the import layer.
 ## Known limitations
 
 See `docs/LIMITATIONS.md` for the full list. Headlines: season-level (not daily) cap accounting,
-simplified LTIR and buyout math, scenario "apply to official roster" not yet implemented, no CSV
-import UI yet, college/NIL modules are schema-only, and the valuation model is a v0.1 heuristic.
+simplified LTIR and buyout math, applied scenarios have no UI-level undo, no CSV import UI yet,
+college/NIL modules are schema-only, and the valuation model is a v0.1 heuristic.
 
 ## Documentation
 

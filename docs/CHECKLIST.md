@@ -39,7 +39,9 @@
 - [x] Projection (official vs projected, multi-season)
 - [x] Scenario comparison (1–5 scenarios vs official)
 - [x] Automated tests (13 scenario tests)
-- [ ] Apply scenario to official roster (deliberately deferred — see LIMITATIONS)
+- [x] Apply scenario to official roster (preview page, blocking-violation gate,
+      manage_team capability, atomic apply with official transaction log + audit;
+      11 integration tests in tests/applyScenario.test.ts)
 
 ## Phase 6 — Valuation
 - [x] Projection storage
@@ -59,12 +61,15 @@
 ## Phase 8 — Quality (final run 2026-07-18)
 - [x] `tsc --noEmit` clean
 - [x] `eslint` clean
-- [x] 50/50 vitest tests passing (engine, scenario, valuation, isolation/permissions/DB, CSV)
-- [x] Production build succeeds (24 routes)
+- [x] 61/61 vitest tests passing (engine, scenario, valuation, apply,
+      isolation/permissions/DB, CSV)
+- [x] Production build succeeds (25 routes)
 - [x] Live smoke test: login, dashboard math, scenario projection, violation display,
       comparison CSV, roster CSV, player valuation panel
 - [x] Isolation verified live: rival org gets 404 on foreign scenario page & export; sees only
       its own team
+- [x] Apply-scenario flow verified in the browser: preview → confirm → applied banner,
+      re-apply blocked, transaction log populated, over-cap scenario gated by violations
 
 ## MVP acceptance test status
 1–8 (register→commitments) ✓ · 9–14 (scenarios, violations) ✓ · 15–16 (valuation, surplus) ✓ ·

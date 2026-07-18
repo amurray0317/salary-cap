@@ -8,6 +8,13 @@
       "when": 1784340027380,
       "tag": "0000_noisy_magma",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784384672139,
+      "tag": "0001_curvy_angel",
+      "breakpoints": true
     }
   ]
 }

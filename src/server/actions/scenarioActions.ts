@@ -309,3 +309,54 @@ export async function duplicateScenarioAction(formData: FormData): Promise<void>
   });
   redirect(`/scenarios/${newId}`);
 }
+
+const applySchema = z.object({
+  organizationId: z.string().uuid(),
+  scenarioId: z.string().uuid(),
+  confirm: z.literal("yes"),
+});
+
+/**
+ * Applies a scenario to official records. Requires the manage_team
+ * capability, an explicit confirmation field, and a projection free of
+ * blocking violations — the same gate the preview page shows.
+ */
+export async function applyScenarioAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = applySchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: "Confirmation missing" };
+  const ctx = await requireOrgAccess(parsed.data.organizationId, "manage_team");
+  const scenario = await requireScenario(parsed.data.scenarioId, ctx.organizationId);
+  if (!scenario) return { error: "Scenario not found" };
+
+  // Re-run the projection server-side; never trust the page state.
+  const { getScenarioProjection } = await import("@/server/services/scenarioService");
+  const projection = await getScenarioProjection(scenario.id);
+  const baseIdx = Math.max(0, projection.seasons.findIndex((s) => s.id === scenario.baseSeasonId));
+  const projected = projection.projectedResults[baseIdx];
+  if (projected && projected.violations.length > 0) {
+    return {
+      error: `Cannot apply: the projected roster has ${projected.violations.length} blocking violation(s). Resolve them in the scenario first.`,
+    };
+  }
+  if (projection.invalidTransactions.length > 0) {
+    return { error: "Cannot apply: the scenario contains transactions with invalid payloads." };
+  }
+
+  const { applyScenario, ApplyError } = await import("@/server/services/applyService");
+  try {
+    await applyScenario(getDb(), {
+      scenarioId: scenario.id,
+      organizationId: ctx.organizationId,
+      userId: ctx.user.id,
+    });
+  } catch (err) {
+    if (err instanceof ApplyError) return { error: err.message };
+    throw err;
+  }
+  revalidatePath("/dashboard");
+  revalidatePath("/players");
+  revalidatePath("/contracts");
+  revalidatePath("/transactions");
+  revalidatePath(`/scenarios/${scenario.id}`);
+  redirect(`/scenarios/${scenario.id}?applied=1`);
+}

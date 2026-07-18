@@ -89,6 +89,7 @@ export const contractStatus = pgEnum("contract_status", [
   "expired",
   "terminated",
   "bought_out",
+  "traded",
 ]);
 
 export const freeAgentStatus = pgEnum("free_agent_status", [

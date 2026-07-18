@@ -22,9 +22,12 @@ it is implemented" rule.
 
 ## Scenarios
 
-- **Applying a scenario to official data is not implemented.** Scenarios remain overlays; the
-  `applied` status exists in the enum but no action performs the mutation. This is deliberate:
-  partial apply would risk corrupting official records.
+- **Applying a scenario is one-way.** The apply flow (preview → confirm) writes official
+  records atomically and marks the scenario read-only, but there is no UI-level undo — reversing
+  an applied scenario means making new official moves. Every applied move is recorded in the
+  transaction log and audit history.
+- Apply is blocked while the projection contains blocking violations; there is no
+  override-with-reason flow yet (a compliance officer "requires review" path is roadmap).
 - No undo/redo stack inside the builder (transactions can be disabled/removed instead).
 - Multi-team trade modeling is limited to this team's side (out with retention / in with
   retention); draft-pick trades are recorded descriptively, not valued.
