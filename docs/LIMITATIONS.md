@@ -57,7 +57,8 @@ it is implemented" rule.
 - No user invitation flow (members are seeded or created via registration; role management UI
   is minimal read-only).
 - PDF export is browser-print based; server-side PDF rendering is roadmap.
-- Shareable read-only report links: `reports.share_token` exists, route not yet implemented.
+- Shareable links currently cover the roster/cap report; scenario-comparison and valuation
+  share links are roadmap. Shared snapshots are frozen by design and never update.
 - Rate limiting is not implemented (abstraction point noted in middleware roadmap).
 - PGlite local mode is single-process: run one server per `.data` directory. `db:seed` refuses
   to run against `DATABASE_URL` as a guard.

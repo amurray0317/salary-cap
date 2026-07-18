@@ -162,6 +162,10 @@ CSV exports (roster, future commitments, valuations, scenario comparison) are st
 generation time, team/season, and model versions. A print-optimized roster report provides PDF
 output via the browser. All exports enforce the same org-scoping as pages.
 
+Shareable read-only links (Reports page) freeze the current cap report into a stored snapshot
+and mint an unguessable `/share/<token>` URL that renders without sign-in — only the snapshot,
+never live data. Links are revocable and both creation and revocation are audit-logged.
+
 ## Data sources
 
 The MVP uses user-entered data, CSV-style seeds, and fictional demonstration data only. A

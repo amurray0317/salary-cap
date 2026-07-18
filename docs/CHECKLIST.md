@@ -55,21 +55,25 @@
 ## Phase 7 — Reports
 - [x] Roster CSV, commitments CSV, valuations CSV, comparison CSV
 - [x] Print-optimized roster report (browser PDF)
-- [ ] Shareable read-only links (schema ready; route deferred)
+- [x] Shareable read-only links (frozen snapshot in reports/report_sections,
+      unguessable token, public /share/[token] route, revoke, audit;
+      5 integration tests in tests/shareReport.test.ts)
 - [ ] Server-side PDF (deferred)
 
 ## Phase 8 — Quality (final run 2026-07-18)
 - [x] `tsc --noEmit` clean
 - [x] `eslint` clean
-- [x] 61/61 vitest tests passing (engine, scenario, valuation, apply,
-      isolation/permissions/DB, CSV)
-- [x] Production build succeeds (25 routes)
+- [x] 66/66 vitest tests passing (engine, scenario, valuation, apply,
+      share reports, isolation/permissions/DB, CSV)
+- [x] Production build succeeds (26 routes)
 - [x] Live smoke test: login, dashboard math, scenario projection, violation display,
       comparison CSV, roster CSV, player valuation panel
 - [x] Isolation verified live: rival org gets 404 on foreign scenario page & export; sees only
       its own team
 - [x] Apply-scenario flow verified in the browser: preview → confirm → applied banner,
       re-apply blocked, transaction log populated, over-cap scenario gated by violations
+- [x] Share-link flow verified in the browser: create → anonymous visitor sees the frozen
+      snapshot but cannot reach the app → revoke → link returns 404
 
 ## MVP acceptance test status
 1–8 (register→commitments) ✓ · 9–14 (scenarios, violations) ✓ · 15–16 (valuation, surplus) ✓ ·
