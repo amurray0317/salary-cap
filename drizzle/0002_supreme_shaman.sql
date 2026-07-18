@@ -1,0 +1,1 @@
+ALTER TABLE "imports" ADD COLUMN "raw_data" jsonb DEFAULT '{}'::jsonb NOT NULL;

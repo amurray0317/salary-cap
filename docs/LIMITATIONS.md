@@ -34,8 +34,11 @@ it is implemented" rule.
 
 ## Data & imports
 
-- **No CSV import UI yet.** The `imports`/`import_errors` tables and provenance model exist;
-  the mapping/validation interface is roadmap. Seeding is the current bulk-load path.
+- CSV import covers **players** and **contracts** (one row per contract-season). League rules,
+  statistics, projections, scholarship, and NIL importers are roadmap; the definitions module
+  (`src/lib/import/definitions.ts`) is the extension point.
+- Player matching in the contracts importer is by exact full name; ambiguous names are
+  rejected rather than guessed. Files are capped at 1 MB / 2000 rows.
 - No file storage (player documents) yet despite the schema field.
 - Free agents are tracked per organization (scouting records), not as a shared league pool.
 

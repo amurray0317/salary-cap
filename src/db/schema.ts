@@ -927,6 +927,8 @@ export const imports = pgTable("imports", {
   rowCount: integer("row_count").notNull().default(0),
   committedCount: integer("committed_count").notNull().default(0),
   mapping: jsonb("mapping").notNull().default({}),
+  /** Parsed CSV kept between upload and approval: { headers, rows }. */
+  rawData: jsonb("raw_data").notNull().default({}),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

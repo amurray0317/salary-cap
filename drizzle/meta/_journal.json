@@ -15,6 +15,13 @@
       "when": 1784384672139,
       "tag": "0001_curvy_angel",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784408499731,
+      "tag": "0002_supreme_shaman",
+      "breakpoints": true
     }
   ]
 }
