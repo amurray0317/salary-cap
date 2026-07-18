@@ -1,0 +1,51 @@
+{
+  "name": "rosteriq",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RosterIQ — Front-Office Roster Intelligence Platform",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint src tests scripts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:reset": "rm -rf .data && npm run db:migrate && npm run db:seed",
+    "test:e2e": "node tests/e2e/vertical-slice.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:41729/git/amurray0317/salary-cap"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.4",
+    "drizzle-orm": "^0.45.2",
+    "next": "^15.5.20",
+    "pg": "^8.22.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "server-only": "^0.0.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.1.1",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.20",
+    "playwright-core": "^1.61.1",
+    "postcss": "^8.5.19",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.1",
+    "typescript": "5.9",
+    "vitest": "^4.1.10"
+  }
+}

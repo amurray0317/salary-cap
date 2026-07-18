@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  /* RosterIQ dark front-office theme */
+  --color-navy-950: #0a0f1c; /* page background */
+  --color-navy-900: #0e1626; /* chart + card surface (validated) */
+  --color-navy-850: #121c30;
+  --color-navy-800: #1a2440;
+  --color-navy-700: #24314d;
+  --color-ink: #e7ecf5;
+  --color-ink-secondary: #b3bfd4;
+  --color-ink-muted: #8593ad;
+  --color-accent: #0d9488; /* validated categorical slot on navy-900 */
+  --color-accent-soft: #0d948826;
+  --color-accent-text: #45d0c1; /* links/large text on dark, AA on navy-950 */
+  --color-good: #4ade80;
+  --color-warn: #fbbf24;
+  --color-critical: #f87171;
+  --color-line: #223049;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-navy-950);
+  color: var(--color-ink);
+  font-feature-settings: "tnum";
+}
+
+/* recessive scrollbars for data tables */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-navy-700) transparent;
+}
+
+@media print {
+  body {
+    background: #fff;
+    color: #111;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
