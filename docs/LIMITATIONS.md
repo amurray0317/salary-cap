@@ -53,6 +53,15 @@ it is implemented" rule.
 - v0.1 valuation models are transparent heuristics on fictional data — not validated, and
   labeled as estimates everywhere. See docs/MODELS.md.
 
+## Amateur scouting
+
+- Statistical models are v0.1 heuristics on fictional data (see docs/SCOUTING.md for
+  full assumptions): no schedule-strength adjustment, PIM-proxy physicality, weak
+  goalie inference, org-scoped percentile pools.
+- No NCAA time-on-ice data — per-60 rates are never computed or estimated.
+- AI scouting assistant, projection models, weight-editing UI, consensus rankings,
+  and professional-outcome comparables are deliberately deferred past this slice.
+
 ## Platform
 
 - Roster optimization (OR-Tools/PuLP) not built yet; schema reserved.

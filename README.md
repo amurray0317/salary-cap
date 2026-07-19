@@ -166,6 +166,23 @@ Shareable read-only links (Reports page) freeze the current cap report into a st
 and mint an unguessable `/share/<token>` URL that renders without sign-in — only the snapshot,
 never live data. Links are revocable and both creation and revocation are audit-logged.
 
+## Amateur scouting (NCAA D-I men's hockey)
+
+The Amateur Scouting module gives hockey-operations staff a searchable NCAA prospect
+database (position/school/conference/age/handedness/production filters), prospect
+profiles with multi-season stats and versioned trend classifications, transparent
+role scoring against 34 configurable archetypes (weights stored in the database,
+every score explained with inputs × weights, missing data, and contradicting
+evidence), scout-assigned roles kept strictly separate from statistical inference,
+structured scouting reports on a 20–80 scale, watchlists, a draft board that shows
+model-vs-scout rank disagreement instead of averaging it away, a college free-agent
+board, scout assignments, and an explainable organizational-fit engine wired into
+RosterIQ's live contract data for the opportunity path. NCAA prospects and season
+statistics import through the same gated CSV pipeline. Demo login:
+`scouting@aurora.demo` / `rosteriq-demo` (scouting director). Time-on-ice is never
+fabricated, and every model output is a labeled, versioned estimate — the system
+supports scouts, it does not replace them (`docs/SCOUTING.md`).
+
 ## Data imports
 
 The Imports page provides a gated CSV pipeline: download a template (players, or contracts as

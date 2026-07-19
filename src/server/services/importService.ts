@@ -117,6 +117,11 @@ async function loadOrgLookups(db: ReturnType<typeof getDb>, organizationId: stri
     .select()
     .from(schema.teams)
     .where(eq(schema.teams.organizationId, organizationId));
+  const schoolRows = await db.select().from(schema.schools);
+  const prospects = await db
+    .select({ id: schema.amateurProspects.id, fullName: schema.amateurProspects.fullName })
+    .from(schema.amateurProspects)
+    .where(eq(schema.amateurProspects.organizationId, organizationId));
   const players = await db
     .select({ id: schema.players.id, fullName: schema.players.fullName, currentTeamId: schema.players.currentTeamId })
     .from(schema.players)
@@ -139,6 +144,16 @@ async function loadOrgLookups(db: ReturnType<typeof getDb>, organizationId: stri
           .orderBy(asc(schema.leagueSeasons.sortOrder))
       : [];
   return {
+    schoolsByName: new Map(schoolRows.map((s) => [s.name.toLowerCase(), s])),
+    prospectsByName: (() => {
+      const m = new Map<string, Array<(typeof prospects)[number]>>();
+      for (const p of prospects) {
+        const list = m.get(p.fullName) ?? [];
+        list.push(p);
+        m.set(p.fullName, list);
+      }
+      return m;
+    })(),
     teamsByAbbr: new Map(teams.map((t) => [t.abbreviation.toUpperCase(), t])),
     playersByName: (() => {
       const m = new Map<string, Array<(typeof players)[number]>>();
@@ -261,6 +276,49 @@ export function validateRows(
           issues.push({ rowNumber, columnName: "season_name", message: `Season "${seasonName}" does not exist in ${team.name}'s league`, rawRow });
           rowsWithIssues.add(rowNumber);
         }
+      }
+    }
+
+    if (importType === "ncaa_players") {
+      const name = values["full_name"] ?? "";
+      if (name !== "") {
+        const firstSeen = seenPlayerNames.get(name);
+        if (firstSeen !== undefined) {
+          issues.push({ rowNumber, columnName: "full_name", message: `Duplicate of row ${firstSeen} in this file`, rawRow });
+          rowsWithIssues.add(rowNumber);
+        } else {
+          seenPlayerNames.set(name, rowNumber);
+          if (lookups.prospectsByName.has(name)) {
+            issues.push({ rowNumber, columnName: "full_name", message: "A prospect with this exact name already exists in your organization", rawRow });
+            rowsWithIssues.add(rowNumber);
+          }
+        }
+      }
+      const schoolName = values["school_name"] ?? "";
+      if (schoolName !== "" && !lookups.schoolsByName.has(schoolName.toLowerCase())) {
+        issues.push({ rowNumber, columnName: "school_name", message: `No school named "${schoolName}" — import or create the school first`, rawRow });
+        rowsWithIssues.add(rowNumber);
+      }
+    }
+
+    if (importType === "ncaa_season_stats") {
+      const name = values["player_name"] ?? "";
+      if (name !== "") {
+        const matches = lookups.prospectsByName.get(name) ?? [];
+        if (matches.length === 0) {
+          issues.push({ rowNumber, columnName: "player_name", message: "No NCAA prospect with this exact name (import prospects first)", rawRow });
+          rowsWithIssues.add(rowNumber);
+        } else if (matches.length > 1) {
+          issues.push({ rowNumber, columnName: "player_name", message: "Multiple prospects share this name; resolve manually", rawRow });
+          rowsWithIssues.add(rowNumber);
+        }
+      }
+      const gp = Number(values["games_played"] ?? 0);
+      const g = Number(values["goals"] ?? 0);
+      const a = Number(values["assists"] ?? 0);
+      if (gp > 0 && (g + a) / gp > 4) {
+        issues.push({ rowNumber, columnName: "goals", message: "Implausible production (> 4 points per game); check the row", rawRow });
+        rowsWithIssues.add(rowNumber);
       }
     }
 
@@ -512,6 +570,62 @@ export async function commitImport(opts: {
           })
           .where(eq(schema.players.id, player.id));
         committed += recs.length;
+      }
+    }
+
+    if (row.importType === "ncaa_players") {
+      for (const rec of outcome.validRecords) {
+        const v = rec.values;
+        const school = lookups.schoolsByName.get(v.school_name!.toLowerCase())!;
+        const position = v.position!;
+        await tx.insert(schema.amateurProspects).values({
+          organizationId: opts.organizationId,
+          fullName: v.full_name!,
+          position,
+          positionGroup: position === "G" ? "G" : position === "D" ? "D" : "F",
+          dateOfBirth: v.date_of_birth || null,
+          shootsCatches: v.shoots_catches || null,
+          heightCm: v.height_cm ? parseMoney(v.height_cm) : null,
+          weightKg: v.weight_kg ? parseMoney(v.weight_kg) : null,
+          nationality: v.nationality || null,
+          schoolId: school.id,
+          classYear: v.class_year as (typeof schema.prospectClass.enumValues)[number],
+          nhlDraftStatus: v.nhl_draft_status || "undrafted",
+          nhlRightsHolder: v.nhl_rights_holder || null,
+          draftYear: v.draft_year ? parseMoney(v.draft_year) : null,
+          provenance: "user_entered",
+          notes: `Imported from ${row.fileName}`,
+        });
+        committed += 1;
+      }
+    } else if (row.importType === "ncaa_season_stats") {
+      for (const rec of outcome.validRecords) {
+        const v = rec.values;
+        const prospect = lookups.prospectsByName.get(v.player_name!)![0]!;
+        const num = (key: string, fallback = 0) => (v[key] ? parseMoney(v[key]!) : fallback);
+        await tx
+          .insert(schema.prospectSeasons)
+          .values({
+            prospectId: prospect.id,
+            seasonName: v.season_name!,
+            classYear: v.class_year as (typeof schema.prospectClass.enumValues)[number],
+            gamesPlayed: num("games_played"),
+            goals: num("goals"),
+            assists: num("assists"),
+            shots: num("shots"),
+            penaltyMinutes: num("penalty_minutes"),
+            powerPlayGoals: num("pp_goals"),
+            powerPlayAssists: num("pp_assists"),
+            shortHandedGoals: num("sh_goals"),
+            faceoffWins: num("faceoff_wins"),
+            faceoffAttempts: num("faceoff_attempts"),
+            // TOI stays null when the column is blank — never fabricated.
+            timeOnIceSeconds: v.time_on_ice_seconds ? parseMoney(v.time_on_ice_seconds) : null,
+            teamGoalsFor: v.team_goals_for ? parseMoney(v.team_goals_for) : null,
+            provenance: "user_entered",
+          })
+          .onConflictDoNothing();
+        committed += 1;
       }
     }
 
