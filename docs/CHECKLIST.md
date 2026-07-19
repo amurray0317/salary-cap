@@ -81,6 +81,30 @@
       validation with visible row-level error → approve → "Committed 2 of 3 rows" → valid
       players live in Players, invalid row excluded, history shows Committed
 
+## Amateur Scouting (NCAA D-I men's hockey) — vertical slice
+- [x] Schema: 25+ scouting tables (migration 0003), org-scoped, reference data global
+- [x] Roles/permissions: scouting_director, scouting_asst_director, crossover_scout +
+      9 scouting capabilities on the existing tier model
+- [x] Engines: trends (riq-trend-v0.1), percentiles + age adjustment, role scoring
+      (riq-role-v0.1, DB-stored weights), explainable fit (riq-fit-v0.1, live contract depth)
+- [x] Navigation: 10-tab scouting section + sidebar entry
+- [x] NCAA player table with position/school/conference/hand/age/PPG/draft filters
+- [x] Prospect profile: stats (TOI-honest), trends, role-score explanations,
+      scout-assigned roles (separate from inference), reports, comparables
+- [x] Scouting reports (viewing types, 20–80 grades, floor/ceiling/risk/recommendation)
+- [x] Organizational needs + explainable fit scores; watchlists; draft board with
+      model-vs-scout rank deltas (never averaged away); CFA board; assignments; model center
+- [x] Print-optimized prospect report export
+- [x] CSV import types: ncaa_players, ncaa_season_stats (full gated pipeline)
+- [x] Seed: 6 conferences, 20 schools, 305 prospects, 694 season lines, 1,482 game
+      logs, 34 archetypes / 114 weights, 1,200 role scores, reports, boards, needs,
+      fits, comparables, isolation fixtures
+- [x] 32 new tests (112 total passing): engines, service integration, isolation,
+      permissions, uniqueness constraints
+- [x] Verified in the browser end to end (all 15 slice steps + rival-org 404)
+- [ ] Deferred: scouting AI assistant query layer, projection models, weight-editing
+      UI, consensus rankings, conference-relative percentiles (see docs/SCOUTING.md)
+
 ## MVP acceptance test status
 1–8 (register→commitments) ✓ · 9–14 (scenarios, violations) ✓ · 15–16 (valuation, surplus) ✓ ·
 17–18 (compare, export) ✓ · 19 (sign out/in persistence) ✓ · 20 (cross-org denial) ✓

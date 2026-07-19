@@ -22,6 +22,7 @@ import {
 } from "../src/lib/valuation/models";
 import { hashPassword } from "../src/lib/auth/password";
 import * as schema from "../src/db/schema";
+import { seedScouting } from "./seedScouting";
 
 /* ---------------- deterministic RNG ---------------- */
 function mulberry32(seed: number) {
@@ -815,6 +816,31 @@ async function main() {
     newValues: { players: allPlayers.length, teams: teams.length },
     reason: "Demonstration seed",
   });
+
+  /* ---------------- amateur scouting module ---------------- */
+  const [scoutingDirector] = await db
+    .insert(schema.users)
+    .values({
+      email: "scouting@aurora.demo",
+      passwordHash: hashPassword(demoPassword),
+      fullName: "Demo Scouting Director",
+    })
+    .returning();
+  if (scoutingDirector) {
+    await db.insert(schema.organizationMembers).values({
+      organizationId: auroraOrg.id,
+      userId: scoutingDirector.id,
+      role: "scouting_director",
+    });
+  }
+  const scouting = await seedScouting(db, {
+    auroraOrgId: auroraOrg.id,
+    ironportOrgId: ironportOrg.id,
+    gmUserId: gmUser.id,
+    analystUserId: analystUser.id,
+    rightsHolderNames: teams.map((t) => t.name),
+  });
+  console.log(`  Scouting: ${scouting.prospects} NCAA prospects seeded`);
 
   console.log("Seed complete.");
   console.log(`  Players: ${allPlayers.length}, Teams: ${teams.length}, Seasons: ${seasons.length}`);

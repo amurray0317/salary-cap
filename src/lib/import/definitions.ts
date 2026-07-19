@@ -4,7 +4,7 @@
  * the validation service, and the tests all consume one source of truth.
  */
 
-export const IMPORT_TYPES = ["players", "contracts"] as const;
+export const IMPORT_TYPES = ["players", "contracts", "ncaa_players", "ncaa_season_stats"] as const;
 export type ImportType = (typeof IMPORT_TYPES)[number];
 
 export interface FieldDef {
@@ -92,6 +92,59 @@ export const IMPORT_DEFINITIONS: Record<ImportType, ImportDefinition> = {
       ["Sample Center", "AUR", "2025-26", "4500000", "4250000", "0", "one_way"],
       ["Sample Center", "AUR", "2026-27", "4500000", "4750000", "0", "one_way"],
       ["Sample Winger", "AUR", "2025-26", "850000", "850000", "50000", "two_way"],
+    ],
+  },
+
+  ncaa_players: {
+    type: "ncaa_players",
+    label: "NCAA prospects (amateur scouting)",
+    description:
+      "One row per NCAA prospect. School name must match an existing school record; unmatched schools are row errors, not silent creations.",
+    fields: [
+      { key: "full_name", label: "Full name", required: true, description: "Prospect's full name", validate: (v) => (v.length >= 2 ? null : "must be at least 2 characters") },
+      { key: "position", label: "Position", required: true, description: "C, LW, RW, D, or G", validate: oneOf(POSITIONS, "position") },
+      { key: "date_of_birth", label: "Date of birth", required: false, description: "YYYY-MM-DD", validate: optional(isoDate) },
+      { key: "shoots_catches", label: "Shoots/catches", required: false, description: "L or R", validate: optional(oneOf(["L", "R"], "shoots_catches")) },
+      { key: "height_cm", label: "Height (cm)", required: false, description: "Whole centimeters", validate: optional(nonNegativeInt) },
+      { key: "weight_kg", label: "Weight (kg)", required: false, description: "Whole kilograms", validate: optional(nonNegativeInt) },
+      { key: "nationality", label: "Nationality", required: false, description: "Free text", validate: () => null },
+      { key: "school_name", label: "School", required: true, description: "Must match an existing school", validate: (v) => (v.length >= 2 ? null : "is required") },
+      { key: "class_year", label: "Class year", required: true, description: "freshman, sophomore, junior, senior, graduate", validate: oneOf(["freshman", "sophomore", "junior", "senior", "graduate"], "class_year") },
+      { key: "nhl_draft_status", label: "NHL draft status", required: false, description: "undrafted or drafted", validate: optional(oneOf(["undrafted", "drafted"], "nhl_draft_status")) },
+      { key: "nhl_rights_holder", label: "NHL rights holder", required: false, description: "Team holding rights (blank if none)", validate: () => null },
+      { key: "draft_year", label: "Draft year", required: false, description: "e.g. 2025", validate: optional(nonNegativeInt) },
+    ],
+    templateRows: [
+      ["Sample Prospect", "C", "2005-02-11", "L", "183", "84", "United States", "Sample State University", "sophomore", "drafted", "Aurora Wolfpack", "2023"],
+      ["Sample Defender", "D", "2004-08-30", "R", "188", "92", "Canada", "Sample State University", "junior", "undrafted", "", ""],
+    ],
+  },
+
+  ncaa_season_stats: {
+    type: "ncaa_season_stats",
+    label: "NCAA season statistics (amateur scouting)",
+    description:
+      "One row per prospect per season. The prospect must already exist (import NCAA prospects first). Leave time_on_ice_seconds blank when unavailable — never estimated.",
+    fields: [
+      { key: "player_name", label: "Prospect name", required: true, description: "Exact full name of an existing NCAA prospect", validate: (v) => (v.length >= 2 ? null : "must be at least 2 characters") },
+      { key: "season_name", label: "Season", required: true, description: "e.g. 2025-26", validate: (v) => (/^\d{4}-\d{2}$/.test(v) ? null : "must look like 2025-26") },
+      { key: "class_year", label: "Class year", required: true, description: "freshman, sophomore, junior, senior, graduate", validate: oneOf(["freshman", "sophomore", "junior", "senior", "graduate"], "class_year") },
+      { key: "games_played", label: "Games played", required: true, description: "Whole number", validate: nonNegativeInt },
+      { key: "goals", label: "Goals", required: true, description: "Whole number", validate: nonNegativeInt },
+      { key: "assists", label: "Assists", required: true, description: "Whole number", validate: nonNegativeInt },
+      { key: "shots", label: "Shots", required: false, description: "Whole number", validate: optional(nonNegativeInt) },
+      { key: "penalty_minutes", label: "PIM", required: false, description: "Whole number", validate: optional(nonNegativeInt) },
+      { key: "pp_goals", label: "PP goals", required: false, description: "Whole number", validate: optional(nonNegativeInt) },
+      { key: "pp_assists", label: "PP assists", required: false, description: "Whole number", validate: optional(nonNegativeInt) },
+      { key: "sh_goals", label: "SH goals", required: false, description: "Whole number", validate: optional(nonNegativeInt) },
+      { key: "faceoff_wins", label: "Faceoff wins", required: false, description: "Whole number", validate: optional(nonNegativeInt) },
+      { key: "faceoff_attempts", label: "Faceoff attempts", required: false, description: "Whole number", validate: optional(nonNegativeInt) },
+      { key: "time_on_ice_seconds", label: "TOI (seconds)", required: false, description: "Blank when unavailable — never estimate", validate: optional(nonNegativeInt) },
+      { key: "team_goals_for", label: "Team goals for", required: false, description: "Team scoring environment", validate: optional(nonNegativeInt) },
+    ],
+    templateRows: [
+      ["Sample Prospect", "2025-26", "sophomore", "34", "14", "21", "112", "18", "5", "8", "1", "310", "612", "", "118"],
+      ["Sample Defender", "2025-26", "junior", "36", "5", "18", "88", "30", "1", "9", "0", "0", "0", "", "121"],
     ],
   },
 };
