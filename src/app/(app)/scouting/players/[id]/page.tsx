@@ -368,25 +368,44 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
         </Card>
       </div>
 
-      <Card title="Organizational fit (model riq-fit-v0.1 — explainable estimate)">
+      <Card title="Organizational fit (model riq-fit-v0.2 — explainable estimate)">
         {needs.length === 0 ? (
-          <p className="text-sm text-ink-muted">No active organizational needs. Define one under Organizational fit.</p>
+          <p className="text-sm text-ink-muted">No active organizational needs. Define one under Org needs.</p>
         ) : (
           <div className="space-y-3">
             {needs.map((n) => {
               const fit = fitByNeed.get(n.id);
-              const components = (fit?.components as { list?: Array<{ key: string; label: string; score: number | null; weight: number; explanation: string }> } | null)?.list ?? [];
+              const components =
+                (fit?.components as {
+                  list?: Array<{
+                    key: string;
+                    label: string;
+                    inputValue?: string;
+                    desiredValue?: string;
+                    finalScore: number | null;
+                    weight: number;
+                    weightedContribution?: number | null;
+                    explanation: string;
+                  }>;
+                } | null)?.list ?? [];
               const warnings = (fit?.explanation as { warnings?: string[] } | null)?.warnings ?? [];
               return (
                 <div key={n.id} className="rounded-md border border-line p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-sm">
-                      <span className="font-medium">{n.position}{n.handedness ? ` (${n.handedness})` : ""}</span>{" "}
-                      <span className="text-ink-muted">· target {roleLabel(n.targetRoleKey)} · {n.timelineYears}y timeline · priority {n.priority}</span>
+                      <Link href={`/scouting/needs/${n.id}`} className="font-medium hover:text-accent-text">{n.name}</Link>{" "}
+                      <span className="text-ink-muted">
+                        · {n.position}{n.handedness ? ` (${n.handedness})` : ""} · target {roleLabel(n.targetRoleKey)} · {n.timelineYears}y · priority {n.priority}
+                      </span>
                     </span>
                     <span className="flex items-center gap-2">
                       {fit ? (
-                        <span className="tabular-nums font-medium">{fit.overallScore} / 100</span>
+                        <span className="tabular-nums font-medium">
+                          {fit.overallScore} / 100
+                          {fit.confidence !== null && (
+                            <span className="ml-1 text-xs font-normal text-ink-muted">conf {pct(fit.confidence)}</span>
+                          )}
+                        </span>
                       ) : (
                         <span className="text-sm text-ink-muted">Not computed</span>
                       )}
@@ -406,7 +425,8 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
                     <ul className="mt-2 space-y-0.5 text-xs text-ink-muted">
                       {components.map((c) => (
                         <li key={c.key}>
-                          {c.label}: <span className="text-ink">{c.score ?? "n/a"}</span> × {(c.weight * 100).toFixed(0)}% — {c.explanation}
+                          {c.label}: <span className="text-ink">{c.finalScore ?? "n/a"}</span> × {(c.weight * 100).toFixed(0)}%
+                          {c.weightedContribution != null && ` = ${c.weightedContribution}`} — {c.explanation}
                         </li>
                       ))}
                     </ul>

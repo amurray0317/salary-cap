@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { deriveStats, ageAdjustedPpg, percentileRank, buildPercentiles, type SeasonLine } from "@/lib/scouting/stats";
 import { computeSeasonTrends, computeGameLogTrends, type GameLogLine } from "@/lib/scouting/trends";
 import { scoreArchetype, scoreAllArchetypes, type WeightRow } from "@/lib/scouting/roleScoring";
-import { calculateFit } from "@/lib/scouting/fit";
+import { calculateFit, DEFAULT_FIT_WEIGHTS, FIT_COMPONENT_KEYS } from "@/lib/scouting/fit";
 
 let counter = 0;
 function season(over: Partial<SeasonLine> = {}): SeasonLine {
@@ -187,14 +187,24 @@ describe("role scoring", () => {
   });
 });
 
-describe("fit engine", () => {
+describe("fit engine (riq-fit-v0.2)", () => {
   const need = {
+    name: "RHD transition",
     position: "D",
+    secondaryPosition: null,
     handedness: "R",
     targetRoleKey: "puck_moving_d",
+    targetScoutRoleKey: null,
     priority: 1,
     timelineYears: 2,
+    earliestArrivalYears: 1,
+    latestArrivalYears: 4,
+    preferredAcquisition: "draft",
     maxRiskTolerance: "medium",
+    minGrades: {} as Record<string, number>,
+    specialTeamsRequirement: null,
+    nhlRosterNeed: false,
+    ahlOpportunity: true,
   };
   const prospect = {
     position: "D",
@@ -202,48 +212,204 @@ describe("fit engine", () => {
     shootsCatches: "R",
     classYear: "sophomore" as const,
     age: 20,
-    primaryInferredRole: null,
     scoutAssignedRoleKey: null,
     roleScores: [
       { archetypeKey: "puck_moving_d", archetypeLabel: "Puck-moving defenseman", positionGroup: "D" as const, score: 82, confidence: 0.8, contributions: [], missingInputs: [], contradictions: [], modelVersion: "riq-role-v0.1", poolSize: 50 },
     ],
     latestTrendClassification: "steady_progression",
     gamesPlayedLatest: 34,
+    nhlDraftStatus: "undrafted",
+    nhlRightsHolder: null,
+    collegeFreeAgentStatus: "not_eligible",
+    reportGrades: null as Record<string, number> | null,
+    reportRisk: null as string | null,
+    ppShare: 0.3,
+    shGoals: 1,
   };
-  const depth = { contractsAtPosition: 6, expiringWithinTimeline: 2 };
+  const depth = {
+    contractsAtPosition: 6,
+    expiringWithinWindow: 2,
+    minorLeagueAtPosition: 2,
+    prospectsAtPosition: 4,
+    prospectsAtTargetRole: 1,
+  };
 
-  it("produces an explainable overall with all components", () => {
+  it("produces all 14 components with inputs, weights, contributions, and explanations", () => {
     const fit = calculateFit(need, prospect, depth);
-    expect(fit.overall).toBeGreaterThan(70);
-    expect(fit.components.map((c) => c.key)).toEqual(["position", "handedness", "role", "timeline", "opportunity", "risk"]);
-    for (const c of fit.components) expect(c.explanation.length).toBeGreaterThan(5);
+    expect(fit.components).toHaveLength(14);
+    expect(fit.components.map((c) => c.key)).toEqual([...FIT_COMPONENT_KEYS]);
+    expect(fit.overall).toBeGreaterThan(60);
+    expect(fit.confidence).toBeGreaterThan(0.9);
+    expect(fit.modelVersion).toBe("riq-fit-v0.2");
+    expect(fit.computedAt).toMatch(/^\d{4}-/);
+    for (const c of fit.components) {
+      expect(c.explanation.length).toBeGreaterThan(5);
+      expect(c.inputValue.length).toBeGreaterThan(0);
+      expect(c.desiredValue.length).toBeGreaterThan(0);
+      if (c.finalScore !== null) {
+        expect(c.weightedContribution).toBeCloseTo(c.finalScore * c.weight, 1);
+      }
+    }
   });
 
-  it("scout-assigned role beats inferred score; wrong hand hurts", () => {
-    const withScoutRole = calculateFit(need, { ...prospect, scoutAssignedRoleKey: "puck_moving_d" }, depth);
-    expect(withScoutRole.components.find((c) => c.key === "role")?.score).toBe(100);
-    const wrongHand = calculateFit(need, { ...prospect, shootsCatches: "L" }, depth);
-    expect(wrongHand.components.find((c) => c.key === "handedness")?.score).toBe(20);
-    expect(wrongHand.overall!).toBeLessThan(withScoutRole.overall!);
+  it("position: primary > secondary > same-group > other", () => {
+    const primary = calculateFit(need, prospect, depth).components.find((c) => c.key === "position")!;
+    expect(primary.finalScore).toBe(100);
+    const secondary = calculateFit(
+      { ...need, position: "G", secondaryPosition: "D" },
+      prospect,
+      depth,
+    ).components.find((c) => c.key === "position")!;
+    expect(secondary.finalScore).toBe(75);
+    const other = calculateFit({ ...need, position: "G" }, prospect, depth).components.find((c) => c.key === "position")!;
+    expect(other.finalScore).toBe(0);
   });
 
-  it("risk beyond tolerance and missing data are surfaced, not hidden", () => {
-    const risky = calculateFit(
-      { ...need, maxRiskTolerance: "low" },
-      { ...prospect, latestTrendClassification: "small_sample_spike", gamesPlayedLatest: 8, shootsCatches: null },
+  it("handedness: match 100, mismatch 20, unknown null + warning (never zero)", () => {
+    expect(calculateFit(need, prospect, depth).components.find((c) => c.key === "handedness")!.finalScore).toBe(100);
+    expect(
+      calculateFit(need, { ...prospect, shootsCatches: "L" }, depth).components.find((c) => c.key === "handedness")!.finalScore,
+    ).toBe(20);
+    const unknown = calculateFit(need, { ...prospect, shootsCatches: null }, depth);
+    expect(unknown.components.find((c) => c.key === "handedness")!.finalScore).toBeNull();
+    expect(unknown.warnings.join(" ")).toMatch(/Handedness missing/);
+  });
+
+  it("statistical role uses the inferred target-role score; scout role stays separate", () => {
+    const fit = calculateFit(need, prospect, depth);
+    expect(fit.components.find((c) => c.key === "stat_role")!.finalScore).toBe(82);
+    // Scout-role target unset -> neutral 70, NOT the stat score.
+    expect(fit.components.find((c) => c.key === "scout_role")!.finalScore).toBe(70);
+    const scoutTarget = calculateFit(
+      { ...need, targetScoutRoleKey: "transition_d" },
+      { ...prospect, scoutAssignedRoleKey: "transition_d" },
       depth,
     );
-    expect(risky.components.find((c) => c.key === "risk")?.score).toBeLessThan(50);
-    expect(risky.components.find((c) => c.key === "handedness")?.score).toBeNull();
-    expect(risky.warnings.join(" ")).toMatch(/Handedness missing/);
-    expect(risky.warnings.join(" ")).toMatch(/8 games/);
+    expect(scoutTarget.components.find((c) => c.key === "scout_role")!.finalScore).toBe(100);
+    const scoutMismatch = calculateFit(
+      { ...need, targetScoutRoleKey: "transition_d" },
+      { ...prospect, scoutAssignedRoleKey: "shutdown_d" },
+      depth,
+    );
+    expect(scoutMismatch.components.find((c) => c.key === "scout_role")!.finalScore).toBe(25);
   });
 
-  it("uses contract depth for the opportunity path", () => {
-    const thin = calculateFit(need, prospect, { contractsAtPosition: 2, expiringWithinTimeline: 0 });
-    const crowded = calculateFit(need, prospect, { contractsAtPosition: 8, expiringWithinTimeline: 0 });
-    const thinScore = thin.components.find((c) => c.key === "opportunity")!.score!;
-    const crowdedScore = crowded.components.find((c) => c.key === "opportunity")!.score!;
-    expect(thinScore).toBeGreaterThan(crowdedScore);
+  it("timeline scores inside the arrival window and penalizes outside it", () => {
+    const inside = calculateFit(need, prospect, depth).components.find((c) => c.key === "timeline")!; // 2y out, window 1-4
+    expect(inside.finalScore).toBe(100);
+    const outside = calculateFit(
+      { ...need, earliestArrivalYears: 0, latestArrivalYears: 1, timelineYears: 0 },
+      { ...prospect, classYear: "freshman" }, // 3y out
+      depth,
+    ).components.find((c) => c.key === "timeline")!;
+    expect(outside.finalScore).toBeLessThan(50);
+  });
+
+  it("NHL readiness rewards near-ready prospects only when the need wants them", () => {
+    const noNeed = calculateFit(need, prospect, depth).components.find((c) => c.key === "nhl_readiness")!;
+    expect(noNeed.finalScore).toBe(70); // neutral
+    const wants = { ...need, nhlRosterNeed: true };
+    const senior = calculateFit(wants, { ...prospect, classYear: "senior" as const }, depth).components.find((c) => c.key === "nhl_readiness")!;
+    const freshman = calculateFit(wants, { ...prospect, classYear: "freshman" as const }, depth).components.find((c) => c.key === "nhl_readiness")!;
+    expect(senior.finalScore!).toBeGreaterThan(freshman.finalScore!);
+  });
+
+  it("depth, expiry, and scarcity fits reward thin depth and openings", () => {
+    const thin = calculateFit(need, prospect, {
+      ...depth, contractsAtPosition: 2, expiringWithinWindow: 3, prospectsAtTargetRole: 0,
+    });
+    const crowded = calculateFit(need, prospect, {
+      ...depth, contractsAtPosition: 8, expiringWithinWindow: 0, prospectsAtTargetRole: 6,
+    });
+    for (const key of ["roster_depth", "contract_expiry", "pool_scarcity"] as const) {
+      expect(thin.components.find((c) => c.key === key)!.finalScore!).toBeGreaterThan(
+        crowded.components.find((c) => c.key === key)!.finalScore!,
+      );
+    }
+    // AHL opportunity: fewer minor-league players at the position = more runway.
+    const openAhl = calculateFit(need, prospect, { ...depth, minorLeagueAtPosition: 0 });
+    const crowdedAhl = calculateFit(need, prospect, { ...depth, minorLeagueAtPosition: 6 });
+    expect(openAhl.components.find((c) => c.key === "ahl_opportunity")!.finalScore!).toBeGreaterThan(
+      crowdedAhl.components.find((c) => c.key === "ahl_opportunity")!.finalScore!,
+    );
+  });
+
+  it("special teams: PP uses PP share; PK is a flagged proxy; missing data excluded", () => {
+    const pp = calculateFit({ ...need, specialTeamsRequirement: "pp" }, { ...prospect, ppShare: 0.45 }, depth);
+    expect(pp.components.find((c) => c.key === "special_teams")!.finalScore).toBe(90);
+    const ppMissing = calculateFit({ ...need, specialTeamsRequirement: "pp" }, { ...prospect, ppShare: null }, depth);
+    expect(ppMissing.components.find((c) => c.key === "special_teams")!.finalScore).toBeNull();
+    const pk = calculateFit({ ...need, specialTeamsRequirement: "pk" }, prospect, depth);
+    expect(pk.warnings.join(" ")).toMatch(/proxy/);
+  });
+
+  it("scout grades: minimums met = 100, shortfalls penalized, no report = null + warning", () => {
+    const withMins = { ...need, minGrades: { skating: 55, hockey_sense: 55 } };
+    const meets = calculateFit(withMins, { ...prospect, reportGrades: { skating: 60, hockey_sense: 55 } }, depth);
+    expect(meets.components.find((c) => c.key === "scout_grades")!.finalScore).toBe(100);
+    const below = calculateFit(withMins, { ...prospect, reportGrades: { skating: 45, hockey_sense: 60 } }, depth);
+    const belowComp = below.components.find((c) => c.key === "scout_grades")!;
+    expect(belowComp.finalScore).toBeLessThan(100);
+    expect(belowComp.explanation).toMatch(/skating 45 < 55/);
+    const noReport = calculateFit(withMins, { ...prospect, reportGrades: null }, depth);
+    expect(noReport.components.find((c) => c.key === "scout_grades")!.finalScore).toBeNull();
+    expect(noReport.warnings.join(" ")).toMatch(/No scouting report/);
+  });
+
+  it("risk: scout-report risk outranks the trend heuristic", () => {
+    const trendRisky = calculateFit(
+      { ...need, maxRiskTolerance: "low" },
+      { ...prospect, latestTrendClassification: "small_sample_spike" },
+      depth,
+    );
+    expect(trendRisky.components.find((c) => c.key === "risk")!.finalScore).toBeLessThan(50);
+    const scoutSaysLow = calculateFit(
+      { ...need, maxRiskTolerance: "low" },
+      { ...prospect, latestTrendClassification: "small_sample_spike", reportRisk: "low" },
+      depth,
+    );
+    expect(scoutSaysLow.components.find((c) => c.key === "risk")!.finalScore).toBe(100);
+  });
+
+  it("acquisition method: draft wants undrafted; CFA wants eligible; trade wants held rights", () => {
+    const draft = calculateFit(need, prospect, depth).components.find((c) => c.key === "acquisition")!;
+    expect(draft.finalScore).toBe(100);
+    const drafted = { ...prospect, nhlDraftStatus: "drafted", nhlRightsHolder: "Rival Club" };
+    expect(calculateFit(need, drafted, depth).components.find((c) => c.key === "acquisition")!.finalScore).toBe(15);
+    expect(
+      calculateFit({ ...need, preferredAcquisition: "trade" }, drafted, depth).components.find((c) => c.key === "acquisition")!.finalScore,
+    ).toBe(80);
+    expect(
+      calculateFit({ ...need, preferredAcquisition: "college_fa" }, { ...prospect, collegeFreeAgentStatus: "eligible" }, depth)
+        .components.find((c) => c.key === "acquisition")!.finalScore,
+    ).toBe(100);
+    expect(
+      calculateFit({ ...need, preferredAcquisition: "any" }, prospect, depth).components.find((c) => c.key === "acquisition")!.finalScore,
+    ).toBe(100);
+  });
+
+  it("missing data reduces confidence but never the score itself", () => {
+    const complete = calculateFit(need, prospect, depth);
+    const sparse = calculateFit(
+      { ...need, minGrades: { skating: 55 }, specialTeamsRequirement: "pp", targetScoutRoleKey: "transition_d" },
+      { ...prospect, shootsCatches: null, reportGrades: null, ppShare: null, scoutAssignedRoleKey: null },
+      depth,
+    );
+    expect(sparse.confidence!).toBeLessThan(complete.confidence!);
+    for (const c of sparse.components) {
+      if (c.missingInputs.length > 0) expect(c.finalScore).toBeNull(); // excluded, not zeroed
+    }
+    expect(sparse.overall).not.toBeNull(); // still computable over covered weight
+    expect(sparse.warnings.join(" ")).toMatch(/partial components/);
+  });
+
+  it("weights come from the caller (database), not hardcoded UI values", () => {
+    const heavyRole: Record<string, number> = { ...DEFAULT_FIT_WEIGHTS, stat_role: 0.9, position: 0.01 };
+    const light: Record<string, number> = { ...DEFAULT_FIT_WEIGHTS, stat_role: 0.01 };
+    const lowRole = { ...prospect, roleScores: [{ ...prospect.roleScores[0]!, score: 10 }] };
+    const heavy = calculateFit(need, lowRole, depth, heavyRole);
+    const lite = calculateFit(need, lowRole, depth, light);
+    expect(heavy.overall!).toBeLessThan(lite.overall!);
+    expect(heavy.components.find((c) => c.key === "stat_role")!.weight).toBe(0.9);
   });
 });

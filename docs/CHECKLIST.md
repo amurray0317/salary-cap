@@ -139,6 +139,54 @@
       with duplicate error → approve → committed; new conference selectable in filters) →
       Ironport sees only its own 5 isolation-fixture prospects
 
+## Amateur Scouting Phase 2 — organizational needs & prospect fit (final run 2026-07-21)
+- [x] Schema (migration 0005): needs extended (name, description, secondary position,
+      scout-role target, arrival window + target season, size/special-teams preferences,
+      NHL-roster/AHL flags); organizational_need_requirements (normalized 20–80 grade
+      floors); organizational_need_roster_links; fit_models / fit_model_versions /
+      fit_component_definitions / fit_component_weights (the engine's only weight source);
+      fit_calculation_runs; prospect_fit_components (normalized per-component breakdown);
+      organizational_depth_snapshots + prospect_pool_depth_snapshots; fit scores carry
+      run id + confidence
+- [x] Fit engine riq-fit-v0.2: 14 components (position, handedness, statistical role,
+      scout role — kept separate, timeline window, NHL readiness, AHL opportunity, roster
+      depth, contract expiry, pool scarcity, special teams, scout grades, risk,
+      acquisition method); every component reports input, desired value, raw score,
+      weight, weighted contribution, penalties, missing inputs, and explanation; missing
+      data is excluded and reduces confidence — never scored low; overall normalized
+      0–100 with model version + timestamp
+- [x] Weights load from fit_component_weights per active model version (never hardcoded
+      in React); engine defaults only as a flagged fallback
+- [x] fitService: batch-scored runs per need (run row, upserted scores, replaced
+      components, org + pool depth snapshots, auto-linked expiring contracts), single-
+      prospect recompute, live depth summary, 2–5-prospect comparison; read-only over
+      official roster/contract/prospect data
+- [x] Permissions: run_fit_models capability (analyst tier+); manage_org_needs
+      (director/GM); export gated by export_scouting; org isolation on needs, scores,
+      runs, snapshots, comparisons, exports
+- [x] UI: Org needs tab (list + live depth-by-position summary + full create form),
+      need detail (requirements, roster links, run button, run history, snapshots,
+      ranked fit table with search/sort/pagination/column visibility/compare checkboxes,
+      CSV export), comparison page (side-by-side components, decision-support evidence
+      without an automatic verdict, watchlist add), upgraded profile fit panel
+      (inputs × weights = contributions, confidence, warnings)
+- [x] Export: /api/export/fit?needId=… ranked CSV with all 14 component columns
+- [x] Seed: fit model + version + 14 definitions/weights, 5 varied needs (incl.
+      right-shot transition D with grade minimums and a PK need that showcases
+      missing-data warnings), grade requirements, 5 runs → 660 scores / 9,240 component
+      rows / snapshots / 40 roster links — seeded through the real service
+- [x] 21 new tests (139 total): engine components + confidence + DB-weight override,
+      service runs/upserts/isolation/no-mutation/comparison/depth, permissions
+- [x] `tsc --noEmit` clean · eslint clean · 139/139 vitest · production build succeeds
+- [x] Browser acceptance run (20 checks): create right-shot transition-D need with 2–4y
+      window and skating/sense minimums → run model → ranked table (sorted, auto-linked
+      expiring D contracts, run history) → top-prospect profile shows every component's
+      input × weight = contribution with warnings → compare top two (all components,
+      decision support, missing-data flags) → watchlist add → ranked CSV export →
+      rival org 404s on the need page and export and sees no Aurora needs
+- [ ] Deferred: draft boards beyond current slice, NHL projection models, ML models,
+      Elite Prospects integration, fit-weight editing UI
+
 ## MVP acceptance test status
 1–8 (register→commitments) ✓ · 9–14 (scenarios, violations) ✓ · 15–16 (valuation, surplus) ✓ ·
 17–18 (compare, export) ✓ · 19 (sign out/in persistence) ✓ · 20 (cross-org denial) ✓

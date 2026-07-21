@@ -102,6 +102,27 @@ conference-relative percentile pools from same-season, same-position-group org p
 pools under 8 peers report null percentiles rather than extrapolating, and F/D/G
 populations never mix.
 
+## Organizational fit (riq-fit-v0.2)
+
+The fit engine (`src/lib/scouting/fit.ts`) is pure: it takes a need input, a prospect
+input, a depth context, and a weight map, and returns 14 components each carrying
+input value, desired value, raw score, weight, weighted contribution, penalties,
+missing inputs, and an explanation, plus an overall (0–100), a confidence (covered
+weight share, reduced by warnings), the model version, and a timestamp. Missing data
+excludes a component and reduces confidence — it never produces a low score.
+
+Weights live in `fit_component_weights`, keyed by model version
+(`fit_models → fit_model_versions`); `fitService.loadActiveFitModel` is the only
+loader and engine defaults are a flagged fallback. `runFitForNeed` writes one
+`fit_calculation_runs` row per execution, batch-assembles prospect inputs (one query
+per table), upserts `prospect_fit_scores` (unique per prospect + need + model
+version), replaces the normalized `prospect_fit_components`, captures
+`organizational_depth_snapshots` + `prospect_pool_depth_snapshots`, and refreshes
+auto roster links to the expiring contracts motivating the need. The whole path is
+read-only over official roster/contract/scenario/prospect data. `run_fit_models`
+(analyst tier) gates runs; `manage_org_needs` (director/GM) gates need CRUD;
+`export_scouting` gates `/api/export/fit`.
+
 ## Tenancy & security
 
 - Session tokens: 32 random bytes, stored **hashed** (SHA-256) in `sessions`, HttpOnly cookie.

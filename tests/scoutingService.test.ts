@@ -202,12 +202,12 @@ describe("depth context and fit", () => {
     expect(depth.expiringWithinTimeline).toBe(1);
   });
 
-  it("computes an explainable fit and persists it with the model version", async () => {
+  it("computes an explainable v0.2 fit and persists it with the model version", async () => {
     const fit = await computeFit(fx.subjectId, fx.needId, fx.orgId);
-    expect(fit.overall).toBeGreaterThan(70); // right position, right hand, top role score
-    expect(fit.components.map((c) => c.key)).toContain("opportunity");
-    const opportunity = fit.components.find((c) => c.key === "opportunity");
-    expect(opportunity?.explanation).toContain("3 active contract(s)");
+    expect(fit.overall).toBeGreaterThan(60); // right position, right hand, top role score
+    expect(fit.components).toHaveLength(14);
+    const rosterDepth = fit.components.find((c) => c.key === "roster_depth");
+    expect(rosterDepth?.explanation).toContain("3 active NHL contract(s)");
 
     const stored = await db
       .select()
@@ -215,12 +215,13 @@ describe("depth context and fit", () => {
       .where(eq(schema.prospectFitScores.prospectId, fx.subjectId));
     expect(stored).toHaveLength(1);
     expect(stored[0]?.modelVersion).toBe(FIT_MODEL_VERSION);
+    expect(stored[0]?.confidence).not.toBeNull();
   });
 
   it("rejects a need from another organization", async () => {
     const [foreignNeed] = await db
       .insert(schema.organizationalNeeds)
-      .values({ organizationId: fx.otherOrgId, position: "D", priority: 1, timelineYears: 2 })
+      .values({ organizationId: fx.otherOrgId, name: "Foreign need", position: "D", priority: 1, timelineYears: 2 })
       .returning();
     await expect(computeFit(fx.subjectId, foreignNeed!.id, fx.orgId)).rejects.toThrow(/Need not found/);
   });
@@ -244,6 +245,14 @@ describe("scouting permissions (capability tiers)", () => {
     expect(roleHasCapability("scouting_director", "manage_org_needs")).toBe(true);
     expect(roleHasCapability("scouting_director", "manage_scouting_models")).toBe(false);
     expect(roleHasCapability("org_admin", "manage_scouting_models")).toBe(true);
+  });
+  it("fit runs need analyst tier; scouts and viewers cannot run or manage needs", () => {
+    expect(roleHasCapability("scouting_asst_director", "run_fit_models")).toBe(true);
+    expect(roleHasCapability("analyst", "run_fit_models")).toBe(true);
+    expect(roleHasCapability("scout", "run_fit_models")).toBe(false);
+    expect(roleHasCapability("viewer", "run_fit_models")).toBe(false);
+    expect(roleHasCapability("scout", "manage_org_needs")).toBe(false);
+    expect(roleHasCapability("viewer", "export_scouting")).toBe(false);
   });
 });
 

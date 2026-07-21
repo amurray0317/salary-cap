@@ -77,6 +77,26 @@ it is implemented" rule.
 - AI scouting assistant, projection models, weight-editing UI, consensus rankings,
   and professional-outcome comparables are deliberately deferred past this slice.
 
+## Organizational fit (riq-fit-v0.2)
+
+- Fit is a transparent weighted heuristic on fictional data — decision support, not a
+  ranking authority. Component thresholds (depth buckets, timeline penalties,
+  acquisition scores) are v0.2 judgment calls documented in the engine, not fitted
+  parameters.
+- Timeline uses class year as the only arrival estimator (freshman ≈ 3y … senior ≈ 0y);
+  no per-player development-curve modeling.
+- AHL opportunity is proxied by org players with `rosterStatus = minor` at the
+  position — there is no real affiliate roster model yet.
+- PK special-teams fit uses short-handed scoring as a weak proxy (flagged in the
+  output) because NCAA usage data does not exist; PP fit uses PP point share.
+- Prospect-pool scarcity counts scout-assigned or top persisted statistical roles;
+  prospects without computed role scores don't count toward target-role coverage.
+- Size preference is stored on the need but not yet scored as a component.
+- Weights are per model version and global; per-organization weight overrides and a
+  weight-editing UI are deferred (weights change via new model versions).
+- Depth snapshots are captured per run; the needs-page depth summary is computed live
+  and can drift from the last snapshot until the next run.
+
 ## Platform
 
 - Roster optimization (OR-Tools/PuLP) not built yet; schema reserved.
