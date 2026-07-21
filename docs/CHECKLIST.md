@@ -39,7 +39,9 @@
 - [x] Projection (official vs projected, multi-season)
 - [x] Scenario comparison (1–5 scenarios vs official)
 - [x] Automated tests (13 scenario tests)
-- [ ] Apply scenario to official roster (deliberately deferred — see LIMITATIONS)
+- [x] Apply scenario to official roster (preview page, blocking-violation gate,
+      manage_team capability, atomic apply with official transaction log + audit;
+      11 integration tests in tests/applyScenario.test.ts)
 
 ## Phase 6 — Valuation
 - [x] Projection storage
@@ -53,18 +55,31 @@
 ## Phase 7 — Reports
 - [x] Roster CSV, commitments CSV, valuations CSV, comparison CSV
 - [x] Print-optimized roster report (browser PDF)
-- [ ] Shareable read-only links (schema ready; route deferred)
+- [x] Shareable read-only links (frozen snapshot in reports/report_sections,
+      unguessable token, public /share/[token] route, revoke, audit;
+      5 integration tests in tests/shareReport.test.ts)
+- [x] CSV import UI (downloadable templates, field mapping, row-level
+      validation into import_errors, preview, explicit approval before commit;
+      players + contracts importers; 14 tests in tests/csvImport.test.ts)
 - [ ] Server-side PDF (deferred)
 
 ## Phase 8 — Quality (final run 2026-07-18)
 - [x] `tsc --noEmit` clean
 - [x] `eslint` clean
-- [x] 50/50 vitest tests passing (engine, scenario, valuation, isolation/permissions/DB, CSV)
-- [x] Production build succeeds (24 routes)
+- [x] 80/80 vitest tests passing (engine, scenario, valuation, apply,
+      share reports, CSV import pipeline, isolation/permissions/DB, CSV)
+- [x] Production build succeeds (29 routes)
 - [x] Live smoke test: login, dashboard math, scenario projection, violation display,
       comparison CSV, roster CSV, player valuation panel
 - [x] Isolation verified live: rival org gets 404 on foreign scenario page & export; sees only
       its own team
+- [x] Apply-scenario flow verified in the browser: preview → confirm → applied banner,
+      re-apply blocked, transaction log populated, over-cap scenario gated by violations
+- [x] Share-link flow verified in the browser: create → anonymous visitor sees the frozen
+      snapshot but cannot reach the app → revoke → link returns 404
+- [x] CSV import verified in the browser: template download → upload → auto-mapped fields →
+      validation with visible row-level error → approve → "Committed 2 of 3 rows" → valid
+      players live in Players, invalid row excluded, history shows Committed
 
 ## MVP acceptance test status
 1–8 (register→commitments) ✓ · 9–14 (scenarios, violations) ✓ · 15–16 (valuation, surplus) ✓ ·

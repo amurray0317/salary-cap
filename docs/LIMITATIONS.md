@@ -22,17 +22,23 @@ it is implemented" rule.
 
 ## Scenarios
 
-- **Applying a scenario to official data is not implemented.** Scenarios remain overlays; the
-  `applied` status exists in the enum but no action performs the mutation. This is deliberate:
-  partial apply would risk corrupting official records.
+- **Applying a scenario is one-way.** The apply flow (preview → confirm) writes official
+  records atomically and marks the scenario read-only, but there is no UI-level undo — reversing
+  an applied scenario means making new official moves. Every applied move is recorded in the
+  transaction log and audit history.
+- Apply is blocked while the projection contains blocking violations; there is no
+  override-with-reason flow yet (a compliance officer "requires review" path is roadmap).
 - No undo/redo stack inside the builder (transactions can be disabled/removed instead).
 - Multi-team trade modeling is limited to this team's side (out with retention / in with
   retention); draft-pick trades are recorded descriptively, not valued.
 
 ## Data & imports
 
-- **No CSV import UI yet.** The `imports`/`import_errors` tables and provenance model exist;
-  the mapping/validation interface is roadmap. Seeding is the current bulk-load path.
+- CSV import covers **players** and **contracts** (one row per contract-season). League rules,
+  statistics, projections, scholarship, and NIL importers are roadmap; the definitions module
+  (`src/lib/import/definitions.ts`) is the extension point.
+- Player matching in the contracts importer is by exact full name; ambiguous names are
+  rejected rather than guessed. Files are capped at 1 MB / 2000 rows.
 - No file storage (player documents) yet despite the schema field.
 - Free agents are tracked per organization (scouting records), not as a shared league pool.
 
@@ -54,7 +60,8 @@ it is implemented" rule.
 - No user invitation flow (members are seeded or created via registration; role management UI
   is minimal read-only).
 - PDF export is browser-print based; server-side PDF rendering is roadmap.
-- Shareable read-only report links: `reports.share_token` exists, route not yet implemented.
+- Shareable links currently cover the roster/cap report; scenario-comparison and valuation
+  share links are roadmap. Shared snapshots are frozen by design and never update.
 - Rate limiting is not implemented (abstraction point noted in middleware roadmap).
 - PGlite local mode is single-process: run one server per `.data` directory. `db:seed` refuses
   to run against `DATABASE_URL` as a guard.

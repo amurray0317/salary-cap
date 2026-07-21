@@ -68,8 +68,14 @@ date, snapshot into `rule_versions`, and audit-log the change. Nothing is overwr
 The projector deep-clones the official `CapInput[]`, applies transactions in order, marks
 everything it adds/changes `isHypothetical`, and reports notes for anything it had to skip.
 DB tests assert official tables are untouched after inserting scenario transactions.
-"Apply scenario to official roster" is intentionally not implemented yet (status `applied`
-exists in the enum; see LIMITATIONS).
+
+Crossing the boundary is explicit: `applyService.applyScenario` is the only code that turns
+scenario transactions into official records. It runs behind the `manage_team` capability, a
+confirmation form, and a server-side re-projection that refuses to apply while blocking
+violations exist. All moves apply inside one DB transaction (all-or-nothing), each move writes
+an official `transactions` row, and the scenario flips to `applied` (read-only). The service
+takes its `Db` as a parameter (no `server-only` import) so integration tests can run it
+against in-memory PGlite.
 
 ## Tenancy & security
 

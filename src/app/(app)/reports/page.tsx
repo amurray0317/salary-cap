@@ -1,9 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
 import { resolveAppContext } from "@/server/appContext";
+import { createShareLinkAction, revokeShareLinkAction } from "@/server/actions/reportActions";
+import { CreateShareLinkForm } from "@/components/ShareLinkForm";
 import { Card, EmptyState } from "@/components/ui";
+import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -20,6 +23,13 @@ export default async function ReportsPage() {
   if (!ctx.team || !ctx.season) {
     return <EmptyState title="No team context" body="Create a team to generate reports." />;
   }
+
+  const sharedReports = await db
+    .select()
+    .from(schema.reports)
+    .where(and(eq(schema.reports.organizationId, ctx.org.id), isNotNull(schema.reports.shareToken)))
+    .orderBy(desc(schema.reports.generatedAt))
+    .limit(20);
 
   const reports = [
     {
@@ -80,6 +90,44 @@ export default async function ReportsPage() {
           <Link href="/scenarios/compare" className="mt-3 inline-block text-sm text-ink-secondary hover:text-ink">
             Multi-scenario comparison →
           </Link>
+        </Card>
+
+        <Card title="Shareable read-only links">
+          <CreateShareLinkForm
+            action={createShareLinkAction}
+            organizationId={ctx.org.id}
+            teamId={ctx.team.id}
+            seasonId={ctx.season.id}
+            teamName={ctx.team.name}
+            seasonName={ctx.season.name}
+          />
+          {sharedReports.length > 0 && (
+            <ul className="mt-4 space-y-2 border-t border-line pt-3">
+              {sharedReports.map((r) => (
+                <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <div className="min-w-0">
+                    <a
+                      href={`/share/${r.shareToken}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent-text hover:underline"
+                    >
+                      {r.title}
+                    </a>
+                    <span className="ml-2 text-xs text-ink-muted">
+                      generated {formatDate(r.generatedAt)}
+                    </span>
+                    <div className="truncate font-mono text-xs text-ink-muted">/share/{r.shareToken}</div>
+                  </div>
+                  <form action={revokeShareLinkAction}>
+                    <input type="hidden" name="organizationId" value={ctx.org.id} />
+                    <input type="hidden" name="reportId" value={r.id} />
+                    <button className="text-xs text-critical hover:underline">Revoke</button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
       </div>
     </div>

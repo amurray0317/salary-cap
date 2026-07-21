@@ -72,6 +72,9 @@ Key invariants:
    which rule versions produced every figure.
 3. **Scenarios are overlays.** `scenario_transactions` are validated payloads applied at read time
    by the projector. Official tables are never touched by a simulation (enforced and tested).
+   The only crossing point is the explicit apply flow: preview → confirm (manage_team role,
+   no blocking violations) → atomic write of official records + transaction log + audit, after
+   which the scenario is read-only.
 4. **Every figure is explainable.** The engine emits line items with formula text, input records,
    and applied rule versions, surfaced in the dashboard's calculation-detail table and reports.
 5. **Isolation is server-side.** Every read/write is scoped by organization membership checked in
@@ -159,6 +162,20 @@ CSV exports (roster, future commitments, valuations, scenario comparison) are st
 generation time, team/season, and model versions. A print-optimized roster report provides PDF
 output via the browser. All exports enforce the same org-scoping as pages.
 
+Shareable read-only links (Reports page) freeze the current cap report into a stored snapshot
+and mint an unguessable `/share/<token>` URL that renders without sign-in — only the snapshot,
+never live data. Links are revocable and both creation and revocation are audit-logged.
+
+## Data imports
+
+The Imports page provides a gated CSV pipeline: download a template (players, or contracts as
+one row per contract-season), upload a file, map CSV columns to target fields (auto-mapped by
+name), and review row-level validation — every problem is stored in `import_errors` with its
+row, column, and message. Nothing is written until you explicitly approve; approval commits
+only the rows that validated cleanly, in one transaction, and is audit-logged. Contract rows
+are grouped by player into multi-season contracts, and a group with any invalid row is skipped
+whole rather than partially imported.
+
 ## Data sources
 
 The MVP uses user-entered data, CSV-style seeds, and fictional demonstration data only. A
@@ -170,8 +187,9 @@ would plug in behind the import layer.
 ## Known limitations
 
 See `docs/LIMITATIONS.md` for the full list. Headlines: season-level (not daily) cap accounting,
-simplified LTIR and buyout math, scenario "apply to official roster" not yet implemented, no CSV
-import UI yet, college/NIL modules are schema-only, and the valuation model is a v0.1 heuristic.
+simplified LTIR and buyout math, applied scenarios have no UI-level undo, CSV import covers
+players and contracts only, college/NIL modules are schema-only, and the valuation model is a
+v0.1 heuristic.
 
 ## Documentation
 

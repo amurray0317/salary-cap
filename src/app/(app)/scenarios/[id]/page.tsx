@@ -18,9 +18,16 @@ import { money, moneyCompact } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Scenario builder" };
 
-export default async function ScenarioPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ScenarioPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ applied?: string }>;
+}) {
   const ctx = await resolveAppContext();
   const { id } = await params;
+  const { applied } = await searchParams;
   const db = getDb();
 
   // Org isolation before any projection work.
@@ -66,6 +73,14 @@ export default async function ScenarioPage({ params }: { params: Promise<{ id: s
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {!readOnly && (
+            <Link
+              href={`/scenarios/${scenario.id}/apply`}
+              className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+            >
+              Apply to official roster…
+            </Link>
+          )}
           <Link
             href={`/scenarios/compare?ids=${scenario.id}`}
             className="rounded-md border border-line px-3 py-1.5 text-sm text-ink-secondary hover:text-ink"
@@ -89,6 +104,13 @@ export default async function ScenarioPage({ params }: { params: Promise<{ id: s
           </form>
         </div>
       </div>
+
+      {applied === "1" && scenario.status === "applied" && (
+        <p className="rounded-md border border-good/40 bg-good/10 px-3 py-2 text-sm text-good">
+          ✓ Scenario applied to the official roster. Every move is recorded under Transactions and
+          in the audit history; this scenario is now read-only.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Official cap space" value={moneyCompact(official?.totals.capSpace ?? 0)} detail={projection.seasons[baseIdx]?.name} />

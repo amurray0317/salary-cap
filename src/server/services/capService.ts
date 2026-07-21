@@ -2,8 +2,11 @@
  * Assembles CapInputs from persisted records and runs the cap engine.
  * All reads are org-scoped through requireOrgAccess before this service is
  * called (see server actions); functions here take an already-authorized ctx.
+ *
+ * No "server-only" import: this module is only referenced from server code,
+ * and integration tests exercise it against in-memory PGlite via
+ * setDbForTesting (the "server-only" marker throws under vitest).
  */
-import "server-only";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
 import { calculateCap } from "@/lib/engine/capEngine";
