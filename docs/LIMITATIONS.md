@@ -34,11 +34,17 @@ it is implemented" rule.
 
 ## Data & imports
 
-- CSV import covers **players** and **contracts** (one row per contract-season). League rules,
-  statistics, projections, scholarship, and NIL importers are roadmap; the definitions module
-  (`src/lib/import/definitions.ts`) is the extension point.
-- Player matching in the contracts importer is by exact full name; ambiguous names are
-  rejected rather than guessed. Files are capped at 1 MB / 2000 rows.
+- CSV import covers **players**, **contracts** (one row per contract-season), **NCAA
+  conferences**, **NCAA schools**, **NCAA prospects**, **NCAA season statistics**, **NCAA
+  game logs**, and **NHL draft status & rights**. League rules, projections, scholarship,
+  and NIL importers are roadmap; the definitions module (`src/lib/import/definitions.ts`)
+  is the extension point.
+- Record matching in importers is by exact full name (players, prospects) or exact name
+  (schools, conferences); ambiguous names are rejected rather than guessed. Files are
+  capped at 1 MB / 2000 rows.
+- Schools and conferences are global reference data (not org-scoped); duplicate detection
+  is by name. Import-level source URL / retrieved-date metadata lives in the
+  `data_sources` table and is not yet captured in the upload form.
 - No file storage (player documents) yet despite the schema field.
 - Free agents are tracked per organization (scouting records), not as a shared league pool.
 
@@ -52,6 +58,24 @@ it is implemented" rule.
 
 - v0.1 valuation models are transparent heuristics on fictional data — not validated, and
   labeled as estimates everywhere. See docs/MODELS.md.
+
+## Amateur scouting
+
+- Statistical models are v0.1 heuristics on fictional data (see docs/SCOUTING.md for
+  full assumptions): no schedule-strength adjustment, PIM-proxy physicality, weak
+  goalie inference, org-scoped percentile pools.
+- No NCAA time-on-ice data — per-60 rates are never computed or estimated.
+- Percentiles are position-relative and conference-relative (pools under 8 peers are
+  reported as insufficient, F/D/G never mixed); a dedicated same-age percentile pool is
+  approximated by the age-adjusted-PPG metric rather than an age-bucketed population.
+- Percentile panels are computed on request from stored season lines (fast at seed
+  scale); only role scores are cached with a model version.
+- The players-page trend/percentile columns are limited to what the list query derives
+  (PPG, shots/game); full trend classifications live on the profile.
+- Saved filter views are per-user, per-page snapshots of the querystring — they are not
+  shared across the organization.
+- AI scouting assistant, projection models, weight-editing UI, consensus rankings,
+  and professional-outcome comparables are deliberately deferred past this slice.
 
 ## Platform
 

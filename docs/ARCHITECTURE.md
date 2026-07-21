@@ -77,6 +77,31 @@ an official `transactions` row, and the scenario flips to `applied` (read-only).
 takes its `Db` as a parameter (no `server-only` import) so integration tests can run it
 against in-memory PGlite.
 
+## CSV import pipeline
+
+One generic pipeline serves all eight dataset types (players, contracts, NCAA conferences,
+schools, prospects, season statistics, game logs, NHL draft status). The single source of
+truth is `src/lib/import/definitions.ts`: per-type field definitions (key, label, required,
+validator), template rows, and header auto-mapping — the UI, the service, and the tests all
+consume it. `importService` runs the state machine `pending → awaiting_approval →
+committed | rejected`; validation persists row-level problems to `import_errors` and
+NOTHING is written to target tables until explicit approval, which re-validates
+server-side from stored raw data (page state is never trusted) and commits only clean rows
+in one transaction. Per-type validation adds in-file + against-DB duplicate detection,
+referential checks (school → conference, stats/logs/draft → existing prospect), and
+cross-field rules (drafted requires a year; undrafted must leave round/overall blank).
+Every transition is audit-logged.
+
+## NCAA player list & percentiles
+
+`prospectListService.listProspects` is the shared assembly for the players page and the
+filtered CSV export (`/api/export/prospects`, gated by `export_scouting`) — filters,
+sorting, and derived stats live once. Saved filter views are querystring snapshots stored
+per user in `saved_views`. `scoutingService.computePercentilePanel` builds position- and
+conference-relative percentile pools from same-season, same-position-group org prospects;
+pools under 8 peers report null percentiles rather than extrapolating, and F/D/G
+populations never mix.
+
 ## Tenancy & security
 
 - Session tokens: 32 random bytes, stored **hashed** (SHA-256) in `sessions`, HttpOnly cookie.

@@ -45,6 +45,9 @@ export const orgRole = pgEnum("org_role", [
   "agent",
   "consultant",
   "viewer",
+  "scouting_director",
+  "scouting_asst_director",
+  "crossover_scout",
 ]);
 
 export const dataProvenance = pgEnum("data_provenance", [
@@ -727,6 +730,7 @@ export const optimizationResults = pgTable("optimization_results", {
 export const conferences = pgTable("conferences", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  abbreviation: text("abbreviation"),
   level: text("level").notNull().default("division_1"),
 });
 
@@ -734,7 +738,14 @@ export const schools = pgTable("schools", {
   id: uuid("id").primaryKey().defaultRandom(),
   organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  shortName: text("short_name"),
+  abbreviation: text("abbreviation"),
   conferenceId: uuid("conference_id").references(() => conferences.id),
+  city: text("city"),
+  state: text("state"),
+  country: text("country").default("United States"),
+  division: text("division").notNull().default("division_1"),
+  isActive: boolean("is_active").notNull().default(true),
 });
 
 export const academicYears = pgTable("academic_years", {
@@ -940,4 +951,458 @@ export const importErrors = pgTable("import_errors", {
   columnName: text("column_name"),
   message: text("message").notNull(),
   rawRow: jsonb("raw_row"),
+});
+
+/* ------------------------------------------------------------------ */
+/* Amateur Scouting module (NCAA D-I men's hockey)                     */
+/* ------------------------------------------------------------------ */
+
+export const positionGroup = pgEnum("position_group", ["F", "D", "G"]);
+
+export const prospectClass = pgEnum("prospect_class", [
+  "freshman",
+  "sophomore",
+  "junior",
+  "senior",
+  "graduate",
+]);
+
+export const viewingType = pgEnum("viewing_type", ["live", "video", "crossover", "analytics"]);
+
+export const scoutingReportStatus = pgEnum("scouting_report_status", [
+  "draft",
+  "submitted",
+  "final",
+]);
+
+export const assignmentStatus = pgEnum("assignment_status", [
+  "open",
+  "in_progress",
+  "complete",
+  "cancelled",
+]);
+
+/** Org-scoped NCAA prospect record. Schools/conferences reuse the college tables. */
+export const amateurProspects = pgTable(
+  "amateur_prospects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    fullName: text("full_name").notNull(),
+    dateOfBirth: date("date_of_birth"),
+    position: text("position").notNull(), // C | LW | RW | D | G
+    positionGroup: positionGroup("position_group").notNull().default("F"),
+    shootsCatches: text("shoots_catches"), // L | R
+    heightCm: integer("height_cm"),
+    weightKg: integer("weight_kg"),
+    nationality: text("nationality"),
+    schoolId: uuid("school_id").references(() => schools.id),
+    classYear: prospectClass("class_year").notNull().default("freshman"),
+    previousTeams: text("previous_teams"),
+    /** Identifier from the originating data source (never fabricated). */
+    externalRef: text("external_ref"),
+    draftYear: integer("draft_year"),
+    draftRound: integer("draft_round"),
+    draftOverall: integer("draft_overall"),
+    nhlDraftStatus: text("nhl_draft_status").notNull().default("undrafted"), // undrafted | drafted
+    nhlRightsHolder: text("nhl_rights_holder"),
+    collegeFreeAgentStatus: text("college_free_agent_status").notNull().default("not_eligible"), // not_eligible | watch | eligible | signed
+    /** Scout-assigned roles are kept separate from statistically inferred ones. */
+    scoutAssignedRoleKey: text("scout_assigned_role_key"),
+    projectedProRoleKey: text("projected_pro_role_key"),
+    agentName: text("agent_name"),
+    notes: text("notes"),
+    provenance: dataProvenance("provenance").notNull().default("user_entered"),
+    sourceId: uuid("source_id").references(() => dataSources.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("prospects_org_idx").on(t.organizationId), index("prospects_school_idx").on(t.schoolId)],
+);
+
+/** One row per prospect per NCAA season ("2024-25"). TOI nullable — never fabricated. */
+export const prospectSeasons = pgTable(
+  "prospect_seasons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    prospectId: uuid("prospect_id")
+      .notNull()
+      .references(() => amateurProspects.id, { onDelete: "cascade" }),
+    seasonName: text("season_name").notNull(),
+    classYear: prospectClass("class_year").notNull(),
+    schoolId: uuid("school_id").references(() => schools.id),
+    gamesPlayed: integer("games_played").notNull().default(0),
+    goals: integer("goals").notNull().default(0),
+    assists: integer("assists").notNull().default(0),
+    shots: integer("shots").notNull().default(0),
+    penaltyMinutes: integer("penalty_minutes").notNull().default(0),
+    plusMinus: integer("plus_minus").notNull().default(0), // stored, never a primary evaluation variable
+    powerPlayGoals: integer("pp_goals").notNull().default(0),
+    powerPlayAssists: integer("pp_assists").notNull().default(0),
+    shortHandedGoals: integer("sh_goals").notNull().default(0),
+    faceoffWins: integer("faceoff_wins").notNull().default(0),
+    faceoffAttempts: integer("faceoff_attempts").notNull().default(0),
+    /** Nullable on purpose: per-60 rates are only computed when TOI exists. */
+    timeOnIceSeconds: integer("toi_seconds"),
+    /** Team scoring environment for team-relative production. */
+    teamGoalsFor: integer("team_goals_for"),
+    provenance: dataProvenance("provenance").notNull().default("user_entered"),
+    sourceId: uuid("source_id").references(() => dataSources.id),
+  },
+  (t) => [uniqueIndex("prospect_season_unique").on(t.prospectId, t.seasonName)],
+);
+
+export const prospectGameLogs = pgTable(
+  "prospect_game_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    prospectId: uuid("prospect_id")
+      .notNull()
+      .references(() => amateurProspects.id, { onDelete: "cascade" }),
+    seasonName: text("season_name").notNull(),
+    gameDate: date("game_date").notNull(),
+    opponent: text("opponent").notNull(),
+    homeAway: text("home_away"), // H | A | null (unknown)
+    goals: integer("goals").notNull().default(0),
+    assists: integer("assists").notNull().default(0),
+    shots: integer("shots").notNull().default(0),
+    powerPlayPoints: integer("pp_points").notNull().default(0),
+    penaltyMinutes: integer("penalty_minutes").notNull().default(0),
+    faceoffWins: integer("faceoff_wins").notNull().default(0),
+    faceoffAttempts: integer("faceoff_attempts").notNull().default(0),
+    /** Nullable on purpose — never fabricated. */
+    timeOnIceSeconds: integer("toi_seconds"),
+    provenance: dataProvenance("provenance").notNull().default("user_entered"),
+  },
+  (t) => [index("game_logs_prospect_idx").on(t.prospectId, t.gameDate)],
+);
+
+/** Global (org-null) role archetype catalog. */
+export const roleArchetypes = pgTable("role_archetypes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull().unique(), // e.g. "playmaking_winger"
+  label: text("label").notNull(),
+  positionGroup: positionGroup("position_group").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+/** Versioned metric weights per archetype — the role engine's only weight source. */
+export const roleMetricWeights = pgTable(
+  "role_metric_weights",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    archetypeId: uuid("archetype_id")
+      .notNull()
+      .references(() => roleArchetypes.id, { onDelete: "cascade" }),
+    metric: text("metric").notNull(), // percentile metric key, e.g. "ppg", "shotsPerGame"
+    weight: real("weight").notNull(),
+    modelVersion: text("model_version").notNull(),
+    effectiveDate: date("effective_date").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+  },
+  (t) => [index("role_weights_arch_idx").on(t.archetypeId, t.modelVersion)],
+);
+
+export const prospectRoleScores = pgTable(
+  "prospect_role_scores",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    prospectId: uuid("prospect_id")
+      .notNull()
+      .references(() => amateurProspects.id, { onDelete: "cascade" }),
+    archetypeId: uuid("archetype_id")
+      .notNull()
+      .references(() => roleArchetypes.id, { onDelete: "cascade" }),
+    seasonName: text("season_name").notNull(),
+    modelVersion: text("model_version").notNull(),
+    score: real("score").notNull(), // 0..100
+    confidence: real("confidence").notNull(), // 0..1
+    explanation: jsonb("explanation").notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("role_score_unique").on(t.prospectId, t.archetypeId, t.seasonName, t.modelVersion)],
+);
+
+export const prospectTrends = pgTable("prospect_trends", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  prospectId: uuid("prospect_id")
+    .notNull()
+    .references(() => amateurProspects.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(), // year_over_year | first_second_half | last5 ...
+  classification: text("classification").notNull(),
+  detail: jsonb("detail").notNull().default({}),
+  modelVersion: text("model_version").notNull(),
+  computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const scoutingReports = pgTable(
+  "scouting_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    prospectId: uuid("prospect_id")
+      .notNull()
+      .references(() => amateurProspects.id, { onDelete: "cascade" }),
+    scoutId: uuid("scout_id").references(() => users.id),
+    viewingType: viewingType("viewing_type").notNull().default("live"),
+    gameDate: date("game_date"),
+    opponent: text("opponent"),
+    venue: text("venue"),
+    gradingScale: text("grading_scale").notNull().default("20-80"),
+    /** Section grades keyed by section id (hockey_sense, skating, …). */
+    grades: jsonb("grades").notNull().default({}),
+    strengths: text("strengths"),
+    concerns: text("concerns"),
+    developmentPriorities: text("development_priorities"),
+    nhlProjection: text("nhl_projection"),
+    professionalFloor: text("professional_floor"),
+    professionalCeiling: text("professional_ceiling"),
+    developmentTimeline: text("development_timeline"),
+    risk: text("risk"), // low | medium | high
+    recommendation: text("recommendation"),
+    confidence: real("confidence"),
+    status: scoutingReportStatus("status").notNull().default("submitted"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("scouting_reports_org_idx").on(t.organizationId, t.prospectId)],
+);
+
+export const scoutingAssignments = pgTable("scouting_assignments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  scoutId: uuid("scout_id").references(() => users.id),
+  prospectId: uuid("prospect_id").references(() => amateurProspects.id, { onDelete: "cascade" }),
+  region: text("region"),
+  schoolId: uuid("school_id").references(() => schools.id),
+  assignmentType: text("assignment_type").notNull().default("player"), // player | region | school | game | cross_check
+  dueDate: date("due_date"),
+  status: assignmentStatus("status").notNull().default("open"),
+  notes: text("notes"),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const prospectWatchlists = pgTable("prospect_watchlists", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const prospectWatchlistMembers = pgTable(
+  "prospect_watchlist_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    watchlistId: uuid("watchlist_id")
+      .notNull()
+      .references(() => prospectWatchlists.id, { onDelete: "cascade" }),
+    prospectId: uuid("prospect_id")
+      .notNull()
+      .references(() => amateurProspects.id, { onDelete: "cascade" }),
+    note: text("note"),
+    priority: integer("priority").notNull().default(3), // 1 (highest) .. 5
+    reason: text("reason"),
+    followUpDate: date("follow_up_date"),
+    addedBy: uuid("added_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("watchlist_member_unique").on(t.watchlistId, t.prospectId)],
+);
+
+export const draftBoards = pgTable("draft_boards", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  boardType: text("board_type").notNull().default("draft"), // draft | college_free_agent
+  draftYear: integer("draft_year"),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const draftBoardEntries = pgTable(
+  "draft_board_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    boardId: uuid("board_id")
+      .notNull()
+      .references(() => draftBoards.id, { onDelete: "cascade" }),
+    prospectId: uuid("prospect_id")
+      .notNull()
+      .references(() => amateurProspects.id, { onDelete: "cascade" }),
+    overallRank: integer("overall_rank").notNull(),
+    modelRank: integer("model_rank"),
+    scoutRank: integer("scout_rank"),
+    risk: text("risk"),
+    recommendation: text("recommendation"),
+    notes: text("notes"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("board_entry_unique").on(t.boardId, t.prospectId)],
+);
+
+export const organizationalNeeds = pgTable("organizational_needs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  position: text("position").notNull(), // C | LW | RW | D | G | F
+  handedness: text("handedness"), // L | R | null (any)
+  targetRoleKey: text("target_role_key"),
+  priority: integer("priority").notNull().default(3), // 1 (highest) .. 5
+  timelineYears: integer("timeline_years").notNull().default(3),
+  preferredAcquisition: text("preferred_acquisition").notNull().default("draft"), // draft | college_fa | trade
+  maxRiskTolerance: text("max_risk_tolerance").notNull().default("medium"),
+  requiredAttributes: text("required_attributes"),
+  notes: text("notes"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const prospectFitScores = pgTable(
+  "prospect_fit_scores",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    prospectId: uuid("prospect_id")
+      .notNull()
+      .references(() => amateurProspects.id, { onDelete: "cascade" }),
+    needId: uuid("need_id")
+      .notNull()
+      .references(() => organizationalNeeds.id, { onDelete: "cascade" }),
+    modelVersion: text("model_version").notNull(),
+    overallScore: real("overall_score").notNull(),
+    components: jsonb("components").notNull().default({}),
+    explanation: jsonb("explanation").notNull().default({}),
+    computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("fit_score_unique").on(t.prospectId, t.needId, t.modelVersion)],
+);
+
+export const prospectComparables = pgTable("prospect_comparables", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  prospectId: uuid("prospect_id")
+    .notNull()
+    .references(() => amateurProspects.id, { onDelete: "cascade" }),
+  comparableProspectId: uuid("comparable_prospect_id").references(() => amateurProspects.id, { onDelete: "cascade" }),
+  comparableName: text("comparable_name").notNull(),
+  comparisonType: text("comparison_type").notNull().default("statistical"),
+  similarity: real("similarity").notNull(), // 0..1
+  sharedTraits: jsonb("shared_traits").notNull().default([]),
+  differences: jsonb("differences").notNull().default([]),
+  dataPeriod: text("data_period"),
+  modelVersion: text("model_version").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* --- Lean reserved tables (schema-complete, UI post-slice) --------- */
+
+export const prospectStatDefinitions = pgTable("prospect_stat_definitions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull().unique(),
+  label: text("label").notNull(),
+  description: text("description"),
+  requiresToi: boolean("requires_toi").notNull().default(false),
+});
+
+export const prospectTrackingMetrics = pgTable("prospect_tracking_metrics", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  prospectId: uuid("prospect_id").notNull().references(() => amateurProspects.id, { onDelete: "cascade" }),
+  seasonName: text("season_name").notNull(),
+  metricKey: text("metric_key").notNull(),
+  value: real("value").notNull(),
+  provenance: dataProvenance("provenance").notNull().default("estimated"),
+  sourceId: uuid("source_id").references(() => dataSources.id),
+});
+
+export const projectionModels = pgTable("projection_models", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const projectionModelVersions = pgTable("projection_model_versions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  modelId: uuid("model_id").notNull().references(() => projectionModels.id, { onDelete: "cascade" }),
+  version: text("version").notNull(),
+  notes: text("notes"),
+  trainedAt: timestamp("trained_at", { withTimezone: true }),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const prospectProjections = pgTable("prospect_projections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  prospectId: uuid("prospect_id").notNull().references(() => amateurProspects.id, { onDelete: "cascade" }),
+  modelVersion: text("model_version").notNull(),
+  projectedNhlRole: text("projected_nhl_role"),
+  floor: text("floor"),
+  ceiling: text("ceiling"),
+  readiness: text("readiness"),
+  confidence: real("confidence"),
+  assumptions: jsonb("assumptions").notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const scoutViewings = pgTable("scout_viewings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  scoutId: uuid("scout_id").references(() => users.id),
+  prospectId: uuid("prospect_id").references(() => amateurProspects.id, { onDelete: "cascade" }),
+  viewingType: viewingType("viewing_type").notNull().default("live"),
+  gameDate: date("game_date"),
+  notes: text("notes"),
+});
+
+export const scoutRankings = pgTable("scout_rankings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  scoutId: uuid("scout_id").references(() => users.id),
+  prospectId: uuid("prospect_id").notNull().references(() => amateurProspects.id, { onDelete: "cascade" }),
+  rank: integer("rank").notNull(),
+  rankedAt: timestamp("ranked_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const consensusRankings = pgTable("consensus_rankings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  prospectId: uuid("prospect_id").notNull().references(() => amateurProspects.id, { onDelete: "cascade" }),
+  consensusRank: integer("consensus_rank").notNull(),
+  modelRank: integer("model_rank"),
+  scoutRank: integer("scout_rank"),
+  computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const prospectDocuments = pgTable("prospect_documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  prospectId: uuid("prospect_id").notNull().references(() => amateurProspects.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  url: text("url"),
+  uploadedBy: uuid("uploaded_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const prospectVideoLinks = pgTable("prospect_video_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  prospectId: uuid("prospect_id").notNull().references(() => amateurProspects.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  url: text("url").notNull(),
+  addedBy: uuid("added_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
