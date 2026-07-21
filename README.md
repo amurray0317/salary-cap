@@ -177,21 +177,33 @@ evidence), scout-assigned roles kept strictly separate from statistical inferenc
 structured scouting reports on a 20–80 scale, watchlists, a draft board that shows
 model-vs-scout rank disagreement instead of averaging it away, a college free-agent
 board, scout assignments, and an explainable organizational-fit engine wired into
-RosterIQ's live contract data for the opportunity path. NCAA prospects and season
-statistics import through the same gated CSV pipeline. Demo login:
+RosterIQ's live contract data for the opportunity path. The NCAA Players page adds
+name search, class/min-GP thresholds, eight sort keys, pagination, per-user saved
+filter views, column visibility toggles, and a filtered CSV export
+(`/api/export/prospects`, gated by the `export_scouting` capability). Prospect
+profiles show position- **and** conference-relative percentiles (pool sizes shown;
+pools under 8 peers reported as insufficient, forwards/defensemen/goaltenders never
+mixed) plus a data-sources & provenance section. Watchlist entries carry a priority
+(1–5), reason, and follow-up date, and can be removed with an audit trail. NCAA
+conferences, schools, prospects, season statistics, game logs, and NHL draft-status
+updates all import through the same gated CSV pipeline. Demo login:
 `scouting@aurora.demo` / `rosteriq-demo` (scouting director). Time-on-ice is never
 fabricated, and every model output is a labeled, versioned estimate — the system
 supports scouts, it does not replace them (`docs/SCOUTING.md`).
 
 ## Data imports
 
-The Imports page provides a gated CSV pipeline: download a template (players, or contracts as
-one row per contract-season), upload a file, map CSV columns to target fields (auto-mapped by
-name), and review row-level validation — every problem is stored in `import_errors` with its
-row, column, and message. Nothing is written until you explicitly approve; approval commits
-only the rows that validated cleanly, in one transaction, and is audit-logged. Contract rows
-are grouped by player into multi-season contracts, and a group with any invalid row is skipped
-whole rather than partially imported.
+The Imports page provides a gated CSV pipeline: download a template, upload a file, map CSV
+columns to target fields (auto-mapped by name), and review row-level validation — every
+problem is stored in `import_errors` with its row, column, and message. Nothing is written
+until you explicitly approve; approval commits only the rows that validated cleanly, in one
+transaction, and is audit-logged. Eight dataset types are supported: players, contracts (one
+row per contract-season, grouped by player; a group with any invalid row is skipped whole),
+NCAA conferences, NCAA schools, NCAA prospects, NCAA season statistics, NCAA game logs, and
+NHL draft status & rights. Validation includes in-file and against-database duplicate
+detection, referential checks (schools must name an existing conference; stats/logs/draft
+rows must name an existing prospect), and cross-field rules (drafted rows require a draft
+year; undrafted rows must leave round/overall blank).
 
 ## Data sources
 
@@ -204,9 +216,8 @@ would plug in behind the import layer.
 ## Known limitations
 
 See `docs/LIMITATIONS.md` for the full list. Headlines: season-level (not daily) cap accounting,
-simplified LTIR and buyout math, applied scenarios have no UI-level undo, CSV import covers
-players and contracts only, college/NIL modules are schema-only, and the valuation model is a
-v0.1 heuristic.
+simplified LTIR and buyout math, applied scenarios have no UI-level undo, college/NIL modules
+are schema-only, and the valuation model is a v0.1 heuristic.
 
 ## Documentation
 

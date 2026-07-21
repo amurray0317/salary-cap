@@ -67,15 +67,32 @@ export async function seedScouting(db: Db, ctx: ScoutingSeedContext): Promise<{ 
   /* ---- conferences & schools (global reference data) ---- */
   const conferenceRows = await db
     .insert(schema.conferences)
-    .values(CONFERENCES.map((name) => ({ name: `${name} Conference`, level: "division_1" })))
+    .values(
+      CONFERENCES.map((name) => ({
+        name: `${name} Conference`,
+        abbreviation: name.split(/\s+/).map((w) => w[0]).join("").toUpperCase() + "C",
+        level: "division_1",
+      })),
+    )
     .returning();
+  const STATES = ["MN", "MI", "NY", "MA", "ND", "WI", "CO", "OH", "PA", "VT"];
   const schoolRows = await db
     .insert(schema.schools)
     .values(
-      SCHOOL_WORDS_A.map((a, i) => ({
-        name: `${a} ${SCHOOL_WORDS_B[i % SCHOOL_WORDS_B.length]}`,
-        conferenceId: conferenceRows[i % conferenceRows.length]!.id,
-      })),
+      SCHOOL_WORDS_A.map((a, i) => {
+        const suffix = SCHOOL_WORDS_B[i % SCHOOL_WORDS_B.length]!;
+        return {
+          name: `${a} ${suffix}`,
+          shortName: a,
+          abbreviation: `${a} ${suffix}`.split(/\s+/).map((w) => w[0]).join("").toUpperCase(),
+          conferenceId: conferenceRows[i % conferenceRows.length]!.id,
+          city: a.split(" ")[0]!,
+          state: STATES[i % STATES.length]!,
+          country: "United States",
+          division: "division_1",
+          isActive: true,
+        };
+      }),
     )
     .returning();
 
@@ -150,6 +167,8 @@ export async function seedScouting(db: Db, ctx: ScoutingSeedContext): Promise<{ 
           schoolId: school.id,
           classYear,
           draftYear: drafted ? 2020 + randInt(3, 5) : null,
+          draftRound: drafted ? randInt(1, 7) : null,
+          draftOverall: drafted ? randInt(1, 224) : null,
           nhlDraftStatus: drafted ? "drafted" : "undrafted",
           nhlRightsHolder: drafted ? pick(ctx.rightsHolderNames) : null,
           collegeFreeAgentStatus: cfa,
@@ -221,9 +240,11 @@ export async function seedScouting(db: Db, ctx: ScoutingSeedContext): Promise<{ 
         seasonName: "2025-26",
         gameDate: `2025-${String(10 + Math.floor(g / 9)).padStart(2, "0")}-${String((g % 27) + 1).padStart(2, "0")}`,
         opponent: pick(schoolRows).name,
+        homeAway: g % 2 === 0 ? "H" : "A",
         goals,
         assists: pts - goals,
         shots: randInt(0, 7),
+        powerPlayPoints: Math.min(pts, rand() < 0.3 ? 1 : 0),
         penaltyMinutes: rand() < 0.2 ? 2 : 0,
         provenance: "user_entered" as const,
       };
@@ -363,13 +384,27 @@ export async function seedScouting(db: Db, ctx: ScoutingSeedContext): Promise<{ 
     .returning();
   if (watchA) {
     await db.insert(schema.prospectWatchlistMembers).values(
-      topByScore.slice(0, 10).map((t) => ({ watchlistId: watchA.id, prospectId: t.prospect.row.id, addedBy: ctx.gmUserId })),
+      topByScore.slice(0, 10).map((t, i) => ({
+        watchlistId: watchA.id,
+        prospectId: t.prospect.row.id,
+        addedBy: ctx.gmUserId,
+        priority: i < 3 ? 1 : i < 7 ? 2 : 3,
+        reason: i < 3 ? "Top statistical profile at position" : "Strong role-score trajectory",
+        followUpDate: i < 5 ? "2026-01-15" : null,
+      })),
     );
   }
   const cfas = seeded.filter((p) => p.row.collegeFreeAgentStatus === "eligible");
   if (watchB && cfas.length > 0) {
     await db.insert(schema.prospectWatchlistMembers).values(
-      cfas.slice(0, 8).map((p) => ({ watchlistId: watchB.id, prospectId: p.row.id, addedBy: ctx.analystUserId })),
+      cfas.slice(0, 8).map((p, i) => ({
+        watchlistId: watchB.id,
+        prospectId: p.row.id,
+        addedBy: ctx.analystUserId,
+        priority: i < 2 ? 2 : 3,
+        reason: "Undrafted senior; signing call candidate",
+        followUpDate: "2026-03-01",
+      })),
     );
   }
 

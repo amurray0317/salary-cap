@@ -182,6 +182,88 @@ export async function computeRoleScores(
   return { seasonName: latest.seasonName, scores };
 }
 
+export interface PercentilePanel {
+  seasonName: string | null;
+  /** Percentiles vs. same-position-group org prospects (never mixes F/D/G). */
+  position: ReturnType<typeof buildPercentiles> | null;
+  /** Same pool restricted to the prospect's conference. Null when school/conference unknown. */
+  conference: ReturnType<typeof buildPercentiles> | null;
+  conferenceName: string | null;
+}
+
+/**
+ * Position- and conference-relative percentiles for the latest season.
+ * Pools below the minimum sample threshold return null percentiles
+ * (percentileRank enforces the < 8 peer cutoff) — small pools are shown as
+ * insufficient, never silently extrapolated.
+ */
+export async function computePercentilePanel(
+  prospectId: string,
+  organizationId: string,
+): Promise<PercentilePanel> {
+  const db = getDb();
+  const prospect = await getOwnedProspect(prospectId, organizationId);
+  const [latest] = await db
+    .select()
+    .from(schema.prospectSeasons)
+    .where(eq(schema.prospectSeasons.prospectId, prospect.id))
+    .orderBy(desc(schema.prospectSeasons.seasonName))
+    .limit(1);
+  if (!latest) return { seasonName: null, position: null, conference: null, conferenceName: null };
+
+  const orgProspects = await db
+    .select()
+    .from(schema.amateurProspects)
+    .where(eq(schema.amateurProspects.organizationId, organizationId));
+  const byId = new Map(orgProspects.map((p) => [p.id, p]));
+  const peerSeasonRows = await db
+    .select()
+    .from(schema.prospectSeasons)
+    .where(
+      and(
+        eq(schema.prospectSeasons.seasonName, latest.seasonName),
+        inArray(schema.prospectSeasons.prospectId, orgProspects.map((p) => p.id)),
+      ),
+    );
+  const peerLines = peerSeasonRows
+    .map((s) => {
+      const p = byId.get(s.prospectId);
+      return p ? { line: toSeasonLine(p, s), schoolId: p.schoolId } : null;
+    })
+    .filter((x): x is { line: SeasonLine; schoolId: string | null } => x !== null);
+
+  const subject = toSeasonLine(prospect, latest);
+  const position = buildPercentiles(subject, peerLines.map((x) => x.line));
+
+  let conference: PercentilePanel["conference"] = null;
+  let conferenceName: string | null = null;
+  if (prospect.schoolId) {
+    const [school] = await db
+      .select()
+      .from(schema.schools)
+      .where(eq(schema.schools.id, prospect.schoolId))
+      .limit(1);
+    if (school?.conferenceId) {
+      const [conf] = await db
+        .select()
+        .from(schema.conferences)
+        .where(eq(schema.conferences.id, school.conferenceId))
+        .limit(1);
+      conferenceName = conf?.name ?? null;
+      const confSchools = await db
+        .select({ id: schema.schools.id })
+        .from(schema.schools)
+        .where(eq(schema.schools.conferenceId, school.conferenceId));
+      const confSchoolIds = new Set(confSchools.map((s) => s.id));
+      conference = buildPercentiles(
+        subject,
+        peerLines.filter((x) => x.schoolId !== null && confSchoolIds.has(x.schoolId)).map((x) => x.line),
+      );
+    }
+  }
+  return { seasonName: latest.seasonName, position, conference, conferenceName };
+}
+
 /** Trend bundle for the profile page (season + game-log trends). */
 export async function computeTrends(prospectId: string, organizationId: string): Promise<Trend[]> {
   const db = getDb();

@@ -63,7 +63,16 @@ describe("parseCsv", () => {
 
 describe("templates and auto-mapping", () => {
   it("templates parse cleanly and auto-map onto their own headers", () => {
-    for (const type of ["players", "contracts"] as const) {
+    for (const type of [
+      "players",
+      "contracts",
+      "ncaa_conferences",
+      "ncaa_schools",
+      "ncaa_players",
+      "ncaa_season_stats",
+      "ncaa_game_logs",
+      "ncaa_draft_status",
+    ] as const) {
       const t = buildTemplateCsv(type);
       const csv = toCsv(t.headers, t.rows);
       const parsed = parseCsv(csv);
@@ -301,6 +310,126 @@ describe("contracts import pipeline", () => {
     const [player] = await db.select().from(schema.players).where(eq(schema.players.fullName, "Mapped Player"));
     const contracts = await db.select().from(schema.contracts).where(eq(schema.contracts.playerId, player!.id));
     expect(contracts).toHaveLength(0);
+  });
+});
+
+describe("scouting import chain (conferences → schools → prospects → game logs → draft status)", () => {
+  async function runImport(importType: Parameters<typeof createImport>[0]["importType"], csvText: string) {
+    const { importId, autoMapping } = await createImport({
+      organizationId: fx.orgId,
+      userId: fx.userId,
+      importType,
+      fileName: `${importType}.csv`,
+      csvText,
+    });
+    const validation = await validateImport({ importId, organizationId: fx.orgId, userId: fx.userId, mapping: autoMapping });
+    return { importId, validation };
+  }
+
+  it("imports conferences with in-file and existing-record duplicate detection", async () => {
+    const csv = [
+      "name,abbreviation,level",
+      "Chain Test Conference,CTC,division_1",
+      "Chain Test Conference,CTC,division_1", // in-file duplicate
+      "Chain Second Conference,CSC,not_a_level", // bad level
+    ].join("\n");
+    const { importId, validation } = await runImport("ncaa_conferences", csv);
+    expect(validation.validCount).toBe(1);
+    expect(validation.errorCount).toBe(2);
+    const { committedCount } = await commitImport({ importId, organizationId: fx.orgId, userId: fx.userId });
+    expect(committedCount).toBe(1);
+
+    // Re-importing the same conference is now a duplicate against the DB.
+    const again = await runImport("ncaa_conferences", "name\nChain Test Conference\n");
+    expect(again.validation.validCount).toBe(0);
+    const errors = await db.select().from(schema.importErrors).where(eq(schema.importErrors.importId, again.importId));
+    expect(errors.some((e) => e.message.includes("already exists"))).toBe(true);
+  });
+
+  it("imports schools requiring an existing conference", async () => {
+    const csv = [
+      "name,short_name,abbreviation,conference_name,city,state,division",
+      "Chain Test University,Chain Test,CTU,Chain Test Conference,Chainville,MN,division_1",
+      "Orphan College,,OC,No Such Conference,,,", // unknown conference
+    ].join("\n");
+    const { importId, validation } = await runImport("ncaa_schools", csv);
+    expect(validation.validCount).toBe(1);
+    expect(validation.errorCount).toBe(1);
+    const { committedCount } = await commitImport({ importId, organizationId: fx.orgId, userId: fx.userId });
+    expect(committedCount).toBe(1);
+
+    const [school] = await db.select().from(schema.schools).where(eq(schema.schools.name, "Chain Test University"));
+    expect(school?.shortName).toBe("Chain Test");
+    expect(school?.state).toBe("MN");
+    const [conf] = await db.select().from(schema.conferences).where(eq(schema.conferences.name, "Chain Test Conference"));
+    expect(school?.conferenceId).toBe(conf!.id);
+  });
+
+  it("imports prospects, then game logs with per-game duplicate detection", async () => {
+    const prospects = [
+      "full_name,position,school_name,class_year",
+      "Chain Prospect,C,Chain Test University,sophomore",
+    ].join("\n");
+    const p = await runImport("ncaa_players", prospects);
+    expect(p.validation.validCount).toBe(1);
+    await commitImport({ importId: p.importId, organizationId: fx.orgId, userId: fx.userId });
+
+    const logs = [
+      "player_name,season_name,game_date,opponent,home_away,goals,assists,shots,pp_points,time_on_ice_seconds",
+      "Chain Prospect,2025-26,2025-11-08,Rival College,H,1,2,5,1,",
+      "Chain Prospect,2025-26,2025-11-08,Rival College,H,1,2,5,1,", // duplicate game
+      "Ghost Prospect,2025-26,2025-11-09,Rival College,A,0,0,1,0,", // unknown prospect
+      "Chain Prospect,2025-26,2025-11-15,Other College,X,0,1,2,0,", // bad home_away
+    ].join("\n");
+    const g = await runImport("ncaa_game_logs", logs);
+    expect(g.validation.validCount).toBe(1);
+    expect(g.validation.errorCount).toBe(3);
+
+    // Preview stage: nothing committed yet.
+    const [prospect] = await db.select().from(schema.amateurProspects).where(eq(schema.amateurProspects.fullName, "Chain Prospect"));
+    const before = await db.select().from(schema.prospectGameLogs).where(eq(schema.prospectGameLogs.prospectId, prospect!.id));
+    expect(before).toHaveLength(0);
+
+    const { committedCount } = await commitImport({ importId: g.importId, organizationId: fx.orgId, userId: fx.userId });
+    expect(committedCount).toBe(1);
+    const after = await db.select().from(schema.prospectGameLogs).where(eq(schema.prospectGameLogs.prospectId, prospect!.id));
+    expect(after).toHaveLength(1);
+    expect(after[0]?.homeAway).toBe("H");
+    expect(after[0]?.powerPlayPoints).toBe(1);
+    expect(after[0]?.timeOnIceSeconds).toBeNull(); // blank TOI stays null — never fabricated
+  });
+
+  it("updates draft status with cross-field rules (drafted needs year; undrafted stays blank)", async () => {
+    const csv = [
+      "player_name,nhl_draft_status,nhl_rights_holder,draft_year,draft_round,draft_overall,college_free_agent_status",
+      "Chain Prospect,drafted,Aurora Wolfpack,2024,3,78,not_eligible",
+      "Chain Prospect,drafted,,2024,3,78,", // duplicate row for same prospect
+      "Ghost Prospect,undrafted,,,,,", // unknown prospect
+    ].join("\n");
+    const { importId, validation } = await runImport("ncaa_draft_status", csv);
+    expect(validation.validCount).toBe(1);
+    expect(validation.errorCount).toBe(2);
+    await commitImport({ importId, organizationId: fx.orgId, userId: fx.userId });
+
+    const [prospect] = await db.select().from(schema.amateurProspects).where(eq(schema.amateurProspects.fullName, "Chain Prospect"));
+    expect(prospect?.nhlDraftStatus).toBe("drafted");
+    expect(prospect?.nhlRightsHolder).toBe("Aurora Wolfpack");
+    expect(prospect?.draftYear).toBe(2024);
+    expect(prospect?.draftRound).toBe(3);
+    expect(prospect?.draftOverall).toBe(78);
+
+    // drafted without draft_year is a row error
+    const bad = await runImport("ncaa_draft_status", "player_name,nhl_draft_status\nChain Prospect,drafted\n");
+    expect(bad.validation.validCount).toBe(0);
+    const errors = await db.select().from(schema.importErrors).where(eq(schema.importErrors.importId, bad.importId));
+    expect(errors.some((e) => e.message.includes("Draft year is required"))).toBe(true);
+
+    // undrafted with round populated is a row error
+    const bad2 = await runImport(
+      "ncaa_draft_status",
+      "player_name,nhl_draft_status,draft_round\nChain Prospect,undrafted,2\n",
+    );
+    expect(bad2.validation.validCount).toBe(0);
   });
 });
 

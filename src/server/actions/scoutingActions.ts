@@ -206,6 +206,9 @@ const watchlistAddSchema = z.object({
   prospectId: z.string().uuid(),
   watchlistId: z.string().uuid().optional(),
   newWatchlistName: z.string().max(120).optional(),
+  priority: z.coerce.number().int().min(1).max(5).optional(),
+  reason: z.string().max(500).optional(),
+  followUpDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export async function addToWatchlistAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -214,6 +217,9 @@ export async function addToWatchlistAction(_prev: FormState, formData: FormData)
     ...raw,
     watchlistId: raw.watchlistId || undefined,
     newWatchlistName: raw.newWatchlistName || undefined,
+    priority: raw.priority || undefined,
+    reason: raw.reason || undefined,
+    followUpDate: raw.followUpDate || undefined,
   });
   if (!parsed.success) return { error: "Invalid input" };
   const ctx = await requireOrgAccess(parsed.data.organizationId, "manage_watchlists");
@@ -242,7 +248,14 @@ export async function addToWatchlistAction(_prev: FormState, formData: FormData)
 
   await db
     .insert(schema.prospectWatchlistMembers)
-    .values({ watchlistId, prospectId: prospect.id, addedBy: ctx.user.id })
+    .values({
+      watchlistId,
+      prospectId: prospect.id,
+      addedBy: ctx.user.id,
+      priority: parsed.data.priority ?? 3,
+      reason: parsed.data.reason || null,
+      followUpDate: parsed.data.followUpDate || null,
+    })
     .onConflictDoNothing();
   await writeAudit({
     organizationId: ctx.organizationId,
@@ -250,11 +263,47 @@ export async function addToWatchlistAction(_prev: FormState, formData: FormData)
     action: "scouting.watchlist_add",
     entityType: "prospect_watchlist",
     entityId: watchlistId,
-    newValues: { prospectId: prospect.id },
+    newValues: { prospectId: prospect.id, priority: parsed.data.priority ?? 3, reason: parsed.data.reason ?? null },
   });
   revalidatePath(`/scouting/players/${prospect.id}`);
   revalidatePath("/scouting/watchlists");
   return {};
+}
+
+const watchlistRemoveSchema = z.object({
+  organizationId: z.string().uuid(),
+  memberId: z.string().uuid(),
+});
+
+export async function removeFromWatchlistAction(formData: FormData): Promise<void> {
+  const parsed = watchlistRemoveSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return;
+  const ctx = await requireOrgAccess(parsed.data.organizationId, "manage_watchlists");
+  const db = getDb();
+  // Row ownership: the member's watchlist must belong to this org.
+  const [member] = await db
+    .select({ m: schema.prospectWatchlistMembers, w: schema.prospectWatchlists })
+    .from(schema.prospectWatchlistMembers)
+    .innerJoin(schema.prospectWatchlists, eq(schema.prospectWatchlistMembers.watchlistId, schema.prospectWatchlists.id))
+    .where(
+      and(
+        eq(schema.prospectWatchlistMembers.id, parsed.data.memberId),
+        eq(schema.prospectWatchlists.organizationId, ctx.organizationId),
+      ),
+    )
+    .limit(1);
+  if (!member) return;
+  await db.delete(schema.prospectWatchlistMembers).where(eq(schema.prospectWatchlistMembers.id, member.m.id));
+  await writeAudit({
+    organizationId: ctx.organizationId,
+    userId: ctx.user.id,
+    action: "scouting.watchlist_remove",
+    entityType: "prospect_watchlist",
+    entityId: member.w.id,
+    previousValues: { prospectId: member.m.prospectId, priority: member.m.priority, reason: member.m.reason },
+  });
+  revalidatePath(`/scouting/players/${member.m.prospectId}`);
+  revalidatePath("/scouting/watchlists");
 }
 
 /* ---------------- Draft boards ---------------- */
@@ -432,4 +481,58 @@ export async function computeFitAction(formData: FormData): Promise<void> {
   });
   revalidatePath(`/scouting/players/${parsed.data.prospectId}`);
   revalidatePath("/scouting/fit");
+}
+
+/* ---------------- Saved filter views (NCAA players list) ---------------- */
+
+const savedViewSchema = z.object({
+  organizationId: z.string().uuid(),
+  viewKey: z.enum(["ncaa_players"]),
+  name: z.string().min(1).max(80),
+  filters: z.string().max(2000), // querystring snapshot, e.g. "pos=D&conf=..."
+});
+
+export async function saveScoutingViewAction(formData: FormData): Promise<void> {
+  const parsed = savedViewSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return;
+  const ctx = await requireOrgAccess(parsed.data.organizationId, "view_scouting");
+  const db = getDb();
+  await db.insert(schema.savedViews).values({
+    organizationId: ctx.organizationId,
+    userId: ctx.user.id,
+    viewKey: parsed.data.viewKey,
+    name: parsed.data.name.trim(),
+    filters: { query: parsed.data.filters },
+  });
+  await writeAudit({
+    organizationId: ctx.organizationId,
+    userId: ctx.user.id,
+    action: "scouting.view_save",
+    entityType: "saved_view",
+    newValues: { viewKey: parsed.data.viewKey, name: parsed.data.name },
+  });
+  revalidatePath("/scouting/players");
+}
+
+const deleteViewSchema = z.object({
+  organizationId: z.string().uuid(),
+  viewId: z.string().uuid(),
+});
+
+export async function deleteScoutingViewAction(formData: FormData): Promise<void> {
+  const parsed = deleteViewSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return;
+  const ctx = await requireOrgAccess(parsed.data.organizationId, "view_scouting");
+  const db = getDb();
+  // Users may only delete their own saved views within their organization.
+  await db
+    .delete(schema.savedViews)
+    .where(
+      and(
+        eq(schema.savedViews.id, parsed.data.viewId),
+        eq(schema.savedViews.organizationId, ctx.organizationId),
+        eq(schema.savedViews.userId, ctx.user.id),
+      ),
+    );
+  revalidatePath("/scouting/players");
 }

@@ -220,6 +220,24 @@ export function WatchlistAddForm({
         <label className={label} htmlFor="wl-new">New watchlist name</label>
         <input id="wl-new" name="newWatchlistName" className={input} placeholder="Only if creating new" />
       </div>
+      <div>
+        <label className={label} htmlFor="wl-priority">Priority</label>
+        <select id="wl-priority" name="priority" defaultValue="3" className={input}>
+          <option value="1">1 — top</option>
+          <option value="2">2 — high</option>
+          <option value="3">3 — normal</option>
+          <option value="4">4 — low</option>
+          <option value="5">5 — monitor</option>
+        </select>
+      </div>
+      <div>
+        <label className={label} htmlFor="wl-reason">Reason</label>
+        <input id="wl-reason" name="reason" className={input} placeholder="Why this prospect" maxLength={500} />
+      </div>
+      <div>
+        <label className={label} htmlFor="wl-follow">Follow-up date</label>
+        <input id="wl-follow" name="followUpDate" type="date" className={input} />
+      </div>
       <button disabled={pending} className="rounded-md border border-line px-3 py-2 text-sm text-ink-secondary hover:text-ink disabled:opacity-50">
         {pending ? "Adding…" : "Add to watchlist"}
       </button>

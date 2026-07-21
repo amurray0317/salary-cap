@@ -15,6 +15,7 @@ import {
   computeRoleScores,
   computeTrends,
   computeFit,
+  computePercentilePanel,
   loadDepthContext,
   ageAtSeason,
   ScoutingError,
@@ -267,5 +268,53 @@ describe("watchlist and board data integrity", () => {
     await expect(
       db.insert(schema.draftBoardEntries).values({ boardId: board!.id, prospectId: fx.subjectId, overallRank: 2 }),
     ).rejects.toThrow();
+  });
+});
+
+describe("computePercentilePanel", () => {
+  it("computes position pools, conference pools with min-sample cutoffs, and never crosses orgs", async () => {
+    // Wire schools/conferences: subject + 9 peers in Conf A, the rest in Conf B.
+    const [confA] = await db.insert(schema.conferences).values({ name: "Panel Conf A", level: "division_1" }).returning();
+    const [confB] = await db.insert(schema.conferences).values({ name: "Panel Conf B", level: "division_1" }).returning();
+    const [schoolA] = await db.insert(schema.schools).values({ name: "Panel School A", conferenceId: confA!.id }).returning();
+    const [schoolB] = await db.insert(schema.schools).values({ name: "Panel School B", conferenceId: confB!.id }).returning();
+
+    const prospects = await db
+      .select()
+      .from(schema.amateurProspects)
+      .where(eq(schema.amateurProspects.organizationId, fx.orgId));
+    for (const p of prospects) {
+      const inA = p.id === fx.subjectId || /Peer D [0-8]$/.test(p.fullName);
+      await db
+        .update(schema.amateurProspects)
+        .set({ schoolId: inA ? schoolA!.id : schoolB!.id })
+        .where(eq(schema.amateurProspects.id, p.id));
+    }
+
+    const panel = await computePercentilePanel(fx.subjectId, fx.orgId);
+    expect(panel.seasonName).toBe("2025-26");
+    // Position pool: 20 same-org D peers; the cross-org prospect is excluded.
+    expect(panel.position?.poolSize).toBe(20);
+    // Conference pool: only the 9 Conf-A peers.
+    expect(panel.conferenceName).toBe("Panel Conf A");
+    expect(panel.conference?.poolSize).toBe(9);
+    // Subject leads the org in assists → high percentile in both pools.
+    expect(panel.position?.percentiles.ppg).toBeGreaterThan(90);
+    expect(panel.conference?.percentiles.ppg).toBeGreaterThan(90);
+
+    // Shrink Conf A below the 8-peer threshold → percentiles null, not extrapolated.
+    const confAPeers = prospects.filter((p) => /Peer D [0-8]$/.test(p.fullName)).slice(0, 7);
+    for (const p of confAPeers) {
+      await db.update(schema.amateurProspects).set({ schoolId: schoolB!.id }).where(eq(schema.amateurProspects.id, p.id));
+    }
+    const small = await computePercentilePanel(fx.subjectId, fx.orgId);
+    expect(small.conference?.poolSize).toBe(2);
+    expect(small.conference?.percentiles.ppg).toBeNull();
+    // Position pool unaffected by conference shuffling.
+    expect(small.position?.poolSize).toBe(20);
+  });
+
+  it("enforces org isolation", async () => {
+    await expect(computePercentilePanel(fx.subjectId, fx.otherOrgId)).rejects.toThrow(ScoutingError);
   });
 });

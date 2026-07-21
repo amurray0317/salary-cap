@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
 import { resolveAppContext } from "@/server/appContext";
-import { computeRoleScores, computeTrends, ageAtSeason } from "@/server/services/scoutingService";
+import { computeRoleScores, computeTrends, computePercentilePanel, ageAtSeason } from "@/server/services/scoutingService";
 import {
   setScoutRolesAction,
   createScoutingReportAction,
@@ -42,6 +42,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
     .orderBy(asc(schema.prospectSeasons.seasonName));
   const { seasonName, scores } = await computeRoleScores(p.id, ctx.org.id);
   const trends = await computeTrends(p.id, ctx.org.id);
+  const percentilePanel = await computePercentilePanel(p.id, ctx.org.id);
   const archetypes = await db.select().from(schema.roleArchetypes).orderBy(asc(schema.roleArchetypes.label));
   const groupRoles = archetypes.filter((a) => a.positionGroup === p.positionGroup);
   const roleLabel = (key: string | null) => archetypes.find((a) => a.key === key)?.label ?? key ?? "—";
@@ -79,6 +80,12 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
     .where(eq(schema.prospectFitScores.prospectId, p.id));
   const fitByNeed = new Map(fits.map((f) => [f.needId, f]));
 
+  const sourceIds = [p.sourceId, ...seasons.map((s) => s.sourceId)].filter((x): x is string => x !== null);
+  const sourceRows = sourceIds.length
+    ? await db.select().from(schema.dataSources).where(inArray(schema.dataSources.id, sourceIds))
+    : [];
+  const sourceById = new Map(sourceRows.map((s) => [s.id, s]));
+
   const comparables = await db
     .select()
     .from(schema.prospectComparables)
@@ -106,7 +113,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
           </p>
           <p className="text-sm text-ink-muted">
             {p.nhlDraftStatus === "drafted"
-              ? `Drafted ${p.draftYear ?? ""} — rights: ${p.nhlRightsHolder ?? "held"}`
+              ? `Drafted ${p.draftYear ?? ""}${p.draftRound ? ` · round ${p.draftRound}` : ""}${p.draftOverall ? ` (#${p.draftOverall} overall)` : ""} — rights: ${p.nhlRightsHolder ?? "held"}`
               : `Undrafted${p.collegeFreeAgentStatus === "eligible" ? ` · college free agent (agent: ${p.agentName ?? "unknown"})` : ""}`}
           </p>
         </div>
@@ -206,6 +213,61 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
           )}
         </Card>
       </div>
+
+      <Card title={`Percentiles — ${percentilePanel.seasonName ?? "no season"}, ${p.positionGroup === "F" ? "forwards" : p.positionGroup === "D" ? "defensemen" : "goaltenders"} only (never mixed across position groups)`}>
+        {!percentilePanel.position ? (
+          <p className="text-sm text-ink-muted">No season data yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-line">
+                  <Th>Metric</Th>
+                  <Th right>Value</Th>
+                  <Th right>{`Position pool (n=${percentilePanel.position.poolSize})`}</Th>
+                  <Th right>
+                    {percentilePanel.conference
+                      ? `${percentilePanel.conferenceName ?? "Conference"} (n=${percentilePanel.conference.poolSize})`
+                      : "Conference"}
+                  </Th>
+                </tr>
+              </thead>
+              <tbody>
+                {(
+                  [
+                    ["ppg", "Points/game", 2],
+                    ["goalsPerGame", "Goals/game", 2],
+                    ["assistsPerGame", "Assists/game", 2],
+                    ["shotsPerGame", "Shots/game", 1],
+                    ["shootingPct", "Shooting %", 3],
+                    ["ppShare", "PP point share", 2],
+                    ["ageAdjustedPpg", "Age-adjusted PPG (estimate)", 2],
+                    ["teamRelativePpg", "Team-relative scoring", 2],
+                  ] as const
+                ).map(([key, label, digits]) => {
+                  const value = percentilePanel.position!.values[key];
+                  const posPct = percentilePanel.position!.percentiles[key];
+                  const confPct = percentilePanel.conference?.percentiles[key];
+                  if (value === null || value === undefined) return null;
+                  return (
+                    <tr key={key} className="border-b border-line/50 last:border-0">
+                      <Td className="text-ink-secondary">{label}</Td>
+                      <Td right>{value.toFixed(digits)}</Td>
+                      <Td right>{posPct !== null && posPct !== undefined ? `${posPct}th` : "pool < 8"}</Td>
+                      <Td right>{confPct !== null && confPct !== undefined ? `${confPct}th` : "pool < 8"}</Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="mt-2 text-xs text-ink-muted">
+              Percentiles compare {p.positionGroup === "F" ? "forwards to forwards" : p.positionGroup === "D" ? "defensemen to defensemen" : "goaltenders to goaltenders"} in the same season;
+              pools under 8 peers are reported as insufficient rather than extrapolated.
+              {percentilePanel.position.missing.length > 0 && ` Unavailable inputs (not imputed): ${percentilePanel.position.missing.join(", ")}.`}
+            </p>
+          </div>
+        )}
+      </Card>
 
       <Card title={`Role scores — statistically inferred, ${seasonName ?? "no season"} (model riq-role-v0.1; estimates, kept separate from scout judgment)`}>
         {scores.filter((s) => s.score !== null).length === 0 ? (
@@ -413,6 +475,45 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
           <ReportForm action={createScoutingReportAction} organizationId={ctx.org.id} prospectId={p.id} />
         </Card>
       )}
+
+      <Card title="Data sources & provenance">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-line">
+              <Th>Record</Th>
+              <Th>Provenance</Th>
+              <Th>Source</Th>
+              <Th>Verified</Th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-b border-line/50">
+              <Td>Player record</Td>
+              <Td className="text-ink-secondary">{p.provenance.replace(/_/g, " ")}</Td>
+              <Td className="text-ink-secondary">
+                {sourceById.get(p.sourceId ?? "")?.name ?? (p.externalRef ? `ref: ${p.externalRef}` : "—")}
+              </Td>
+              <Td className="text-ink-secondary">
+                {sourceById.get(p.sourceId ?? "")?.verifiedAt ? formatDate(sourceById.get(p.sourceId ?? "")!.verifiedAt) : "unverified"}
+              </Td>
+            </tr>
+            {seasons.map((s) => (
+              <tr key={s.id} className="border-b border-line/50 last:border-0">
+                <Td>Season {s.seasonName}</Td>
+                <Td className="text-ink-secondary">{s.provenance.replace(/_/g, " ")}</Td>
+                <Td className="text-ink-secondary">{sourceById.get(s.sourceId ?? "")?.name ?? "—"}</Td>
+                <Td className="text-ink-secondary">
+                  {sourceById.get(s.sourceId ?? "")?.verifiedAt ? formatDate(sourceById.get(s.sourceId ?? "")!.verifiedAt) : "unverified"}
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="mt-2 text-xs text-ink-muted">
+          TOI, strength-state, and tracking data are shown only when a source provides them — never estimated.
+          Import history for this organization is under Data imports.
+        </p>
+      </Card>
     </div>
   );
 }

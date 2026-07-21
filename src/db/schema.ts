@@ -730,6 +730,7 @@ export const optimizationResults = pgTable("optimization_results", {
 export const conferences = pgTable("conferences", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  abbreviation: text("abbreviation"),
   level: text("level").notNull().default("division_1"),
 });
 
@@ -737,7 +738,14 @@ export const schools = pgTable("schools", {
   id: uuid("id").primaryKey().defaultRandom(),
   organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  shortName: text("short_name"),
+  abbreviation: text("abbreviation"),
   conferenceId: uuid("conference_id").references(() => conferences.id),
+  city: text("city"),
+  state: text("state"),
+  country: text("country").default("United States"),
+  division: text("division").notNull().default("division_1"),
+  isActive: boolean("is_active").notNull().default(true),
 });
 
 export const academicYears = pgTable("academic_years", {
@@ -993,7 +1001,11 @@ export const amateurProspects = pgTable(
     schoolId: uuid("school_id").references(() => schools.id),
     classYear: prospectClass("class_year").notNull().default("freshman"),
     previousTeams: text("previous_teams"),
+    /** Identifier from the originating data source (never fabricated). */
+    externalRef: text("external_ref"),
     draftYear: integer("draft_year"),
+    draftRound: integer("draft_round"),
+    draftOverall: integer("draft_overall"),
     nhlDraftStatus: text("nhl_draft_status").notNull().default("undrafted"), // undrafted | drafted
     nhlRightsHolder: text("nhl_rights_holder"),
     collegeFreeAgentStatus: text("college_free_agent_status").notNull().default("not_eligible"), // not_eligible | watch | eligible | signed
@@ -1052,10 +1064,16 @@ export const prospectGameLogs = pgTable(
     seasonName: text("season_name").notNull(),
     gameDate: date("game_date").notNull(),
     opponent: text("opponent").notNull(),
+    homeAway: text("home_away"), // H | A | null (unknown)
     goals: integer("goals").notNull().default(0),
     assists: integer("assists").notNull().default(0),
     shots: integer("shots").notNull().default(0),
+    powerPlayPoints: integer("pp_points").notNull().default(0),
     penaltyMinutes: integer("penalty_minutes").notNull().default(0),
+    faceoffWins: integer("faceoff_wins").notNull().default(0),
+    faceoffAttempts: integer("faceoff_attempts").notNull().default(0),
+    /** Nullable on purpose — never fabricated. */
+    timeOnIceSeconds: integer("toi_seconds"),
     provenance: dataProvenance("provenance").notNull().default("user_entered"),
   },
   (t) => [index("game_logs_prospect_idx").on(t.prospectId, t.gameDate)],
@@ -1194,6 +1212,9 @@ export const prospectWatchlistMembers = pgTable(
       .notNull()
       .references(() => amateurProspects.id, { onDelete: "cascade" }),
     note: text("note"),
+    priority: integer("priority").notNull().default(3), // 1 (highest) .. 5
+    reason: text("reason"),
+    followUpDate: date("follow_up_date"),
     addedBy: uuid("added_by").references(() => users.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
