@@ -63,6 +63,7 @@ export type Capability =
   | "manage_draft_boards"
   | "assign_scouts"
   | "manage_org_needs"
+  | "run_fit_models"
   | "manage_scouting_models";
 
 const CAPABILITY_MIN_TIER: Record<Capability, number> = {
@@ -80,6 +81,7 @@ const CAPABILITY_MIN_TIER: Record<Capability, number> = {
   manage_draft_boards: 3, // assistant director / analysts and up
   assign_scouts: 4, // director / GM
   manage_org_needs: 4,
+  run_fit_models: 3, // analysts / assistant directors and up
   manage_scouting_models: 5,
 };
 

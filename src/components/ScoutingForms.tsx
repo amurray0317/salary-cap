@@ -129,68 +129,6 @@ export function ReportForm({
   );
 }
 
-export function NeedForm({
-  action,
-  organizationId,
-  roles,
-}: {
-  action: (prev: FormState, fd: FormData) => Promise<FormState>;
-  organizationId: string;
-  roles: RoleOption[];
-}) {
-  const [state, formAction, pending] = useActionState(action, {});
-  return (
-    <form action={formAction} className="flex flex-wrap items-end gap-3">
-      <input type="hidden" name="organizationId" value={organizationId} />
-      <div>
-        <label className={label} htmlFor="nd-pos">Position</label>
-        <select id="nd-pos" name="position" className={input}>
-          {["C", "LW", "RW", "D", "G", "F"].map((p) => (
-            <option key={p} value={p}>{p === "F" ? "F (any forward)" : p}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className={label} htmlFor="nd-hand">Handedness</label>
-        <select id="nd-hand" name="handedness" className={input}>
-          <option value="">Any</option>
-          <option value="L">L</option>
-          <option value="R">R</option>
-        </select>
-      </div>
-      <div className="min-w-52">
-        <label className={label} htmlFor="nd-role">Target role</label>
-        <select id="nd-role" name="targetRoleKey" className={input}>
-          <option value="">None</option>
-          {roles.map((r) => (
-            <option key={r.key} value={r.key}>{r.label}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className={label} htmlFor="nd-pri">Priority (1=top)</label>
-        <input id="nd-pri" name="priority" type="number" min={1} max={5} defaultValue={2} className={input} />
-      </div>
-      <div>
-        <label className={label} htmlFor="nd-tl">Timeline (years)</label>
-        <input id="nd-tl" name="timelineYears" type="number" min={0} max={6} defaultValue={2} className={input} />
-      </div>
-      <div>
-        <label className={label} htmlFor="nd-risk">Max risk</label>
-        <select id="nd-risk" name="maxRiskTolerance" defaultValue="medium" className={input}>
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-        </select>
-      </div>
-      <button disabled={pending} className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
-        {pending ? "Saving…" : "Add need"}
-      </button>
-      <ErrorNote error={state.error} />
-    </form>
-  );
-}
-
 export function WatchlistAddForm({
   action,
   organizationId,

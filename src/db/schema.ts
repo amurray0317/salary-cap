@@ -1259,19 +1259,191 @@ export const organizationalNeeds = pgTable("organizational_needs", {
   organizationId: uuid("organization_id")
     .notNull()
     .references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull().default("Unnamed need"),
+  description: text("description"),
   position: text("position").notNull(), // C | LW | RW | D | G | F
+  secondaryPosition: text("secondary_position"), // acceptable alternate position
   handedness: text("handedness"), // L | R | null (any)
-  targetRoleKey: text("target_role_key"),
+  targetRoleKey: text("target_role_key"), // statistical-role target
+  targetScoutRoleKey: text("target_scout_role_key"), // scout-defined-role target (kept separate)
   priority: integer("priority").notNull().default(3), // 1 (highest) .. 5
-  timelineYears: integer("timeline_years").notNull().default(3),
-  preferredAcquisition: text("preferred_acquisition").notNull().default("draft"), // draft | college_fa | trade
+  timelineYears: integer("timeline_years").notNull().default(3), // target NHL arrival
+  earliestArrivalYears: integer("earliest_arrival_years").notNull().default(0),
+  latestArrivalYears: integer("latest_arrival_years").notNull().default(4),
+  targetArrivalSeason: text("target_arrival_season"), // e.g. "2028-29"
+  preferredAcquisition: text("preferred_acquisition").notNull().default("draft"), // draft | college_fa | trade | any
   maxRiskTolerance: text("max_risk_tolerance").notNull().default("medium"),
+  sizePreference: text("size_preference"), // no_preference | prefers_size | prefers_mobility
+  specialTeamsRequirement: text("special_teams_requirement"), // pp | pk | none
+  nhlRosterNeed: boolean("nhl_roster_need").notNull().default(false),
+  ahlOpportunity: boolean("ahl_opportunity").notNull().default(true),
   requiredAttributes: text("required_attributes"),
   notes: text("notes"),
   isActive: boolean("is_active").notNull().default(true),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Normalized per-need requirements (e.g. minimum 20–80 scouting grades). */
+export const organizationalNeedRequirements = pgTable(
+  "organizational_need_requirements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    needId: uuid("need_id")
+      .notNull()
+      .references(() => organizationalNeeds.id, { onDelete: "cascade" }),
+    requirementType: text("requirement_type").notNull(), // min_grade | attribute
+    key: text("key").notNull(), // skating | hockey_sense | puck_skills | compete | defensive_play | ...
+    minValue: integer("min_value"), // 20–80 grade floor for min_grade rows
+    textValue: text("text_value"),
+  },
+  (t) => [uniqueIndex("need_requirement_unique").on(t.needId, t.requirementType, t.key)],
+);
+
+/** Explicit links from a need to the roster context that motivates it. */
+export const organizationalNeedRosterLinks = pgTable(
+  "organizational_need_roster_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    needId: uuid("need_id")
+      .notNull()
+      .references(() => organizationalNeeds.id, { onDelete: "cascade" }),
+    linkType: text("link_type").notNull(), // expiring_contract | roster_player | pool_prospect
+    contractId: uuid("contract_id").references(() => contracts.id, { onDelete: "cascade" }),
+    playerId: uuid("player_id").references(() => players.id, { onDelete: "cascade" }),
+    prospectId: uuid("prospect_id").references(() => amateurProspects.id, { onDelete: "cascade" }),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("need_roster_links_need_idx").on(t.needId)],
+);
+
+/* --- Fit model configuration (global reference data, like archetypes) --- */
+
+export const fitModels = pgTable("fit_models", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull().unique(), // e.g. "org_fit"
+  label: text("label").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const fitModelVersions = pgTable(
+  "fit_model_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    modelId: uuid("model_id")
+      .notNull()
+      .references(() => fitModels.id, { onDelete: "cascade" }),
+    version: text("version").notNull(), // e.g. "riq-fit-v0.2"
+    effectiveDate: date("effective_date").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    notes: text("notes"),
+  },
+  (t) => [uniqueIndex("fit_model_version_unique").on(t.modelId, t.version)],
+);
+
+export const fitComponentDefinitions = pgTable("fit_component_definitions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull().unique(), // position | handedness | stat_role | ...
+  label: text("label").notNull(),
+  description: text("description"),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+/** Versioned component weights — the fit engine's only weight source. */
+export const fitComponentWeights = pgTable(
+  "fit_component_weights",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    modelVersionId: uuid("model_version_id")
+      .notNull()
+      .references(() => fitModelVersions.id, { onDelete: "cascade" }),
+    componentKey: text("component_key").notNull(),
+    weight: real("weight").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+  },
+  (t) => [uniqueIndex("fit_weight_unique").on(t.modelVersionId, t.componentKey)],
+);
+
+/** One row per "run the fit model for a need" execution. */
+export const fitCalculationRuns = pgTable(
+  "fit_calculation_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    needId: uuid("need_id")
+      .notNull()
+      .references(() => organizationalNeeds.id, { onDelete: "cascade" }),
+    modelVersion: text("model_version").notNull(),
+    status: text("status").notNull().default("complete"), // running | complete | failed
+    prospectsEvaluated: integer("prospects_evaluated").notNull().default(0),
+    scoredCount: integer("scored_count").notNull().default(0),
+    warnings: jsonb("warnings").notNull().default([]),
+    startedBy: uuid("started_by").references(() => users.id),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => [index("fit_runs_org_idx").on(t.organizationId, t.needId)],
+);
+
+/** Normalized per-component breakdown of one prospect-fit score. */
+export const prospectFitComponents = pgTable(
+  "prospect_fit_components",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    fitScoreId: uuid("fit_score_id")
+      .notNull()
+      .references(() => prospectFitScores.id, { onDelete: "cascade" }),
+    componentKey: text("component_key").notNull(),
+    label: text("label").notNull(),
+    inputValue: text("input_value"), // observed prospect/context value
+    desiredValue: text("desired_value"), // what the need asks for
+    rawScore: real("raw_score"), // null = not computable (missing data)
+    weight: real("weight").notNull(),
+    weightedContribution: real("weighted_contribution"),
+    penalty: real("penalty").notNull().default(0),
+    finalScore: real("final_score"),
+    missingInputs: jsonb("missing_inputs").notNull().default([]),
+    explanation: text("explanation").notNull(),
+  },
+  (t) => [index("fit_components_score_idx").on(t.fitScoreId)],
+);
+
+/** Point-in-time org depth summary captured with a fit run. */
+export const organizationalDepthSnapshots = pgTable(
+  "organizational_depth_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    runId: uuid("run_id").references(() => fitCalculationRuns.id, { onDelete: "cascade" }),
+    position: text("position").notNull(),
+    snapshot: jsonb("snapshot").notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("depth_snapshots_org_idx").on(t.organizationId)],
+);
+
+/** Point-in-time prospect-pool depth summary captured with a fit run. */
+export const prospectPoolDepthSnapshots = pgTable(
+  "prospect_pool_depth_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    runId: uuid("run_id").references(() => fitCalculationRuns.id, { onDelete: "cascade" }),
+    position: text("position").notNull(),
+    snapshot: jsonb("snapshot").notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("pool_snapshots_org_idx").on(t.organizationId)],
+);
 
 export const prospectFitScores = pgTable(
   "prospect_fit_scores",
@@ -1287,7 +1459,9 @@ export const prospectFitScores = pgTable(
       .notNull()
       .references(() => organizationalNeeds.id, { onDelete: "cascade" }),
     modelVersion: text("model_version").notNull(),
+    runId: uuid("run_id").references(() => fitCalculationRuns.id, { onDelete: "set null" }),
     overallScore: real("overall_score").notNull(),
+    confidence: real("confidence"), // 0..1 — covered-weight share, reduced by warnings
     components: jsonb("components").notNull().default({}),
     explanation: jsonb("explanation").notNull().default({}),
     computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),

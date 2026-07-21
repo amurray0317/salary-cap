@@ -14,7 +14,9 @@ import { ARCHETYPE_SEEDS, ROLE_MODEL_VERSION, FIT_MODEL_VERSION } from "../src/l
 import { buildPercentiles, type SeasonLine } from "../src/lib/scouting/stats";
 import { scoreAllArchetypes, type WeightRow } from "../src/lib/scouting/roleScoring";
 import { computeSeasonTrends } from "../src/lib/scouting/trends";
-import { calculateFit } from "../src/lib/scouting/fit";
+import { DEFAULT_FIT_WEIGHTS, FIT_COMPONENT_KEYS, FIT_COMPONENT_LABELS } from "../src/lib/scouting/fit";
+import { setDbForTesting } from "../src/db/client";
+import { runFitForNeed } from "../src/server/services/fitService";
 
 type Db = PgliteDatabase<typeof schema>;
 
@@ -442,78 +444,132 @@ export async function seedScouting(db: Db, ctx: ScoutingSeedContext): Promise<{ 
     );
   }
 
-  /* ---- organizational needs + fit scores ---- */
-  const needDefs = [
-    { position: "D", handedness: "R", targetRoleKey: "puck_moving_d", priority: 1, timelineYears: 2, maxRiskTolerance: "medium", notes: "Right-shot transition defenseman for the 2027-28 blue line." },
-    { position: "C", handedness: null, targetRoleKey: "two_way_center", priority: 2, timelineYears: 3, maxRiskTolerance: "medium", notes: "Two-way center depth behind the current top six." },
-    { position: "G", handedness: null, targetRoleKey: "developmental_goalie", priority: 3, timelineYears: 4, maxRiskTolerance: "high", notes: "Development-track goaltender for the pipeline." },
-  ] as const;
+  /* ---- fit model configuration (weights live in the database) ---- */
+  const [fitModel] = await db
+    .insert(schema.fitModels)
+    .values({
+      key: "org_fit",
+      label: "Organizational fit",
+      description: "Weighted, explainable prospect-to-need fit; every component reports inputs, weights, and contributions.",
+    })
+    .returning();
+  const [fitVersion] = await db
+    .insert(schema.fitModelVersions)
+    .values({ modelId: fitModel!.id, version: FIT_MODEL_VERSION, effectiveDate: "2026-07-01", notes: "Initial 14-component model." })
+    .returning();
+  await db.insert(schema.fitComponentDefinitions).values(
+    FIT_COMPONENT_KEYS.map((key, i) => ({ key, label: FIT_COMPONENT_LABELS[key], sortOrder: i })),
+  );
+  await db.insert(schema.fitComponentWeights).values(
+    FIT_COMPONENT_KEYS.map((key) => ({
+      modelVersionId: fitVersion!.id,
+      componentKey: key,
+      weight: DEFAULT_FIT_WEIGHTS[key],
+    })),
+  );
+
+  /* ---- organizational needs (full Phase-2 field set) ---- */
   const needRows = await db
     .insert(schema.organizationalNeeds)
-    .values(needDefs.map((n) => ({ ...n, organizationId: ctx.auroraOrgId, preferredAcquisition: "draft" as const, createdBy: ctx.gmUserId })))
+    .values([
+      {
+        organizationId: ctx.auroraOrgId,
+        name: "Right-shot transition defenseman",
+        description: "Blue-line breakout help for the 2028-29 window.",
+        position: "D",
+        handedness: "R",
+        targetRoleKey: "puck_moving_d",
+        targetScoutRoleKey: "transition_d",
+        priority: 1,
+        timelineYears: 3,
+        earliestArrivalYears: 2,
+        latestArrivalYears: 4,
+        targetArrivalSeason: "2028-29",
+        preferredAcquisition: "draft",
+        maxRiskTolerance: "medium",
+        sizePreference: "prefers_mobility",
+        nhlRosterNeed: false,
+        ahlOpportunity: true,
+        notes: "First-pass quality outweighs point totals; skating and sense minimums apply.",
+        createdBy: ctx.gmUserId,
+      },
+      {
+        organizationId: ctx.auroraOrgId,
+        name: "Two-way center depth",
+        description: "Center depth behind the current top six.",
+        position: "C",
+        targetRoleKey: "two_way_center",
+        priority: 2,
+        timelineYears: 3,
+        earliestArrivalYears: 1,
+        latestArrivalYears: 4,
+        preferredAcquisition: "any",
+        maxRiskTolerance: "medium",
+        createdBy: ctx.gmUserId,
+      },
+      {
+        organizationId: ctx.auroraOrgId,
+        name: "Developmental goaltender",
+        description: "Pipeline goaltender; tools over results.",
+        position: "G",
+        targetRoleKey: "developmental_goalie",
+        priority: 3,
+        timelineYears: 4,
+        earliestArrivalYears: 2,
+        latestArrivalYears: 6,
+        preferredAcquisition: "draft",
+        maxRiskTolerance: "high",
+        createdBy: ctx.gmUserId,
+      },
+      {
+        organizationId: ctx.auroraOrgId,
+        name: "NHL-ready scoring winger",
+        description: "Immediate middle-six scoring; power-play upside preferred.",
+        position: "F",
+        secondaryPosition: "RW",
+        targetRoleKey: "shooting_winger",
+        priority: 2,
+        timelineYears: 0,
+        earliestArrivalYears: 0,
+        latestArrivalYears: 1,
+        preferredAcquisition: "college_fa",
+        maxRiskTolerance: "low",
+        specialTeamsRequirement: "pp",
+        nhlRosterNeed: true,
+        ahlOpportunity: false,
+        createdBy: ctx.gmUserId,
+      },
+      {
+        organizationId: ctx.auroraOrgId,
+        name: "Penalty-kill depth forward",
+        description: "Missing-data showcase: PK usage is not tracked in NCAA data, so this need surfaces proxy warnings.",
+        position: "F",
+        targetRoleKey: "pk_specialist_forward",
+        priority: 4,
+        timelineYears: 1,
+        earliestArrivalYears: 0,
+        latestArrivalYears: 2,
+        preferredAcquisition: "college_fa",
+        maxRiskTolerance: "medium",
+        specialTeamsRequirement: "pk",
+        nhlRosterNeed: false,
+        ahlOpportunity: true,
+        createdBy: ctx.analystUserId,
+      },
+    ])
     .returning();
 
-  // Depth context from real Aurora contracts.
-  const contractRows = await db
-    .select({ contract: schema.contracts, player: schema.players })
-    .from(schema.contracts)
-    .innerJoin(schema.players, eq(schema.contracts.playerId, schema.players.id))
-    .where(eq(schema.contracts.organizationId, ctx.auroraOrgId));
-  const activeRows = contractRows.filter((r) => r.contract.contractStatus === "active");
+  // Grade minimums for the headline defenseman need.
+  await db.insert(schema.organizationalNeedRequirements).values([
+    { needId: needRows[0]!.id, requirementType: "min_grade", key: "skating", minValue: 55 },
+    { needId: needRows[0]!.id, requirementType: "min_grade", key: "hockey_sense", minValue: 55 },
+    { needId: needRows[3]!.id, requirementType: "min_grade", key: "puck_skills", minValue: 60 },
+  ]);
 
+  /* ---- fit runs via the real service (runs, scores, components, snapshots, links) ---- */
+  setDbForTesting(db as never);
   for (const need of needRows) {
-    const matches = activeRows.filter((r) =>
-      need.position === "F" ? ["C", "LW", "RW"].includes(r.player.position) : r.player.position === need.position,
-    );
-    const horizon = new Date();
-    horizon.setFullYear(horizon.getFullYear() + need.timelineYears);
-    const depth = {
-      contractsAtPosition: matches.length,
-      expiringWithinTimeline: matches.filter((r) => new Date(r.contract.endDate) <= horizon).length,
-    };
-    const candidates = topByScore.filter((t) => t.prospect.row.position === need.position).slice(0, 15);
-    for (const t of candidates) {
-      const s = t.prospect.seasons.find((x) => x.seasonName === "2025-26")!;
-      const percentiles = buildPercentiles(toLine(t.prospect, s), currentLines);
-      const roleScores = scoreAllArchetypes(t.prospect.row.positionGroup, weightRows, percentiles);
-      const yoy = t.prospect.seasons.length >= 2
-        ? computeSeasonTrends(t.prospect.seasons.map((x) => toLine(t.prospect, x))).pop()
-        : undefined;
-      const fit = calculateFit(
-        {
-          position: need.position,
-          handedness: need.handedness,
-          targetRoleKey: need.targetRoleKey,
-          priority: need.priority,
-          timelineYears: need.timelineYears,
-          maxRiskTolerance: need.maxRiskTolerance,
-        },
-        {
-          position: t.prospect.row.position,
-          positionGroup: t.prospect.row.positionGroup,
-          shootsCatches: t.prospect.row.shootsCatches,
-          classYear: t.prospect.row.classYear,
-          age: t.prospect.row.dateOfBirth ? 2025 - Number(t.prospect.row.dateOfBirth.slice(0, 4)) : null,
-          primaryInferredRole: roleScores[0] ?? null,
-          scoutAssignedRoleKey: t.prospect.row.scoutAssignedRoleKey,
-          roleScores,
-          latestTrendClassification: yoy?.classification ?? null,
-          gamesPlayedLatest: s.gamesPlayed,
-        },
-        depth,
-      );
-      if (fit.overall !== null) {
-        await db.insert(schema.prospectFitScores).values({
-          organizationId: ctx.auroraOrgId,
-          prospectId: t.prospect.row.id,
-          needId: need.id,
-          modelVersion: FIT_MODEL_VERSION,
-          overallScore: fit.overall,
-          components: { list: fit.components },
-          explanation: { warnings: fit.warnings },
-        });
-      }
-    }
+    await runFitForNeed(need.id, ctx.auroraOrgId, ctx.gmUserId);
   }
 
   /* ---- comparables (NCAA same-age statistical) ---- */

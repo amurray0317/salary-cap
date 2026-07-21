@@ -176,8 +176,19 @@ every score explained with inputs × weights, missing data, and contradicting
 evidence), scout-assigned roles kept strictly separate from statistical inference,
 structured scouting reports on a 20–80 scale, watchlists, a draft board that shows
 model-vs-scout rank disagreement instead of averaging it away, a college free-agent
-board, scout assignments, and an explainable organizational-fit engine wired into
-RosterIQ's live contract data for the opportunity path. The NCAA Players page adds
+board, scout assignments, and an explainable organizational-fit system wired into
+RosterIQ's live contract data. Organizational needs (Org needs tab) capture what the
+front office is looking for — position, handedness, target statistical role and
+scout-defined role (kept separate), an NHL-arrival window, acquisition path,
+size/special-teams preferences, risk tolerance, and 20–80 grade minimums — and the
+fit model (riq-fit-v0.2, 14 components, weights stored in `fit_component_weights`)
+ranks every eligible NCAA prospect against a need in one run. Each score decomposes
+into input × weight = contribution per component with penalties, missing-input flags,
+and a confidence value; missing data is excluded and lowers confidence rather than
+scoring low. Runs snapshot org and prospect-pool depth, auto-link the expiring
+contracts that motivate the need, and feed a ranked table (search/sort/pagination/
+column visibility/CSV export) plus a 2–5-prospect comparison view that presents
+evidence side by side without issuing an automatic verdict. The NCAA Players page adds
 name search, class/min-GP thresholds, eight sort keys, pagination, per-user saved
 filter views, column visibility toggles, and a filtered CSV export
 (`/api/export/prospects`, gated by the `export_scouting` capability). Prospect

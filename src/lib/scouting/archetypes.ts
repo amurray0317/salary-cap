@@ -11,7 +11,7 @@
 
 export const ROLE_MODEL_VERSION = "riq-role-v0.1";
 export const TREND_MODEL_VERSION = "riq-trend-v0.1";
-export const FIT_MODEL_VERSION = "riq-fit-v0.1";
+export const FIT_MODEL_VERSION = "riq-fit-v0.2";
 
 export interface ArchetypeSeed {
   key: string;

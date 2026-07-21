@@ -149,55 +149,7 @@ export async function createScoutingReportAction(_prev: FormState, formData: For
   return {};
 }
 
-/* ---------------- Organizational needs ---------------- */
-
-const needSchema = z.object({
-  organizationId: z.string().uuid(),
-  position: z.enum(["C", "LW", "RW", "D", "G", "F"]),
-  handedness: z.enum(["L", "R"]).optional(),
-  targetRoleKey: z.string().max(80).optional(),
-  priority: z.coerce.number().int().min(1).max(5).default(3),
-  timelineYears: z.coerce.number().int().min(0).max(6).default(3),
-  preferredAcquisition: z.enum(["draft", "college_fa", "trade"]).default("draft"),
-  maxRiskTolerance: z.enum(["low", "medium", "high"]).default("medium"),
-  requiredAttributes: z.string().max(2000).optional(),
-  notes: z.string().max(2000).optional(),
-});
-
-export async function createNeedAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const raw = Object.fromEntries(formData.entries());
-  const parsed = needSchema.safeParse({ ...raw, handedness: raw.handedness || undefined, targetRoleKey: raw.targetRoleKey || undefined });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
-  const ctx = await requireOrgAccess(parsed.data.organizationId, "manage_org_needs");
-  const db = getDb();
-  const [need] = await db
-    .insert(schema.organizationalNeeds)
-    .values({
-      organizationId: ctx.organizationId,
-      position: parsed.data.position,
-      handedness: parsed.data.handedness ?? null,
-      targetRoleKey: parsed.data.targetRoleKey ?? null,
-      priority: parsed.data.priority,
-      timelineYears: parsed.data.timelineYears,
-      preferredAcquisition: parsed.data.preferredAcquisition,
-      maxRiskTolerance: parsed.data.maxRiskTolerance,
-      requiredAttributes: parsed.data.requiredAttributes || null,
-      notes: parsed.data.notes || null,
-      createdBy: ctx.user.id,
-    })
-    .returning();
-  if (!need) return { error: "Could not create need" };
-  await writeAudit({
-    organizationId: ctx.organizationId,
-    userId: ctx.user.id,
-    action: "scouting.need_create",
-    entityType: "organizational_need",
-    entityId: need.id,
-    newValues: { position: need.position, targetRoleKey: need.targetRoleKey, priority: need.priority },
-  });
-  revalidatePath("/scouting/fit");
-  return {};
-}
+/* Organizational-need actions live in fitActions.ts (Phase 2). */
 
 /* ---------------- Watchlists ---------------- */
 

@@ -3,12 +3,10 @@ import type { Metadata } from "next";
 import { asc, desc, eq, and } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
 import { resolveAppContext } from "@/server/appContext";
-import { createNeedAction } from "@/server/actions/scoutingActions";
-import { NeedForm } from "@/components/ScoutingForms";
 import { Card, Td, Th } from "@/components/ui";
-import { roleHasCapability } from "@/lib/auth/roles";
+import { formatDate, pct } from "@/lib/format";
 
-export const metadata: Metadata = { title: "Organizational fit" };
+export const metadata: Metadata = { title: "Prospect fit" };
 
 export default async function FitPage() {
   const ctx = await resolveAppContext();
@@ -22,47 +20,64 @@ export default async function FitPage() {
   const roleLabel = (key: string | null) => archetypes.find((a) => a.key === key)?.label ?? "any role";
 
   const fits = await db
-    .select({ f: schema.prospectFitScores, name: schema.amateurProspects.fullName, prospectId: schema.amateurProspects.id, position: schema.amateurProspects.position, hand: schema.amateurProspects.shootsCatches })
+    .select({
+      f: schema.prospectFitScores,
+      name: schema.amateurProspects.fullName,
+      prospectId: schema.amateurProspects.id,
+      position: schema.amateurProspects.position,
+      hand: schema.amateurProspects.shootsCatches,
+    })
     .from(schema.prospectFitScores)
     .innerJoin(schema.amateurProspects, eq(schema.prospectFitScores.prospectId, schema.amateurProspects.id))
     .where(eq(schema.prospectFitScores.organizationId, ctx.org.id))
     .orderBy(desc(schema.prospectFitScores.overallScore));
 
-  const canManage = roleHasCapability(ctx.role, "manage_org_needs");
+  const runs = await db
+    .select()
+    .from(schema.fitCalculationRuns)
+    .where(eq(schema.fitCalculationRuns.organizationId, ctx.org.id))
+    .orderBy(desc(schema.fitCalculationRuns.startedAt));
+  const latestRunByNeed = new Map<string, (typeof runs)[number]>();
+  for (const r of runs) if (!latestRunByNeed.has(r.needId)) latestRunByNeed.set(r.needId, r);
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">Organizational needs & prospect fit</h1>
+        <h1 className="text-xl font-semibold">Prospect fit</h1>
         <p className="text-sm text-ink-muted">
-          Fit scores (model riq-fit-v0.1) combine position, handedness, role, timeline, contract-depth
-          opportunity, and risk — each component explained. Connected to live RosterIQ contract data.
+          Fit scores (model riq-fit-v0.2, weights stored in the database) combine 14 explained components —
+          position, handedness, roles, timeline, readiness, opportunity, depth, expirations, scarcity, special
+          teams, grades, risk, and acquisition path. Define and manage needs under{" "}
+          <Link href="/scouting/needs" className="text-accent-text hover:underline">Org needs</Link>.
         </p>
       </div>
 
-      {canManage ? (
-        <Card title="Define a need">
-          <NeedForm action={createNeedAction} organizationId={ctx.org.id} roles={archetypes.map((a) => ({ key: a.key, label: `[${a.positionGroup}] ${a.label}` }))} />
-        </Card>
-      ) : (
-        <p className="text-sm text-ink-muted">Your role can view needs but not define them (requires director/GM).</p>
-      )}
-
       {needs.length === 0 ? (
-        <Card><p className="text-sm text-ink-muted">No active needs defined.</p></Card>
+        <Card>
+          <p className="text-sm text-ink-muted">
+            No active needs. <Link href="/scouting/needs" className="text-accent-text hover:underline">Create one</Link> to rank prospects against it.
+          </p>
+        </Card>
       ) : (
         needs.map((n) => {
           const needFits = fits.filter((f) => f.f.needId === n.id).slice(0, 10);
+          const run = latestRunByNeed.get(n.id);
           return (
             <Card
               key={n.id}
-              title={`Need: ${n.position}${n.handedness ? ` (${n.handedness}-hand)` : ""} — ${roleLabel(n.targetRoleKey)} · ${n.timelineYears}y timeline · priority ${n.priority} · max risk ${n.maxRiskTolerance}`}
+              title={`${n.name} — ${n.position}${n.handedness ? ` (${n.handedness})` : ""} · ${roleLabel(n.targetRoleKey)} · priority ${n.priority}`}
             >
-              {n.notes && <p className="mb-2 text-sm text-ink-muted">{n.notes}</p>}
+              <p className="mb-2 text-xs text-ink-muted">
+                {run
+                  ? `Last run ${formatDate(run.startedAt)} · ${run.scoredCount}/${run.prospectsEvaluated} scored · ${run.modelVersion}`
+                  : "Model has not been run for this need yet"}
+                {" · "}
+                <Link href={`/scouting/needs/${n.id}`} className="text-accent-text hover:underline">
+                  full ranking & explanation →
+                </Link>
+              </p>
               {needFits.length === 0 ? (
-                <p className="text-sm text-ink-muted">
-                  No fit scores computed yet — open a prospect profile and press &ldquo;Compute fit&rdquo;.
-                </p>
+                <p className="text-sm text-ink-muted">No fit scores yet — run the model from the need page.</p>
               ) : (
                 <table className="w-full">
                   <thead>
@@ -71,7 +86,8 @@ export default async function FitPage() {
                       <Th>Prospect</Th>
                       <Th>Pos</Th>
                       <Th>Hand</Th>
-                      <Th right>Fit score</Th>
+                      <Th right>Fit</Th>
+                      <Th right>Conf</Th>
                       <Th>Model</Th>
                     </tr>
                   </thead>
@@ -83,6 +99,7 @@ export default async function FitPage() {
                         <Td>{f.position}</Td>
                         <Td className="text-ink-secondary">{f.hand ?? "—"}</Td>
                         <Td right>{f.f.overallScore.toFixed(1)}</Td>
+                        <Td right className="text-ink-secondary">{f.f.confidence !== null ? pct(f.f.confidence) : "—"}</Td>
                         <Td className="text-xs text-ink-muted">{f.f.modelVersion}</Td>
                       </tr>
                     ))}

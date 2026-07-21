@@ -12,7 +12,7 @@ import * as schema from "@/db/schema";
 import { buildPercentiles, type SeasonLine } from "@/lib/scouting/stats";
 import { computeSeasonTrends, computeGameLogTrends, type Trend } from "@/lib/scouting/trends";
 import { scoreAllArchetypes, type RoleScore, type WeightRow } from "@/lib/scouting/roleScoring";
-import { calculateFit, type FitResult } from "@/lib/scouting/fit";
+import type { FitResult } from "@/lib/scouting/fit";
 import { ROLE_MODEL_VERSION } from "@/lib/scouting/archetypes";
 
 export class ScoutingError extends Error {
@@ -316,84 +316,11 @@ export async function loadDepthContext(
   return { contractsAtPosition: matches.length, expiringWithinTimeline: expiring.length };
 }
 
-/** Computes an explainable fit and persists it with its model version. */
-export async function computeFit(
-  prospectId: string,
-  needId: string,
-  organizationId: string,
-): Promise<FitResult> {
-  const db = getDb();
-  const prospect = await getOwnedProspect(prospectId, organizationId);
-  const [need] = await db
-    .select()
-    .from(schema.organizationalNeeds)
-    .where(and(eq(schema.organizationalNeeds.id, needId), eq(schema.organizationalNeeds.organizationId, organizationId)))
-    .limit(1);
-  if (!need) throw new ScoutingError("Need not found in this organization");
-
-  const { seasonName, scores } = await computeRoleScores(prospectId, organizationId);
-  const trends = await computeTrends(prospectId, organizationId);
-  const latestYoY = [...trends].reverse().find((t) => t.kind === "year_over_year");
-  const latestSeasonRow = seasonName
-    ? (
-        await db
-          .select()
-          .from(schema.prospectSeasons)
-          .where(and(eq(schema.prospectSeasons.prospectId, prospect.id), eq(schema.prospectSeasons.seasonName, seasonName)))
-          .limit(1)
-      )[0]
-    : undefined;
-
-  const depth = await loadDepthContext(organizationId, need.position, need.timelineYears);
-  const fit = calculateFit(
-    {
-      position: need.position,
-      handedness: need.handedness,
-      targetRoleKey: need.targetRoleKey,
-      priority: need.priority,
-      timelineYears: need.timelineYears,
-      maxRiskTolerance: need.maxRiskTolerance,
-    },
-    {
-      position: prospect.position,
-      positionGroup: prospect.positionGroup,
-      shootsCatches: prospect.shootsCatches,
-      classYear: prospect.classYear,
-      age: ageAtSeason(prospect.dateOfBirth, seasonName ?? "2025-26"),
-      primaryInferredRole: scores[0] ?? null,
-      scoutAssignedRoleKey: prospect.scoutAssignedRoleKey,
-      roleScores: scores,
-      latestTrendClassification: latestYoY?.classification ?? null,
-      gamesPlayedLatest: latestSeasonRow?.gamesPlayed ?? 0,
-    },
-    depth,
-  );
-
-  if (fit.overall !== null) {
-    await db
-      .insert(schema.prospectFitScores)
-      .values({
-        organizationId,
-        prospectId: prospect.id,
-        needId: need.id,
-        modelVersion: fit.modelVersion,
-        overallScore: fit.overall,
-        components: { list: fit.components },
-        explanation: { warnings: fit.warnings },
-      })
-      .onConflictDoUpdate({
-        target: [
-          schema.prospectFitScores.prospectId,
-          schema.prospectFitScores.needId,
-          schema.prospectFitScores.modelVersion,
-        ],
-        set: {
-          overallScore: fit.overall,
-          components: { list: fit.components },
-          explanation: { warnings: fit.warnings },
-          computedAt: new Date(),
-        },
-      });
-  }
-  return fit;
+/**
+ * Single-prospect fit now lives in fitService (model riq-fit-v0.2, weights
+ * from the database). This thin re-export keeps existing imports working.
+ */
+export async function computeFit(prospectId: string, needId: string, organizationId: string): Promise<FitResult> {
+  const { computeFit: run } = await import("@/server/services/fitService");
+  return run(prospectId, needId, organizationId);
 }
