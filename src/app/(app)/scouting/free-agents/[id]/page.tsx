@@ -13,7 +13,8 @@ import {
   setCfaBoardStatusAction,
   updateCfaEntryAction,
 } from "@/server/actions/boardActions";
-import { AddBoardProspectForm, CfaEntryEditForm, CFA_RELATIONSHIP_STATUSES } from "@/components/BoardForms";
+import { AddBoardProspectForm, CfaEntryEditForm } from "@/components/BoardForms";
+import { CFA_RELATIONSHIP_STATUSES } from "@/lib/scouting/cfa";
 import { BoardDnD } from "@/components/BoardDnD";
 import { BoardNoteForm } from "@/components/BoardNoteForm";
 import { Card, Td, Th } from "@/components/ui";

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import type { FormState } from "@/server/actions/boardActions";
+import { CFA_RELATIONSHIP_STATUSES } from "@/lib/scouting/cfa";
 
 type Action = (prev: FormState, fd: FormData) => Promise<FormState>;
 
@@ -208,11 +209,6 @@ export function CreateCfaBoardForm({ action, organizationId }: { action: Action;
     </form>
   );
 }
-
-export const CFA_RELATIONSHIP_STATUSES = [
-  "not_contacted", "researching", "initial_contact", "active_communication", "strong_interest",
-  "mutual_interest", "offer_under_consideration", "signed_elsewhere", "signed_by_organization", "no_longer_pursuing",
-] as const;
 
 export function CfaEntryEditForm({
   action,

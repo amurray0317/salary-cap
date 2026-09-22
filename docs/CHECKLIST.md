@@ -187,6 +187,50 @@
 - [ ] Deferred: draft boards beyond current slice, NHL projection models, ML models,
       Elite Prospects integration, fit-weight editing UI
 
+## Amateur Scouting Phase 3 — draft board & college free-agent board (2026-09-22)
+- [x] Schema (migrations 0006 + 0007): draft boards gain status/version/lock fields;
+      entries gain position rank, expected round/range, separate model/consensus/fit/
+      director rank columns, risk/floor/ceiling, viewing/report counts, last viewed;
+      new draft_board_versions, draft_board_snapshots, draft_board_rank_history,
+      scout_rankings + consensus_rankings (board-scoped, replacing reserved
+      placeholders), college_free_agent_boards/entries/status_history,
+      board_meeting_notes, board_exports
+- [x] Capabilities: finalize_boards + unlock_boards (director/GM), manage_cfa_boards,
+      manage_contacts, assign_followups (asst. director/analyst tier); view/manage/export
+      reuse view_scouting / manage_draft_boards / export_scouting
+- [x] Consensus engine: n, mean, median, best, worst, spread, stddev; insufficient
+      (< 3) and disagreement (≥ 10 spots) warnings
+- [x] Draft boards: multiple boards and years, add/remove, drag-and-drop reorder with
+      reason, position ranks, director final rank, personal scout ranks, entry fields,
+      notes (editable when locked), meeting notes, lock/unlock/archive, 14 filters,
+      2–5 comparison, history + version comparison, CSV export
+- [x] CFA boards: multiple boards, undrafted-only candidates, drag-and-drop priorities,
+      rights/eligibility/availability/readiness/roles/fit/competition, agent, ten-stage
+      relationship pipeline, last contact, next action + date, assigned staff, notes,
+      candidate + board archiving, field history, org-wide follow-up view, 14 filters,
+      2–5 comparison, CSV export
+- [x] Seed: locked 2026 board and active 2027 board, 74 scout rankings from four scouts
+      (spreads up to 15 spots, 7 thin-sample prospects), 52 versions / 123 history rows,
+      47 scout viewings, two CFA boards covering nine relationship statuses, overdue and
+      upcoming follow-ups, signed and archived candidates
+- [x] 22 new tests (161 total): consensus math, lifecycle, reorder persistence, position
+      ranks, source separation, consensus spread + insufficient warnings, locking,
+      archived boards, versioning/snapshots, rank history, CFA fields + status history,
+      follow-ups, staff validation, isolation, permissions, export logging
+- [x] `tsc --noEmit` clean · eslint clean · 161/161 vitest · production build succeeds
+- [x] Browser acceptance run (30 checks, all 19 required steps): create board → add four
+      prospects → real drag-and-drop reorder persisted → position filter → separate
+      ranking columns → disagreement flags → lock → edit controls gone, notes still
+      editable, analyst cannot unlock, director can → version list + compare with current
+      → CSV export → create CFA board → add candidates → eligibility/availability,
+      relationship (with history), follow-up + staff → drag priorities → CSV export →
+      both comparisons → rival org 404s on both boards, history, and exports
+- [x] Bug fixed during verification: a constant exported from a "use client" module
+      reached the server page as a client reference (`.map is not a function`); moved to
+      `src/lib/scouting/cfa.ts`
+- [ ] Deferred: real data connectors (NHL APIs, NHL Central Scouting, MoneyPuck,
+      EliteProspects), viewing-entry UI, assignment scheduling, per-change DB transactions
+
 ## MVP acceptance test status
 1–8 (register→commitments) ✓ · 9–14 (scenarios, violations) ✓ · 15–16 (valuation, surplus) ✓ ·
 17–18 (compare, export) ✓ · 19 (sign out/in persistence) ✓ · 20 (cross-org denial) ✓

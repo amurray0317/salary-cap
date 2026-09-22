@@ -25,6 +25,7 @@ import {
 } from "@/server/services/boardService";
 import { ScoutingError } from "@/server/services/scoutingService";
 import { roleHasCapability } from "@/lib/auth/roles";
+import { CFA_RELATIONSHIP_STATUSES } from "@/lib/scouting/cfa";
 
 export interface FormState {
   error?: string;
@@ -395,11 +396,6 @@ export async function addCfaEntryAction(_prev: FormState, formData: FormData): P
   return {};
 }
 
-const RELATIONSHIP = [
-  "not_contacted", "researching", "initial_contact", "active_communication", "strong_interest",
-  "mutual_interest", "offer_under_consideration", "signed_elsewhere", "signed_by_organization", "no_longer_pursuing",
-] as const;
-
 const cfaUpdateSchema = z.object({
   organizationId: id,
   boardId: id,
@@ -412,7 +408,7 @@ const cfaUpdateSchema = z.object({
   readiness: z.enum(["nhl_ready", "ahl_ready", "development_needed"]).optional(),
   marketCompetition: z.enum(["low", "medium", "high"]).optional(),
   agentName: z.string().max(120).optional(),
-  relationshipStatus: z.enum(RELATIONSHIP).optional(),
+  relationshipStatus: z.enum(CFA_RELATIONSHIP_STATUSES).optional(),
   lastContactDate: isoDate.optional(),
   nextAction: z.string().max(300).optional(),
   nextActionDate: isoDate.optional(),

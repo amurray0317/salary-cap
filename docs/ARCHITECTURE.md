@@ -123,6 +123,31 @@ read-only over official roster/contract/scenario/prospect data. `run_fit_models`
 (analyst tier) gates runs; `manage_org_needs` (director/GM) gates need CRUD;
 `export_scouting` gates `/api/export/fit`.
 
+## Acquisition boards
+
+`boardService` is the only mutation path for draft and college free-agent boards.
+Draft-board writes go through `commitBoardVersion`, which bumps `draft_boards.version`,
+inserts a `draft_board_versions` row, stores an immutable ordered snapshot in
+`draft_board_snapshots`, and writes one `draft_board_rank_history` row per change
+(previous/new value and rank, user, version, reason). Version comparison diffs a stored
+snapshot against the live entries — snapshots are never rewritten.
+
+Ranking sources live in separate columns on `draft_board_entries` (`overall_rank`,
+`model_rank`, `consensus_rank`, `fit_rank`, `director_final_rank`); each has exactly one
+writer (reorder, `refreshBoardDerived`, `recomputeConsensus`, and `setDirectorRank`), so
+no source can overwrite another. Individual rankings live in `scout_rankings` (unique per
+board/prospect/scout); `consensus_rankings` caches the pure `computeConsensus` result
+(n, mean, median, best, worst, spread, stddev, insufficient flag).
+
+Lock guards run in the service, not just the UI: `assertUnlocked` rejects reorder,
+add/remove, director rank, scout rankings, and rank-bearing field edits on locked or
+archived boards; notes/recommendations pass only with an explicit `allowOnLocked` flag
+that the action sets for board managers. `finalize_boards` locks, `unlock_boards`
+unlocks, `manage_draft_boards` edits. CFA entries record field-level history in
+`college_free_agent_status_history`; contact fields require `manage_contacts` and
+follow-up fields require `assign_followups`, and assigned staff must be members of the
+organization. Exports log to `board_exports`.
+
 ## Tenancy & security
 
 - Session tokens: 32 random bytes, stored **hashed** (SHA-256) in `sessions`, HttpOnly cookie.
