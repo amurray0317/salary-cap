@@ -1865,3 +1865,56 @@ export const extDraftRankings = pgTable(
     uniqueIndex("ext_draft_rankings_unique").on(t.organizationId, t.source, t.draftYear, t.categoryId, t.rowKey),
   ],
 );
+
+/**
+ * Per-game lines from the NHL API (/v1/player/{id}/game-log/{season}/{type}).
+ * Goalie columns are NULL for skaters and vice versa; `decision` is NULL for
+ * relief appearances (the source omits it). TOI is the source's per-game
+ * value converted mm:ss → seconds.
+ */
+export const extPlayerGameLogs = pgTable(
+  "ext_player_game_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    source: text("source").notNull(), // nhl
+    externalPlayerId: text("external_player_id").notNull(),
+    playerName: text("player_name"),
+    gameId: text("game_id").notNull(),
+    gameDate: date("game_date").notNull(),
+    season: text("season").notNull(),
+    gameType: text("game_type").notNull(),
+    teamAbbrev: text("team_abbrev"),
+    opponentAbbrev: text("opponent_abbrev"),
+    homeRoad: text("home_road"), // H | R
+    goals: integer("goals"),
+    assists: integer("assists"),
+    points: integer("points"),
+    plusMinus: integer("plus_minus"),
+    penaltyMinutes: integer("penalty_minutes"),
+    shots: integer("shots"),
+    powerPlayGoals: integer("pp_goals"),
+    powerPlayPoints: integer("pp_points"),
+    shortHandedGoals: integer("sh_goals"),
+    shortHandedPoints: integer("sh_points"),
+    gameWinningGoals: integer("gw_goals"),
+    otGoals: integer("ot_goals"),
+    shifts: integer("shifts"),
+    toiSeconds: integer("toi_seconds"),
+    gamesStarted: integer("games_started"),
+    decision: text("decision"), // W | L | O (OT/SO loss); NULL when no decision
+    shotsAgainst: integer("shots_against"),
+    goalsAgainst: integer("goals_against"),
+    savePct: real("save_pct"),
+    shutouts: integer("shutouts"),
+    sourceId: uuid("source_id").references(() => dataSources.id),
+    importId: uuid("import_id").references(() => imports.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("ext_game_logs_unique").on(t.organizationId, t.source, t.externalPlayerId, t.gameId),
+    index("ext_game_logs_player_idx").on(t.organizationId, t.externalPlayerId, t.gameDate),
+  ],
+);

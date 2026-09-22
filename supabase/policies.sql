@@ -189,3 +189,7 @@ create policy ext_draft_rankings_rw on ext_draft_rankings
 create policy data_sources_rw on data_sources
   for all using (organization_id is null or is_org_member(organization_id))
   with check (organization_id is not null and is_org_member(organization_id));
+alter table ext_player_game_logs enable row level security;
+create policy ext_game_logs_rw on ext_player_game_logs
+  for all using (is_org_member(organization_id))
+  with check (is_org_member(organization_id));

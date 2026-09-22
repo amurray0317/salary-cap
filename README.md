@@ -230,7 +230,7 @@ untouched, and nothing real is bundled:
 
 | Connector | Datasets | Notes |
 |---|---|---|
-| NHL API (`api-web.nhle.com`, `api.nhle.com`) | player bios, career seasons (all leagues), team rosters, league skater/goalie/team season summaries, draft history, **NHL Central Scouting rankings** (`/v1/draft/rankings/{year}/{category}`) | public, undocumented endpoints |
+| NHL API (`api-web.nhle.com`, `api.nhle.com`) | player bios, career seasons (all leagues), per-game logs (skater and goalie, per-game TOI), team rosters, league skater/goalie/team season summaries, draft history, **NHL Central Scouting rankings** (`/v1/draft/rankings/{year}/{category}`) | public, undocumented endpoints |
 | MoneyPuck season-summary CSVs | skaters, goalies, teams by situation (all / 5on5 / 5on4 / 4on5 / other) | **Data: MoneyPuck.com** — credited everywhere it is shown; free for non-commercial use per moneypuck.com/data.htm |
 | EliteProspects (official API only) | player search | **disabled until `EP_API_KEY` is configured**; never scrapes |
 
@@ -243,8 +243,8 @@ approves; approval upserts the org's `ext_*` reference tables and records a `dat
 row (source name, URL, retrieved date, effective season, credit, terms) that every
 committed row points to. Missing values stay NULL — e.g. junior-league seasons have no TOI
 in the NHL feed and are shown as "—", never estimated. Browse pages: players & stats
-(NHL career + league summaries + MoneyPuck, merged on the NHL player id, with clearly
-labeled derived rates such as ixG/60 and GSAx), Central Scouting rankings (midterm vs.
+(NHL career + league summaries + game logs with season and last-10 summaries + MoneyPuck,
+merged on the NHL player id, with clearly labeled derived rates such as ixG/60, P/60, and GSAx), Central Scouting rankings (midterm vs.
 final, never blended) and draft history, and team seasons by source and situation.
 
 Parsers were written against **recorded real responses** in `tests/fixtures/connectors/`

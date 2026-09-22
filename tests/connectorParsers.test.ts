@@ -20,6 +20,7 @@ import {
   nhlUrls,
   parseDraftPicks,
   parseDraftRankings,
+  parseGameLog,
   parseGoalieSummary,
   parsePlayerBio,
   parsePlayerCareer,
@@ -135,6 +136,46 @@ describe("NHL API parsers (recorded fixtures)", () => {
     expect(pcbhl?.save_pct).toBe(""); // source reports 0.0 with no shots against
     expect(pcbhl?.gaa).toBe("2.89");
     expect(career.warnings.some((w) => w.includes("save % 0 without shots against"))).toBe(true);
+  });
+
+  it("skater game log reconciles with the career season line", () => {
+    const log = parseGameLog(json("nhl/game-log-8478402-20242025-2.json"), "8478402", json("nhl/player-landing-8478402.json"));
+    expect(log.records).toHaveLength(67);
+    expectValid("nhl_game_logs", log.records);
+    const total = (k: string) => log.records.reduce((a, r) => a + Number(r[k]), 0);
+    // Same season line from the landing: 67 GP, 26 G, 100 P, avgToi 22:02.
+    const career = parsePlayerCareer(json("nhl/player-landing-8478402.json")).records.find(
+      (r) => r.season === "2024-25" && r.league === "NHL" && r.game_type === "regular",
+    )!;
+    expect(String(log.records.length)).toBe(career.games_played);
+    expect(String(total("goals"))).toBe(career.goals);
+    expect(String(total("points"))).toBe(career.points);
+    expect(Math.round(total("toi_seconds") / 67)).toBe(Number(career.toi_per_game_seconds)); // 1322 s = 22:02
+    const first = log.records.find((r) => r.game_id === "2024021306")!;
+    expect(first).toMatchObject({ player_name: "Connor McDavid", game_date: "2025-04-16", home_road: "R", opponent_abbrev: "SJS", toi_seconds: "1051", shifts: "16", decision: "", shots_against: "" });
+    expect(log.effectiveSeason).toBe("2024-25");
+    const playoffs = parseGameLog(json("nhl/game-log-8478402-20242025-3.json"), "8478402");
+    expect(playoffs.records).toHaveLength(22);
+    expect(playoffs.records.every((r) => r.game_type === "playoffs")).toBe(true);
+    expect(playoffs.warnings.some((w) => w.includes("name unavailable"))).toBe(true);
+  });
+
+  it("goalie game log: W/L/O decisions, relief appearance left without a decision", () => {
+    const log = parseGameLog(json("nhl/game-log-8476945-20242025-2.json"), "8476945", json("nhl/player-landing-8476945.json"));
+    expect(log.records).toHaveLength(63);
+    expectValid("nhl_game_logs", log.records);
+    const dec = (d: string) => log.records.filter((r) => r.decision === d).length;
+    expect([dec("W"), dec("L"), dec("O"), dec("")]).toEqual([47, 12, 3, 1]);
+    const relief = log.records.find((r) => r.decision === "")!;
+    expect(relief).toMatchObject({ games_started: "0", toi_seconds: "610", goals: "0", points: "", shots: "" });
+    expect(log.records.reduce((a, r) => a + Number(r.shots_against), 0)).toBe(1664);
+    expect(log.records.reduce((a, r) => a + Number(r.goals_against), 0)).toBe(125);
+    expect(log.warnings.some((w) => w.includes("1 relief appearance"))).toBe(true);
+  });
+
+  it("game log rejects a missing envelope", () => {
+    expect(() => parseGameLog({ gameLog: [] }, "8478402")).toThrow(/seasonId/);
+    expect(() => parseGameLog({ seasonId: 20242025, gameTypeId: 2 }, "8478402")).toThrow(ConnectorParseError);
   });
 
   it("roster → one record per skater and goalie with wing relabel", () => {

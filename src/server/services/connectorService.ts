@@ -36,6 +36,7 @@ import {
   nhlUrls,
   parseDraftPicks,
   parseDraftRankings,
+  parseGameLog,
   parseGoalieSummary,
   parsePlayerBios,
   parsePlayerCareer,
@@ -80,6 +81,7 @@ const situations = z.array(z.enum(MONEYPUCK_SITUATIONS)).min(1).max(5);
 export const connectorRequestSchema = z.discriminatedUnion("dataset", [
   z.object({ dataset: z.literal("nhl_players"), playerIds }),
   z.object({ dataset: z.literal("nhl_player_seasons"), playerIds }),
+  z.object({ dataset: z.literal("nhl_game_logs"), playerIds: playerIds.max(10), season: seasonLabel, gameType }),
   z.object({ dataset: z.literal("nhl_roster"), team: z.string().regex(/^[A-Z]{3}$/, "Team must be a 3-letter tri-code"), season: seasonLabel }),
   z.object({ dataset: z.literal("nhl_skater_stats"), season: seasonLabel, gameType }),
   z.object({ dataset: z.literal("nhl_goalie_stats"), season: seasonLabel, gameType }),
@@ -235,6 +237,23 @@ function buildPlan(req: ConnectorRequest, env: Record<string, string | undefined
           };
         },
       );
+    case "nhl_game_logs": {
+      const seasonId = seasonLabelToNhlId(req.season);
+      // Two requests per player: the game log (no name in it) and the landing (name).
+      const urls = req.playerIds.flatMap((id) => [nhlUrls.gameLog(id, seasonId, gt(req.gameType)), nhlUrls.playerLanding(id)]);
+      return nhl(
+        `NHL API — game logs ${req.season} ${gtLabel(req.gameType)} (${req.playerIds.length} player${req.playerIds.length === 1 ? "" : "s"})`,
+        urls,
+        (rs) => {
+          const parts = req.playerIds.map((id, i) => parseGameLog(parseJson(rs[2 * i]!), id, parseJson(rs[2 * i + 1]!)));
+          return {
+            records: parts.flatMap((p) => p.records),
+            effectiveSeason: req.season,
+            warnings: parts.flatMap((p) => p.warnings),
+          };
+        },
+      );
+    }
     case "nhl_roster": {
       const seasonId = seasonLabelToNhlId(req.season);
       return nhl(`NHL API — ${req.team} roster ${req.season}`, [nhlUrls.roster(req.team, seasonId)], ([r]) =>

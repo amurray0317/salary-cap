@@ -129,6 +129,8 @@ explicit approval ─► commitImport ─► data_sources row ─► connectorCo
 - **Secrets**: the EP key is read from `EP_API_KEY` at request time, sent as the `apiKey`
   query parameter (the only form the API accepted when probed), and redacted from cache
   keys, stored URLs, provenance, and audit logs.
+- **Game logs** (`ext_player_game_logs`, migration 0007) follow the same path; the service
+  fetches each player's game log and landing (for the name) and pairs them by position.
 - **Separation from official records**: real data lives in `ext_*` reference tables and never
   writes `players`, `contracts`, or cap tables; the demo seed is unchanged.
 
