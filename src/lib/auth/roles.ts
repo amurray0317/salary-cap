@@ -64,7 +64,13 @@ export type Capability =
   | "assign_scouts"
   | "manage_org_needs"
   | "run_fit_models"
-  | "manage_scouting_models";
+  | "manage_scouting_models"
+  // Acquisition boards (Phase 3):
+  | "finalize_boards"
+  | "unlock_boards"
+  | "manage_cfa_boards"
+  | "manage_contacts"
+  | "assign_followups";
 
 const CAPABILITY_MIN_TIER: Record<Capability, number> = {
   read: 0,
@@ -83,6 +89,11 @@ const CAPABILITY_MIN_TIER: Record<Capability, number> = {
   manage_org_needs: 4,
   run_fit_models: 3, // analysts / assistant directors and up
   manage_scouting_models: 5,
+  finalize_boards: 4, // director / GM lock the final board
+  unlock_boards: 4, // unlocking a finalized board is a director-level act
+  manage_cfa_boards: 3,
+  manage_contacts: 3, // relationship + agent/contact records
+  assign_followups: 3,
 };
 
 export function roleHasCapability(role: OrgRole, capability: Capability): boolean {

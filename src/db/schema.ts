@@ -1227,10 +1227,16 @@ export const draftBoards = pgTable("draft_boards", {
     .notNull()
     .references(() => organizations.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  boardType: text("board_type").notNull().default("draft"), // draft | college_free_agent
+  description: text("description"),
+  boardType: text("board_type").notNull().default("draft"), // draft | college_free_agent (legacy)
   draftYear: integer("draft_year"),
+  status: text("status").notNull().default("active"), // active | locked | archived
+  version: integer("version").notNull().default(1),
+  lockedBy: uuid("locked_by").references(() => users.id),
+  lockedAt: timestamp("locked_at", { withTimezone: true }),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const draftBoardEntries = pgTable(
@@ -1244,15 +1250,233 @@ export const draftBoardEntries = pgTable(
       .notNull()
       .references(() => amateurProspects.id, { onDelete: "cascade" }),
     overallRank: integer("overall_rank").notNull(),
-    modelRank: integer("model_rank"),
-    scoutRank: integer("scout_rank"),
+    /** Rank within the prospect's position group; recomputed on reorder. */
+    positionRank: integer("position_rank"),
+    expectedRound: integer("expected_round"), // 1..7
+    expectedRangeStart: integer("expected_range_start"), // overall selection window
+    expectedRangeEnd: integer("expected_range_end"),
+    /* Ranking sources are stored separately and NEVER overwrite each other. */
+    modelRank: integer("model_rank"), // statistical-model rank
+    scoutRank: integer("scout_rank"), // legacy single-scout rank (see scout_rankings)
+    consensusRank: real("consensus_rank"), // cached mean from consensus_rankings
+    fitRank: integer("fit_rank"), // organizational-fit rank
+    directorFinalRank: integer("director_final_rank"),
+    fitScore: real("fit_score"), // cached best organizational fit
     risk: text("risk"),
+    floor: text("floor"),
+    ceiling: text("ceiling"),
+    viewingCount: integer("viewing_count").notNull().default(0),
+    reportCount: integer("report_count").notNull().default(0),
+    lastViewedAt: date("last_viewed_at"),
     recommendation: text("recommendation"),
     notes: text("notes"),
+    addedBy: uuid("added_by").references(() => users.id),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("board_entry_unique").on(t.boardId, t.prospectId)],
 );
+
+/** One row per saved board version (metadata; contents in snapshots). */
+export const draftBoardVersions = pgTable(
+  "draft_board_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    boardId: uuid("board_id")
+      .notNull()
+      .references(() => draftBoards.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    reason: text("reason"),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("board_version_unique").on(t.boardId, t.version)],
+);
+
+/** Immutable ordered snapshot of a board at a version. */
+export const draftBoardSnapshots = pgTable(
+  "draft_board_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    boardId: uuid("board_id")
+      .notNull()
+      .references(() => draftBoards.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    snapshot: jsonb("snapshot").notNull().default([]), // ordered entry rows
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("board_snapshot_unique").on(t.boardId, t.version)],
+);
+
+/** Every meaningful board change: who, what, before/after, version. */
+export const draftBoardRankHistory = pgTable(
+  "draft_board_rank_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    boardId: uuid("board_id")
+      .notNull()
+      .references(() => draftBoards.id, { onDelete: "cascade" }),
+    prospectId: uuid("prospect_id").references(() => amateurProspects.id, { onDelete: "set null" }),
+    field: text("field").notNull(), // overall_rank | director_final_rank | added | removed | status | ...
+    previousValue: text("previous_value"),
+    newValue: text("new_value"),
+    previousRank: integer("previous_rank"),
+    newRank: integer("new_rank"),
+    boardVersion: integer("board_version").notNull(),
+    reason: text("reason"),
+    userId: uuid("user_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("board_rank_history_idx").on(t.boardId, t.createdAt)],
+);
+
+/** Individual scout rankings — never merged into other ranking sources. */
+export const scoutRankings = pgTable(
+  "scout_rankings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    boardId: uuid("board_id")
+      .notNull()
+      .references(() => draftBoards.id, { onDelete: "cascade" }),
+    prospectId: uuid("prospect_id")
+      .notNull()
+      .references(() => amateurProspects.id, { onDelete: "cascade" }),
+    scoutId: uuid("scout_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    rank: integer("rank").notNull(),
+    notes: text("notes"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("scout_ranking_unique").on(t.boardId, t.prospectId, t.scoutId)],
+);
+
+/** Transparent consensus over scout rankings — disagreement is preserved. */
+export const consensusRankings = pgTable(
+  "consensus_rankings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    boardId: uuid("board_id")
+      .notNull()
+      .references(() => draftBoards.id, { onDelete: "cascade" }),
+    prospectId: uuid("prospect_id")
+      .notNull()
+      .references(() => amateurProspects.id, { onDelete: "cascade" }),
+    submissions: integer("submissions").notNull(),
+    meanRank: real("mean_rank").notNull(),
+    medianRank: real("median_rank").notNull(),
+    bestRank: integer("best_rank").notNull(),
+    worstRank: integer("worst_rank").notNull(),
+    spread: integer("spread").notNull(), // worst - best
+    stddev: real("stddev").notNull(),
+    insufficient: boolean("insufficient").notNull().default(false), // < 3 submissions
+    computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("consensus_unique").on(t.boardId, t.prospectId)],
+);
+
+export const cfaRelationshipStatus = pgEnum("cfa_relationship_status", [
+  "not_contacted",
+  "researching",
+  "initial_contact",
+  "active_communication",
+  "strong_interest",
+  "mutual_interest",
+  "offer_under_consideration",
+  "signed_elsewhere",
+  "signed_by_organization",
+  "no_longer_pursuing",
+]);
+
+export const collegeFreeAgentBoards = pgTable("college_free_agent_boards", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("active"), // active | locked | archived
+  version: integer("version").notNull().default(1),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const collegeFreeAgentEntries = pgTable(
+  "college_free_agent_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    boardId: uuid("board_id")
+      .notNull()
+      .references(() => collegeFreeAgentBoards.id, { onDelete: "cascade" }),
+    prospectId: uuid("prospect_id")
+      .notNull()
+      .references(() => amateurProspects.id, { onDelete: "cascade" }),
+    priorityRank: integer("priority_rank").notNull(),
+    nhlRightsStatus: text("nhl_rights_status").notNull().default("unowned"), // unowned | rights_held_by_other | rights_held_by_us
+    remainingEligibility: text("remaining_eligibility"), // e.g. "1 season"
+    expectedAvailability: date("expected_availability"),
+    projectedAhlRole: text("projected_ahl_role"),
+    projectedNhlRole: text("projected_nhl_role"),
+    readiness: text("readiness"), // nhl_ready | ahl_ready | development_needed
+    fitScore: real("fit_score"), // cached organizational fit
+    marketCompetition: text("market_competition"), // low | medium | high
+    agentName: text("agent_name"),
+    relationshipStatus: cfaRelationshipStatus("relationship_status").notNull().default("not_contacted"),
+    lastContactDate: date("last_contact_date"),
+    nextAction: text("next_action"),
+    nextActionDate: date("next_action_date"),
+    assignedStaffId: uuid("assigned_staff_id").references(() => users.id),
+    recommendation: text("recommendation"),
+    notes: text("notes"),
+    entryStatus: text("entry_status").notNull().default("active"), // active | archived
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("cfa_entry_unique").on(t.boardId, t.prospectId)],
+);
+
+/** Field-level history for CFA entries (relationship status, contacts, …). */
+export const collegeFreeAgentStatusHistory = pgTable(
+  "college_free_agent_status_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => collegeFreeAgentEntries.id, { onDelete: "cascade" }),
+    field: text("field").notNull(),
+    previousValue: text("previous_value"),
+    newValue: text("new_value"),
+    userId: uuid("user_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("cfa_history_idx").on(t.entryId, t.createdAt)],
+);
+
+export const boardMeetingNotes = pgTable("board_meeting_notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  boardKind: text("board_kind").notNull(), // draft | college_free_agent
+  boardId: uuid("board_id").notNull(),
+  authorId: uuid("author_id").references(() => users.id),
+  note: text("note").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const boardExports = pgTable("board_exports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  boardKind: text("board_kind").notNull(), // draft | college_free_agent
+  boardId: uuid("board_id").notNull(),
+  format: text("format").notNull().default("csv"),
+  exportedBy: uuid("exported_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const organizationalNeeds = pgTable("organizational_needs", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -1544,24 +1768,8 @@ export const scoutViewings = pgTable("scout_viewings", {
   notes: text("notes"),
 });
 
-export const scoutRankings = pgTable("scout_rankings", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  scoutId: uuid("scout_id").references(() => users.id),
-  prospectId: uuid("prospect_id").notNull().references(() => amateurProspects.id, { onDelete: "cascade" }),
-  rank: integer("rank").notNull(),
-  rankedAt: timestamp("ranked_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const consensusRankings = pgTable("consensus_rankings", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  prospectId: uuid("prospect_id").notNull().references(() => amateurProspects.id, { onDelete: "cascade" }),
-  consensusRank: integer("consensus_rank").notNull(),
-  modelRank: integer("model_rank"),
-  scoutRank: integer("scout_rank"),
-  computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
-});
+/* scout_rankings / consensus_rankings graduated from reserved placeholders to
+   the full board-scoped definitions near the draft-board tables. */
 
 export const prospectDocuments = pgTable("prospect_documents", {
   id: uuid("id").primaryKey().defaultRandom(),
