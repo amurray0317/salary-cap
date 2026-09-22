@@ -17,6 +17,19 @@ import { computeSeasonTrends } from "../src/lib/scouting/trends";
 import { DEFAULT_FIT_WEIGHTS, FIT_COMPONENT_KEYS, FIT_COMPONENT_LABELS } from "../src/lib/scouting/fit";
 import { setDbForTesting } from "../src/db/client";
 import { runFitForNeed } from "../src/server/services/fitService";
+import {
+  addCfaEntry,
+  addProspectToBoard,
+  createCfaBoard,
+  createDraftBoard,
+  refreshBoardDerived,
+  reorderBoard,
+  setBoardStatus,
+  setDirectorRank,
+  submitScoutRanking,
+  updateBoardEntry,
+  updateCfaEntry,
+} from "../src/server/services/boardService";
 
 type Db = PgliteDatabase<typeof schema>;
 
@@ -410,40 +423,6 @@ export async function seedScouting(db: Db, ctx: ScoutingSeedContext): Promise<{ 
     );
   }
 
-  /* ---- draft board + CFA board ---- */
-  const [board] = await db
-    .insert(schema.draftBoards)
-    .values({ organizationId: ctx.auroraOrgId, name: "2026 Draft Board", boardType: "draft", draftYear: 2026, createdBy: ctx.gmUserId })
-    .returning();
-  if (board) {
-    const draftable = topByScore.filter((t) => t.prospect.row.nhlDraftStatus === "undrafted").slice(0, 32);
-    await db.insert(schema.draftBoardEntries).values(
-      draftable.map((t, i) => ({
-        boardId: board.id,
-        prospectId: t.prospect.row.id,
-        overallRank: i + 1,
-        modelRank: i + 1,
-        scoutRank: Math.max(1, i + 1 + randInt(-4, 4)),
-        risk: pick(["low", "medium", "high"] as const),
-        recommendation: i < 10 ? "Target" : "Monitor",
-      })),
-    );
-  }
-  const [cfaBoard] = await db
-    .insert(schema.draftBoards)
-    .values({ organizationId: ctx.auroraOrgId, name: "College Free-Agent Board", boardType: "college_free_agent", createdBy: ctx.gmUserId })
-    .returning();
-  if (cfaBoard && cfas.length > 0) {
-    await db.insert(schema.draftBoardEntries).values(
-      cfas.slice(0, 12).map((p, i) => ({
-        boardId: cfaBoard.id,
-        prospectId: p.row.id,
-        overallRank: i + 1,
-        recommendation: i < 4 ? "Priority signing call" : "Monitor",
-      })),
-    );
-  }
-
   /* ---- fit model configuration (weights live in the database) ---- */
   const [fitModel] = await db
     .insert(schema.fitModels)
@@ -570,6 +549,177 @@ export async function seedScouting(db: Db, ctx: ScoutingSeedContext): Promise<{ 
   setDbForTesting(db as never);
   for (const need of needRows) {
     await runFitForNeed(need.id, ctx.auroraOrgId, ctx.gmUserId);
+  }
+
+  /* ---- acquisition boards — built through the real board service ---- */
+  // Two regional scouts so consensus has ≥ 3 submissions with real disagreement.
+  const scoutUsers: string[] = [ctx.gmUserId, ctx.analystUserId];
+  for (const name of ["Rene Belanger", "Callie Hargrove"]) {
+    const [u] = await db
+      .insert(schema.users)
+      .values({ email: `${name.toLowerCase().replace(/\s+/g, ".")}@aurora.demo`, fullName: name })
+      .returning();
+    await db.insert(schema.organizationMembers).values({ organizationId: ctx.auroraOrgId, userId: u!.id, role: "scout" });
+    scoutUsers.push(u!.id);
+  }
+
+  const undrafted = topByScore.filter((t) => t.prospect.row.nhlDraftStatus === "undrafted").map((t) => t.prospect.row);
+
+  // Scout viewings so board viewing counts and "last viewed" are populated.
+  const viewingRows: Array<typeof schema.scoutViewings.$inferInsert> = [];
+  for (const [i, p] of undrafted.slice(0, 24).entries()) {
+    const count = i < 6 ? 4 : i < 14 ? 2 : i % 3 === 0 ? 0 : 1;
+    for (let v = 0; v < count; v++) {
+      viewingRows.push({
+        organizationId: ctx.auroraOrgId,
+        scoutId: scoutUsers[v % scoutUsers.length]!,
+        prospectId: p.id,
+        viewingType: v % 2 === 0 ? "live" : "video",
+        gameDate: `2026-0${1 + (v % 3)}-${String(5 + i).padStart(2, "0")}`,
+      });
+    }
+  }
+  if (viewingRows.length > 0) await db.insert(schema.scoutViewings).values(viewingRows);
+
+  // 2026 board: fully worked — rankings with disagreement, director calls, a
+  // reorder, then locked as the final board.
+  const board26 = await createDraftBoard({
+    organizationId: ctx.auroraOrgId,
+    userId: ctx.gmUserId,
+    name: "2026 Draft Board",
+    description: "Final board for the 2026 draft — locked after the June meetings.",
+    draftYear: 2026,
+  });
+  const board26Prospects = undrafted.slice(0, 18);
+  for (const p of board26Prospects) {
+    await addProspectToBoard({ boardId: board26.id, prospectId: p.id, organizationId: ctx.auroraOrgId, userId: ctx.gmUserId });
+  }
+  for (const [i, p] of board26Prospects.entries()) {
+    if (i >= board26Prospects.length - 2) {
+      // Thin coverage: one ranking only → insufficient-consensus warning.
+      await submitScoutRanking({ boardId: board26.id, prospectId: p.id, organizationId: ctx.auroraOrgId, scoutId: scoutUsers[0]!, rank: i + 1 });
+      continue;
+    }
+    for (const [s, scoutId] of scoutUsers.entries()) {
+      let rank = Math.max(1, i + 1 + randInt(-2, 2));
+      if (s === 2 && i === 5) rank = 1; // one scout is far higher on him
+      if (s === 3 && i === 1) rank = 16; // another is out on him
+      await submitScoutRanking({ boardId: board26.id, prospectId: p.id, organizationId: ctx.auroraOrgId, scoutId, rank });
+    }
+  }
+  for (const [i, p] of board26Prospects.slice(0, 12).entries()) {
+    await updateBoardEntry({
+      boardId: board26.id,
+      prospectId: p.id,
+      organizationId: ctx.auroraOrgId,
+      userId: ctx.analystUserId,
+      fields: {
+        expectedRound: Math.min(7, Math.floor(i / 3) + 1),
+        expectedRangeStart: i * 8 + 1,
+        expectedRangeEnd: i * 8 + 16,
+        risk: (["low", "medium", "high"] as const)[i % 3]!,
+        floor: i < 4 ? "NHL depth" : "AHL regular",
+        ceiling: i < 4 ? "Top-six / top-four" : "NHL role player",
+        recommendation: i < 6 ? "Target" : "Monitor",
+      },
+    });
+  }
+  for (const [i, p] of board26Prospects.slice(0, 6).entries()) {
+    // Director differs from the working order on one prospect (visible, not merged).
+    await setDirectorRank({ boardId: board26.id, prospectId: p.id, organizationId: ctx.auroraOrgId, userId: ctx.gmUserId, rank: i === 3 ? 9 : i + 1 });
+  }
+  const reordered = board26Prospects.map((p) => p.id);
+  [reordered[1], reordered[2]] = [reordered[2]!, reordered[1]!];
+  await reorderBoard({
+    boardId: board26.id,
+    organizationId: ctx.auroraOrgId,
+    userId: ctx.gmUserId,
+    orderedProspectIds: reordered,
+    reason: "June meeting: flipped 2 and 3 after final viewings",
+  });
+  await refreshBoardDerived(board26.id, ctx.auroraOrgId);
+  await setBoardStatus({ boardId: board26.id, organizationId: ctx.auroraOrgId, userId: ctx.gmUserId, status: "locked" });
+
+  // 2027 board: active working board, young classes, sparse rankings.
+  const board27 = await createDraftBoard({
+    organizationId: ctx.auroraOrgId,
+    userId: ctx.gmUserId,
+    name: "2027 Draft Board (early)",
+    description: "Working board for the 2027 class — early looks only.",
+    draftYear: 2027,
+  });
+  const young = seeded
+    .filter((p) => p.row.nhlDraftStatus === "undrafted" && ["freshman", "sophomore"].includes(p.row.classYear))
+    .slice(0, 12)
+    .map((p) => p.row);
+  for (const p of young) {
+    await addProspectToBoard({ boardId: board27.id, prospectId: p.id, organizationId: ctx.auroraOrgId, userId: ctx.analystUserId });
+  }
+  for (const [i, p] of young.slice(0, 5).entries()) {
+    await submitScoutRanking({ boardId: board27.id, prospectId: p.id, organizationId: ctx.auroraOrgId, scoutId: ctx.analystUserId, rank: i + 1 });
+    if (i < 3) {
+      await submitScoutRanking({ boardId: board27.id, prospectId: p.id, organizationId: ctx.auroraOrgId, scoutId: scoutUsers[2]!, rank: 5 - i });
+    }
+  }
+
+  /* ---- college free-agent boards ---- */
+  const cfaBoardA = await createCfaBoard({
+    organizationId: ctx.auroraOrgId,
+    userId: ctx.gmUserId,
+    name: "Spring 2026 signing targets",
+    description: "Undrafted seniors to call when their seasons end.",
+  });
+  for (const p of cfas.slice(0, 8)) {
+    await addCfaEntry({ boardId: cfaBoardA.id, prospectId: p.row.id, organizationId: ctx.auroraOrgId, userId: ctx.gmUserId });
+  }
+  const cfaEntryRows = await db
+    .select()
+    .from(schema.collegeFreeAgentEntries)
+    .where(eq(schema.collegeFreeAgentEntries.boardId, cfaBoardA.id));
+  const relStatuses = [
+    "active_communication", "mutual_interest", "initial_contact", "strong_interest",
+    "offer_under_consideration", "researching", "signed_elsewhere", "signed_by_organization",
+  ] as const;
+  const dayOffset = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+  for (const [i, entry] of cfaEntryRows.entries()) {
+    const status = relStatuses[i % relStatuses.length]!;
+    const signed = status.startsWith("signed");
+    // Walk the relationship forward so status history shows a real pipeline.
+    if (!signed && i % 2 === 0) {
+      await updateCfaEntry({ entryId: entry.id, organizationId: ctx.auroraOrgId, userId: ctx.analystUserId, fields: { relationshipStatus: "researching" } });
+    }
+    await updateCfaEntry({
+      entryId: entry.id,
+      organizationId: ctx.auroraOrgId,
+      userId: ctx.analystUserId,
+      fields: {
+        nhlRightsStatus: "unowned",
+        remainingEligibility: i % 2 === 0 ? "0 seasons (graduating)" : "1 season",
+        expectedAvailability: i % 2 === 0 ? "2026-04-01" : "2027-04-01",
+        projectedAhlRole: i % 2 === 0 ? "Top-six AHL forward" : "AHL depth",
+        projectedNhlRole: i < 3 ? "Bottom-six call-up candidate" : null,
+        readiness: i < 2 ? "nhl_ready" : i < 5 ? "ahl_ready" : "development_needed",
+        marketCompetition: (["high", "medium", "low"] as const)[i % 3]!,
+        relationshipStatus: status,
+        lastContactDate: dayOffset(-(i + 2) * 3),
+        nextAction: signed ? null : i === 0 ? "Call agent — overdue" : "Schedule campus visit",
+        nextActionDate: signed ? null : dayOffset(i === 0 ? -3 : 5 + i * 4),
+        assignedStaffId: i % 2 === 0 ? ctx.analystUserId : ctx.gmUserId,
+        recommendation: i < 3 ? "Priority signing call" : "Monitor",
+        entryStatus: status === "signed_elsewhere" ? "archived" : "active",
+      },
+    });
+  }
+
+  const cfaBoardB = await createCfaBoard({
+    organizationId: ctx.auroraOrgId,
+    userId: ctx.analystUserId,
+    name: "Depth goaltender watch",
+    description: "Undrafted goaltenders worth tracking for AHL/ECHL depth.",
+  });
+  const goalieCfas = seeded.filter((p) => p.row.positionGroup === "G" && p.row.nhlDraftStatus === "undrafted").slice(0, 3);
+  for (const p of goalieCfas) {
+    await addCfaEntry({ boardId: cfaBoardB.id, prospectId: p.row.id, organizationId: ctx.auroraOrgId, userId: ctx.analystUserId });
   }
 
   /* ---- comparables (NCAA same-age statistical) ---- */
