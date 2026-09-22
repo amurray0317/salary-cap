@@ -120,6 +120,7 @@ async function main() {
       return [{ ...d, data: all.slice(0, 10) }, `first 10 by playerId; ${all.length} in original ("total" left as reported)`];
     },
   );
+  await json("nhl/stats-teams.json", `${rest}/team`);
   await json("nhl/stats-team-summary-20242025-2.json", `${rest}/team/summary?isAggregate=false&isGame=false&start=0&limit=-1&${cay("20242025", 2)}`);
 
   console.log("MoneyPuck season summaries");

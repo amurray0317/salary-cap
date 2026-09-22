@@ -4,7 +4,14 @@
  * the validation service, and the tests all consume one source of truth.
  */
 
-export const IMPORT_TYPES = [
+import {
+  CONNECTOR_DEFINITIONS,
+  CONNECTOR_IMPORT_TYPES,
+  type ConnectorImportType,
+} from "@/lib/import/connectorDefinitions";
+
+/** Types a user can upload as CSV. */
+export const CSV_IMPORT_TYPES = [
   "players",
   "contracts",
   "ncaa_conferences",
@@ -14,6 +21,10 @@ export const IMPORT_TYPES = [
   "ncaa_game_logs",
   "ncaa_draft_status",
 ] as const;
+export type CsvImportType = (typeof CSV_IMPORT_TYPES)[number];
+
+/** All types the gated pipeline handles: CSV uploads + real-data connector datasets. */
+export const IMPORT_TYPES = [...CSV_IMPORT_TYPES, ...CONNECTOR_IMPORT_TYPES] as const;
 export type ImportType = (typeof IMPORT_TYPES)[number];
 
 export interface FieldDef {
@@ -61,9 +72,11 @@ export interface ImportDefinition {
   description: string;
   fields: FieldDef[];
   templateRows: string[][]; // example data rows for the downloadable template
+  /** Produced server-side by a real-data connector; never accepted as an upload. */
+  connectorOnly?: boolean;
 }
 
-export const IMPORT_DEFINITIONS: Record<ImportType, ImportDefinition> = {
+const CSV_IMPORT_DEFINITIONS: Record<CsvImportType, ImportDefinition> = {
   players: {
     type: "players",
     label: "Players",
@@ -243,8 +256,27 @@ export const IMPORT_DEFINITIONS: Record<ImportType, ImportDefinition> = {
   },
 };
 
+function connectorImportDefinitions(): Record<ConnectorImportType, ImportDefinition> {
+  const out = {} as Record<ConnectorImportType, ImportDefinition>;
+  for (const t of CONNECTOR_IMPORT_TYPES) {
+    const d = CONNECTOR_DEFINITIONS[t];
+    out[t] = { type: t, label: d.label, description: d.description, fields: d.fields, templateRows: [], connectorOnly: true };
+  }
+  return out;
+}
+
+export const IMPORT_DEFINITIONS: Record<ImportType, ImportDefinition> = {
+  ...CSV_IMPORT_DEFINITIONS,
+  ...connectorImportDefinitions(),
+};
+
 export function isImportType(v: string): v is ImportType {
   return (IMPORT_TYPES as readonly string[]).includes(v);
+}
+
+/** Only CSV types may be uploaded or offered as templates. */
+export function isCsvImportType(v: string): v is CsvImportType {
+  return (CSV_IMPORT_TYPES as readonly string[]).includes(v);
 }
 
 /** Auto-maps CSV headers to target fields by normalized-name equality. */

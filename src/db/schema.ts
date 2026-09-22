@@ -23,6 +23,7 @@ import {
   jsonb,
   uniqueIndex,
   index,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 /* ------------------------------------------------------------------ */
@@ -925,6 +926,15 @@ export const dataSources = pgTable("data_sources", {
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
   confidence: real("confidence"),
   notes: text("notes"),
+  /** Connector that produced the data (nhl_api | moneypuck | eliteprospects); null = manual. */
+  sourceKey: text("source_key"),
+  /** Season / draft year the data describes ("2024-25", "2025 NHL Draft"). */
+  effectiveSeason: text("effective_season"),
+  /** Required attribution shown wherever the data is displayed. */
+  credit: text("credit"),
+  termsNote: text("terms_note"),
+  /** The gated import that committed this data (one data_sources row per commit). */
+  importId: uuid("import_id").references((): AnyPgColumn => imports.id, { onDelete: "set null" }),
 });
 
 export const imports = pgTable("imports", {
@@ -940,6 +950,15 @@ export const imports = pgTable("imports", {
   mapping: jsonb("mapping").notNull().default({}),
   /** Parsed CSV kept between upload and approval: { headers, rows }. */
   rawData: jsonb("raw_data").notNull().default({}),
+  /** csv_upload | connector — connector imports are produced server-side from a real source. */
+  sourceKind: text("source_kind").notNull().default("csv_upload"),
+  connectorKey: text("connector_key"),
+  /**
+   * Provenance captured at fetch time for connector imports: source name,
+   * request URLs (secrets redacted), retrievedAt, effective season, credit,
+   * terms note, cache hits, and parser warnings.
+   */
+  sourceMeta: jsonb("source_meta").notNull().default({}),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -1580,3 +1599,269 @@ export const prospectVideoLinks = pgTable("prospect_video_links", {
   addedBy: uuid("added_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/* ------------------------------------------------------------------ */
+/* Real-data connectors: response cache + external reference data      */
+/* ------------------------------------------------------------------ */
+/*
+ * Everything below is organization-scoped. External reference rows are
+ * written ONLY by committing a gated connector import (preview → explicit
+ * approval → commit) and always carry the data_sources row of that commit.
+ * Every stat column is nullable: a value the source did not report stays
+ * NULL — nothing (TOI in particular) is ever estimated or defaulted to 0.
+ */
+
+/** Cached raw connector responses (per organization; URLs stored with secrets redacted). */
+export const connectorCache = pgTable(
+  "connector_cache",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    connectorKey: text("connector_key").notNull(),
+    cacheKey: text("cache_key").notNull(), // sha256 of the redacted URL
+    requestUrl: text("request_url").notNull(),
+    httpStatus: integer("http_status").notNull(),
+    contentType: text("content_type"),
+    body: text("body").notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [uniqueIndex("connector_cache_unique").on(t.organizationId, t.cacheKey)],
+);
+
+/** Player identities from an external source (NHL player id, EliteProspects id). */
+export const extPlayers = pgTable(
+  "ext_players",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    source: text("source").notNull(), // nhl | eliteprospects
+    externalId: text("external_id").notNull(),
+    fullName: text("full_name").notNull(),
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    position: text("position"), // C | LW | RW | D | G
+    shootsCatches: text("shoots_catches"),
+    dateOfBirth: date("date_of_birth"),
+    heightCm: integer("height_cm"),
+    weightKg: integer("weight_kg"),
+    birthCity: text("birth_city"),
+    birthCountry: text("birth_country"),
+    currentTeamAbbrev: text("current_team_abbrev"),
+    isActive: boolean("is_active"),
+    draftYear: integer("draft_year"),
+    draftRound: integer("draft_round"),
+    draftPickInRound: integer("draft_pick_in_round"),
+    draftOverall: integer("draft_overall"),
+    draftTeamAbbrev: text("draft_team_abbrev"),
+    sourceId: uuid("source_id").references(() => dataSources.id),
+    importId: uuid("import_id").references(() => imports.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("ext_players_unique").on(t.organizationId, t.source, t.externalId),
+    index("ext_players_name_idx").on(t.organizationId, t.fullName),
+  ],
+);
+
+/** Season roster membership (NHL /v1/roster/{team}/{season}). */
+export const extRosterEntries = pgTable(
+  "ext_roster_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    teamAbbrev: text("team_abbrev").notNull(),
+    season: text("season").notNull(), // "2024-25"
+    externalPlayerId: text("external_player_id").notNull(),
+    playerName: text("player_name").notNull(),
+    sweaterNumber: integer("sweater_number"),
+    position: text("position"),
+    sourceId: uuid("source_id").references(() => dataSources.id),
+    importId: uuid("import_id").references(() => imports.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("ext_roster_unique").on(t.organizationId, t.source, t.teamAbbrev, t.season, t.externalPlayerId),
+  ],
+);
+
+/**
+ * One season line per player per source. `source` distinguishes
+ * nhl_career (per-team rows from the player landing, all leagues),
+ * nhl_stats (league-wide NHL season aggregates), and moneypuck (per
+ * situation). `rowKey` is the connector's deterministic natural key.
+ */
+export const extPlayerSeasons = pgTable(
+  "ext_player_seasons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    rowKey: text("row_key").notNull(),
+    externalPlayerId: text("external_player_id").notNull(),
+    playerName: text("player_name"),
+    season: text("season").notNull(),
+    gameType: text("game_type").notNull(), // regular | playoffs
+    league: text("league"),
+    teamName: text("team_name"),
+    situation: text("situation").notNull().default("all"),
+    position: text("position"),
+    gamesPlayed: integer("games_played"),
+    goals: integer("goals"),
+    assists: integer("assists"),
+    points: integer("points"),
+    plusMinus: integer("plus_minus"),
+    penaltyMinutes: integer("penalty_minutes"),
+    shots: integer("shots"),
+    powerPlayGoals: integer("pp_goals"),
+    powerPlayPoints: integer("pp_points"),
+    shortHandedGoals: integer("sh_goals"),
+    shortHandedPoints: integer("sh_points"),
+    gameWinningGoals: integer("gw_goals"),
+    faceoffPct: real("faceoff_pct"),
+    shootingPct: real("shooting_pct"),
+    /** Total time on ice (seconds) when the source reports it; NULL otherwise. */
+    toiSeconds: integer("toi_seconds"),
+    /** Average TOI per game (seconds) when the source reports it; NULL otherwise. */
+    toiPerGameSeconds: real("toi_per_game_seconds"),
+    gamesStarted: integer("games_started"),
+    wins: integer("wins"),
+    losses: integer("losses"),
+    otLosses: integer("ot_losses"),
+    shotsAgainst: integer("shots_against"),
+    saves: integer("saves"),
+    goalsAgainst: integer("goals_against"),
+    savePct: real("save_pct"),
+    goalsAgainstAverage: real("gaa"),
+    shutouts: integer("shutouts"),
+    /** Individual expected goals (skaters) or expected goals against (goalies). */
+    xGoals: real("x_goals"),
+    onIceXGoalsPct: real("on_ice_xg_pct"),
+    onIceCorsiPct: real("on_ice_corsi_pct"),
+    onIceFenwickPct: real("on_ice_fenwick_pct"),
+    gameScore: real("game_score"),
+    /** Additional source metrics kept under the source's own column names. */
+    metrics: jsonb("metrics").notNull().default({}),
+    sourceId: uuid("source_id").references(() => dataSources.id),
+    importId: uuid("import_id").references(() => imports.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("ext_player_seasons_unique").on(t.organizationId, t.source, t.rowKey),
+    index("ext_player_seasons_player_idx").on(t.organizationId, t.externalPlayerId),
+  ],
+);
+
+export const extTeamSeasons = pgTable(
+  "ext_team_seasons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    source: text("source").notNull(), // nhl_stats | moneypuck
+    rowKey: text("row_key").notNull(),
+    teamAbbrev: text("team_abbrev"),
+    teamName: text("team_name"),
+    season: text("season").notNull(),
+    gameType: text("game_type").notNull(),
+    situation: text("situation").notNull().default("all"),
+    gamesPlayed: integer("games_played"),
+    wins: integer("wins"),
+    losses: integer("losses"),
+    otLosses: integer("ot_losses"),
+    points: integer("points"),
+    goalsFor: integer("goals_for"),
+    goalsAgainst: integer("goals_against"),
+    shotsForPerGame: real("shots_for_per_game"),
+    shotsAgainstPerGame: real("shots_against_per_game"),
+    powerPlayPct: real("pp_pct"),
+    penaltyKillPct: real("pk_pct"),
+    faceoffPct: real("faceoff_pct"),
+    xGoalsFor: real("x_goals_for"),
+    xGoalsAgainst: real("x_goals_against"),
+    xGoalsPct: real("x_goals_pct"),
+    corsiPct: real("corsi_pct"),
+    fenwickPct: real("fenwick_pct"),
+    iceTimeSeconds: integer("ice_time_seconds"),
+    metrics: jsonb("metrics").notNull().default({}),
+    sourceId: uuid("source_id").references(() => dataSources.id),
+    importId: uuid("import_id").references(() => imports.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("ext_team_seasons_unique").on(t.organizationId, t.source, t.rowKey)],
+);
+
+/** NHL Entry Draft selections (api-web /v1/draft/picks). Height/weight kept in the source's units. */
+export const extDraftPicks = pgTable(
+  "ext_draft_picks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    draftYear: integer("draft_year").notNull(),
+    round: integer("round").notNull(),
+    pickInRound: integer("pick_in_round"),
+    overallPick: integer("overall_pick").notNull(),
+    teamAbbrev: text("team_abbrev"),
+    teamPickHistory: text("team_pick_history"),
+    playerName: text("player_name").notNull(),
+    position: text("position"),
+    countryCode: text("country_code"),
+    heightInches: integer("height_inches"),
+    weightPounds: integer("weight_pounds"),
+    amateurClub: text("amateur_club"),
+    amateurLeague: text("amateur_league"),
+    sourceId: uuid("source_id").references(() => dataSources.id),
+    importId: uuid("import_id").references(() => imports.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("ext_draft_picks_unique").on(t.organizationId, t.source, t.draftYear, t.overallPick)],
+);
+
+/** NHL Central Scouting rankings (api-web /v1/draft/rankings/{year}/{category}). */
+export const extDraftRankings = pgTable(
+  "ext_draft_rankings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    source: text("source").notNull(), // nhl_central_scouting
+    draftYear: integer("draft_year").notNull(),
+    categoryId: integer("category_id").notNull(), // 1 NA skater · 2 Intl skater · 3 NA goalie · 4 Intl goalie
+    categoryKey: text("category_key").notNull(),
+    rowKey: text("row_key").notNull(),
+    playerName: text("player_name").notNull(),
+    position: text("position"),
+    shootsCatches: text("shoots_catches"),
+    heightInches: integer("height_inches"),
+    weightPounds: integer("weight_pounds"),
+    birthDate: date("birth_date"),
+    birthCity: text("birth_city"),
+    birthStateProvince: text("birth_state_province"),
+    birthCountry: text("birth_country"),
+    lastAmateurClub: text("last_amateur_club"),
+    lastAmateurLeague: text("last_amateur_league"),
+    midtermRank: integer("midterm_rank"),
+    finalRank: integer("final_rank"),
+    sourceId: uuid("source_id").references(() => dataSources.id),
+    importId: uuid("import_id").references(() => imports.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("ext_draft_rankings_unique").on(t.organizationId, t.source, t.draftYear, t.categoryId, t.rowKey),
+  ],
+);

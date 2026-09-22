@@ -3,98 +3,105 @@
     "file": "nhl/player-landing-8478402.json",
     "url": "https://api-web.nhle.com/v1/player/8478402/landing",
     "status": 200,
-    "retrievedAt": "2026-09-22T21:27:23.501Z",
+    "retrievedAt": "2026-09-22T21:30:10.351Z",
     "trimming": "none (full response)"
   },
   {
     "file": "nhl/player-landing-8471679.json",
     "url": "https://api-web.nhle.com/v1/player/8471679/landing",
     "status": 200,
-    "retrievedAt": "2026-09-22T21:27:24.897Z",
+    "retrievedAt": "2026-09-22T21:30:11.841Z",
     "trimming": "none (full response)"
   },
   {
     "file": "nhl/roster-CHI-20242025.json",
     "url": "https://api-web.nhle.com/v1/roster/CHI/20242025",
     "status": 200,
-    "retrievedAt": "2026-09-22T21:27:26.235Z",
+    "retrievedAt": "2026-09-22T21:30:13.268Z",
     "trimming": "none (full response)"
   },
   {
     "file": "nhl/draft-rankings-2025-1.json",
     "url": "https://api-web.nhle.com/v1/draft/rankings/2025/1",
     "status": 200,
-    "retrievedAt": "2026-09-22T21:27:27.665Z",
+    "retrievedAt": "2026-09-22T21:30:14.692Z",
     "trimming": "first 20 rankings + up to 6 entries missing finalRank/midtermRank/lastAmateurClub; 255 in original"
   },
   {
     "file": "nhl/draft-rankings-2025-3.json",
     "url": "https://api-web.nhle.com/v1/draft/rankings/2025/3",
     "status": 200,
-    "retrievedAt": "2026-09-22T21:27:29.053Z",
+    "retrievedAt": "2026-09-22T21:30:16.056Z",
     "trimming": "none (full response)"
   },
   {
     "file": "nhl/draft-picks-2024-1.json",
     "url": "https://api-web.nhle.com/v1/draft/picks/2024/1",
     "status": 200,
-    "retrievedAt": "2026-09-22T21:27:30.395Z",
+    "retrievedAt": "2026-09-22T21:30:17.392Z",
     "trimming": "none (full response)"
   },
   {
     "file": "nhl/stats-skater-summary-20242025-2.json",
     "url": "https://api.nhle.com/stats/rest/en/skater/summary?isAggregate=false&isGame=false&start=0&limit=-1&sort=%5B%7B%22property%22%3A%22playerId%22%2C%22direction%22%3A%22ASC%22%7D%5D&cayenneExp=seasonId%3D20242025%20and%20gameTypeId%3D2",
     "status": 200,
-    "retrievedAt": "2026-09-22T21:27:32.511Z",
+    "retrievedAt": "2026-09-22T21:30:19.302Z",
     "trimming": "first 12 by playerId + 3 multi-team + 3 null-faceoff rows; 920 in original (\"total\" left as reported)"
   },
   {
     "file": "nhl/stats-goalie-summary-20242025-2.json",
     "url": "https://api.nhle.com/stats/rest/en/goalie/summary?isAggregate=false&isGame=false&start=0&limit=-1&sort=%5B%7B%22property%22%3A%22playerId%22%2C%22direction%22%3A%22ASC%22%7D%5D&cayenneExp=seasonId%3D20242025%20and%20gameTypeId%3D2",
     "status": 200,
-    "retrievedAt": "2026-09-22T21:27:33.887Z",
+    "retrievedAt": "2026-09-22T21:30:20.643Z",
     "trimming": "first 10 by playerId; 103 in original (\"total\" left as reported)"
+  },
+  {
+    "file": "nhl/stats-teams.json",
+    "url": "https://api.nhle.com/stats/rest/en/team",
+    "status": 200,
+    "retrievedAt": "2026-09-22T21:30:21.924Z",
+    "trimming": "none (full response)"
   },
   {
     "file": "nhl/stats-team-summary-20242025-2.json",
     "url": "https://api.nhle.com/stats/rest/en/team/summary?isAggregate=false&isGame=false&start=0&limit=-1&cayenneExp=seasonId%3D20242025%20and%20gameTypeId%3D2",
     "status": 200,
-    "retrievedAt": "2026-09-22T21:27:35.221Z",
+    "retrievedAt": "2026-09-22T21:30:23.234Z",
     "trimming": "none (full response)"
   },
   {
     "file": "moneypuck/skaters-2024-regular.csv",
     "url": "https://moneypuck.com/moneypuck/playerData/seasonSummary/2024/regular/skaters.csv",
     "status": 200,
-    "retrievedAt": "2026-09-22T21:27:37.310Z",
+    "retrievedAt": "2026-09-22T21:30:25.219Z",
     "trimming": "header + all lines (every situation) for the first 8 distinct ids in file order; 4600 data lines in original"
   },
   {
     "file": "moneypuck/goalies-2024-regular.csv",
     "url": "https://moneypuck.com/moneypuck/playerData/seasonSummary/2024/regular/goalies.csv",
     "status": 200,
-    "retrievedAt": "2026-09-22T21:27:38.603Z",
+    "retrievedAt": "2026-09-22T21:30:26.510Z",
     "trimming": "header + all lines (every situation) for the first 5 distinct ids in file order; 515 data lines in original"
   },
   {
     "file": "moneypuck/teams-2024-regular.csv",
     "url": "https://moneypuck.com/moneypuck/playerData/seasonSummary/2024/regular/teams.csv",
     "status": 200,
-    "retrievedAt": "2026-09-22T21:27:39.892Z",
+    "retrievedAt": "2026-09-22T21:30:27.802Z",
     "trimming": "header + all lines (every situation) for the first 3 distinct ids in file order; 160 data lines in original"
   },
   {
     "file": "eliteprospects/401-missing-key.json",
     "url": "https://api.eliteprospects.com/v1/leagues",
     "status": 401,
-    "retrievedAt": "2026-09-22T21:27:41.564Z",
+    "retrievedAt": "2026-09-22T21:30:29.776Z",
     "trimming": "none (full error response)"
   },
   {
     "file": "eliteprospects/401-invalid-key.json",
     "url": "https://api.eliteprospects.com/v1/players?apiKey=invalid-probe-key&limit=1",
     "status": 401,
-    "retrievedAt": "2026-09-22T21:27:42.912Z",
+    "retrievedAt": "2026-09-22T21:30:31.127Z",
     "trimming": "none (full error response)"
   }
 ]

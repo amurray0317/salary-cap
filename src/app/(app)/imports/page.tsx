@@ -6,7 +6,7 @@ import { resolveAppContext } from "@/server/appContext";
 import { uploadImportAction } from "@/server/actions/importActions";
 import { UploadImportForm } from "@/components/ImportForms";
 import { Card, Td, Th } from "@/components/ui";
-import { IMPORT_DEFINITIONS, IMPORT_TYPES } from "@/lib/import/definitions";
+import { IMPORT_DEFINITIONS, CSV_IMPORT_TYPES } from "@/lib/import/definitions";
 import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Data imports" };
@@ -45,7 +45,7 @@ export default async function ImportsPage() {
           <UploadImportForm
             action={uploadImportAction}
             organizationId={ctx.org.id}
-            types={IMPORT_TYPES.map((t) => ({ value: t, label: IMPORT_DEFINITIONS[t].label }))}
+            types={CSV_IMPORT_TYPES.map((t) => ({ value: t, label: IMPORT_DEFINITIONS[t].label }))}
           />
         </Card>
         <Card title="Templates">
@@ -53,7 +53,7 @@ export default async function ImportsPage() {
             Download a template with the expected columns and example rows:
           </p>
           <ul className="space-y-2 text-sm">
-            {IMPORT_TYPES.map((t) => (
+            {CSV_IMPORT_TYPES.map((t) => (
               <li key={t}>
                 <a href={`/api/import-templates/${t}`} className="text-accent-text hover:underline">
                   {IMPORT_DEFINITIONS[t].label} template →
