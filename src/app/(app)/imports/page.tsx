@@ -36,7 +36,9 @@ export default async function ImportsPage() {
         <h1 className="text-xl font-semibold">Data imports</h1>
         <p className="text-sm text-ink-muted">
           Upload CSV files, map columns, review row-level validation, and explicitly approve
-          before anything is written. Invalid rows are never committed.
+          before anything is written. Invalid rows are never committed. Real NHL / MoneyPuck /
+          EliteProspects data is fetched from <Link href="/real-data" className="text-accent-text hover:underline">Real data</Link>{" "}
+          and goes through this same approval step.
         </p>
       </div>
 
@@ -88,7 +90,12 @@ export default async function ImportsPage() {
                       {r.fileName}
                     </Link>
                   </Td>
-                  <Td className="text-ink-secondary">{r.importType}</Td>
+                  <Td className="text-ink-secondary">
+                    {r.importType}
+                    {r.sourceKind === "connector" && (
+                      <span className="ml-1.5 rounded bg-accent-soft px-1.5 py-0.5 text-xs text-accent-text">connector</span>
+                    )}
+                  </Td>
                   <Td>
                     <span
                       className={`rounded px-1.5 py-0.5 text-xs ${
