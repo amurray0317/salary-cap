@@ -92,6 +92,46 @@ referential checks (school → conference, stats/logs/draft → existing prospec
 cross-field rules (drafted requires a year; undrafted must leave round/overall blank).
 Every transition is audit-logged.
 
+## Real-data connectors
+
+```
+connector form (edit_data) ──► connectorService.runConnectorImport
+   zod request ─► buildPlan (URLs, source name, credit, terms)
+   cachedFetch  ─► connector_cache (per org, TTL) ─miss─► rateLimitedGet
+                    (host allowlist · per-host min interval · 30 s timeout · 10 MB cap)
+   pure parser  ─► normalized records ("" = not reported) + warnings + effective season
+   importService.createConnectorImport ─► imports (source_kind=connector, source_meta)
+                                        ─► validateImport (identity mapping) ─► awaiting_approval
+explicit approval ─► commitImport ─► data_sources row ─► connectorCommit upserts ext_* rows
+```
+
+- **Pure parsers** live in `src/lib/connectors/{nhl,moneypuck,eliteprospects}.ts` and were
+  written against recorded real responses (`tests/fixtures/connectors/`, produced by
+  `scripts/record-connector-fixtures.ts`, which only drops whole array elements / CSV lines
+  and records URL, status, time, and trimming in `manifest.json`). A parser that does not
+  find the envelope it depends on throws `ConnectorParseError` instead of importing a guess.
+- **Connector datasets are import types** (`src/lib/import/connectorDefinitions.ts`) with
+  `connectorOnly` set: the upload action and template route refuse them, and connector
+  imports always validate with the identity mapping (no re-mapping of real data). Field
+  descriptions name the source column; `m_*` fields land in the row's `metrics` JSON.
+- **Natural keys** (`rowKey`) drive in-file duplicate detection, the preview's
+  new-vs-update count, and `ON CONFLICT` upserts, so re-importing refreshes rows instead of
+  duplicating them. Datasets that carry only part of a bio (rosters) use a fill-only upsert
+  (`coalesce(excluded.x, x)`) so they never erase fields another dataset supplied.
+- **Provenance**: `imports.source_meta` holds source name, redacted URLs, retrieval time
+  (a cache hit keeps the original retrieval time), effective season, credit, terms, cache
+  status, and parser warnings; commit copies it into one `data_sources` row whose id is
+  stamped on every committed `ext_*` row (plus `import_id`).
+- **Tenancy**: `connector_cache`, `imports`, `data_sources`, and all `ext_*` tables carry
+  `organization_id`; every read goes through `referenceDataService` with the context's org
+  id; RLS policies cover the new tables on Supabase. Cache entries are never shared across
+  organizations (an EliteProspects response fetched under one org's key must not leak).
+- **Secrets**: the EP key is read from `EP_API_KEY` at request time, sent as the `apiKey`
+  query parameter (the only form the API accepted when probed), and redacted from cache
+  keys, stored URLs, provenance, and audit logs.
+- **Separation from official records**: real data lives in `ext_*` reference tables and never
+  writes `players`, `contracts`, or cap tables; the demo seed is unchanged.
+
 ## NCAA player list & percentiles
 
 `prospectListService.listProspects` is the shared assembly for the players page and the
@@ -138,4 +178,5 @@ read-only over official roster/contract/scenario/prospect data. `run_fit_models`
 ## Folder structure
 
 See README "Architecture" section; test layout mirrors features (`tests/capEngine`, `scenario`,
-`valuation`, `isolation`, `csv`).
+`valuation`, `isolation`, `csv`, `connectorParsers`, `connectorPipeline`); real-response
+fixtures live in `tests/fixtures/connectors/`.

@@ -50,6 +50,7 @@ compliance engine has something to say out of the box.
 src/
 ├── db/            schema.ts (40+ tables), client.ts (PGlite/Postgres switch)
 ├── lib/
+│   ├── connectors/ NHL API, MoneyPuck, EliteProspects parsers + HTTP policy (pure)
 │   ├── engine/    cap rules engine — pure, versioned, explainable
 │   ├── scenario/  typed transaction payloads + projector (overlay, never mutates)
 │   ├── valuation/ market/performance/surplus models v0.1 (transparent heuristics)
@@ -58,7 +59,8 @@ src/
 ├── server/
 │   ├── context.ts       requireOrgAccess: server-side tenancy + role gate
 │   ├── appContext.ts    org/team/season working-context resolution
-│   ├── services/        capService, scenarioService, valuationService
+│   ├── services/        capService, scenarioService, valuationService,
+│   │                    connectorService (fetch → gated import), referenceDataService
 │   └── actions/         validated server actions (zod), all audited
 └── app/           App Router pages (public, auth, and app shell)
 ```
@@ -117,6 +119,9 @@ Copy `.env.example` to `.env`. Everything is optional in local mode:
 - `SESSION_SECRET` — required in production for the local provider
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — Supabase mode
 - `LLM_PROVIDER`, `LLM_API_KEY` — reserved for the future AI assistant (off by default)
+- `EP_API_KEY` — EliteProspects official API key; the EP connector is disabled until it is set
+- `NODE_USE_ENV_PROXY=1` — only when outbound HTTPS goes through a proxy (Node's fetch ignores
+  `HTTPS_PROXY` otherwise)
 
 No secrets are committed; `.env*` is gitignored.
 
@@ -131,6 +136,8 @@ No secrets are committed; `.env*` is gitignored.
 | `npm run db:seed` | load fictional demo data (local DB only; refuses `DATABASE_URL`) |
 | `npm run db:reset` | wipe local DB, re-migrate, re-seed |
 | `npm run typecheck` / `npm run lint` / `npm test` | quality gates |
+| `npm run fixtures:record` | re-record real connector fixtures into `tests/fixtures/connectors/` |
+| `npm run test:e2e:real-data` | live browser run of the connectors (needs a running server with network access) |
 
 ## Deployment
 
@@ -216,13 +223,41 @@ detection, referential checks (schools must name an existing conference; stats/l
 rows must name an existing prospect), and cross-field rules (drafted rows require a draft
 year; undrafted rows must leave round/overall blank).
 
+## Real data connectors
+
+The **Real data** section pulls real-world data on demand — the fictional demo seed is
+untouched, and nothing real is bundled:
+
+| Connector | Datasets | Notes |
+|---|---|---|
+| NHL API (`api-web.nhle.com`, `api.nhle.com`) | player bios, career seasons (all leagues), team rosters, league skater/goalie/team season summaries, draft history, **NHL Central Scouting rankings** (`/v1/draft/rankings/{year}/{category}`) | public, undocumented endpoints |
+| MoneyPuck season-summary CSVs | skaters, goalies, teams by situation (all / 5on5 / 5on4 / 4on5 / other) | **Data: MoneyPuck.com** — credited everywhere it is shown; free for non-commercial use per moneypuck.com/data.htm |
+| EliteProspects (official API only) | player search | **disabled until `EP_API_KEY` is configured**; never scrapes |
+
+Every fetch is host-allowlisted, rate-limited per host, and cached per organization. The
+response is parsed into a connector-only import type and staged in the **same gated import
+pipeline** as CSV uploads: the preview shows the source, request URL (secrets redacted),
+retrieval time, effective season, cache status, credit, terms, and parser warnings, plus
+how many rows are new vs. updates. Nothing is written until a user with `edit_data`
+approves; approval upserts the org's `ext_*` reference tables and records a `data_sources`
+row (source name, URL, retrieved date, effective season, credit, terms) that every
+committed row points to. Missing values stay NULL — e.g. junior-league seasons have no TOI
+in the NHL feed and are shown as "—", never estimated. Browse pages: players & stats
+(NHL career + league summaries + MoneyPuck, merged on the NHL player id, with clearly
+labeled derived rates such as ixG/60 and GSAx), Central Scouting rankings (midterm vs.
+final, never blended) and draft history, and team seasons by source and situation.
+
+Parsers were written against **recorded real responses** in `tests/fixtures/connectors/`
+(`manifest.json` lists URL, status, retrieval time, and trimming for each; re-record with
+`npm run fixtures:record`).
+
 ## Data sources
 
-The MVP uses user-entered data, CSV-style seeds, and fictional demonstration data only. A
-`data_sources` table tracks name/URL/retrieved/verified/confidence for every externally sourced
-record, and provenance enums (`official / user_entered / estimated / projected / model_generated`)
-are carried on players, contracts, statistics, and valuations. No scraping; licensed providers
-would plug in behind the import layer.
+The fictional demo seed stays as-is. Real data enters only through the connectors above
+(on demand, per organization, gated) or user CSV uploads. The `data_sources` table carries
+source name / URL / retrieved date / effective season / credit / terms for every connector
+import, and provenance enums (`official / user_entered / estimated / projected /
+model_generated`) are carried on players, contracts, statistics, and valuations. No scraping.
 
 ## Known limitations
 
