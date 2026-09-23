@@ -80,7 +80,10 @@ it is implemented" rule.
 - **Rate limiting and caching are per server process.** The per-host limiter is in memory
   and the cache is per organization (the same public response fetched by two orgs is
   fetched twice by design). A multi-instance deployment needs a shared limiter.
-- **Scale limits:** 25 player ids per request; 10,000 rows per connector import; 10 MB per
+- **Game logs** come from the per-player endpoint, one player at a time (two requests
+  each, because the game log carries no player name). Team-wide game logs and
+  play-by-play / shift data are not imported yet.
+- **Scale limits:** 25 player ids per request (10 for game logs); 10,000 rows per connector import; 10 MB per
   response. Imports run synchronously in the request (a full MoneyPuck skater file with all
   five situations is ~4,600 rows).
 - **No scheduled refresh.** Data is imported on demand only; re-running a connector and

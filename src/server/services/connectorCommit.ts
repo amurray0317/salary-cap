@@ -192,6 +192,53 @@ export async function commitConnectorRecords(
       return rows.length;
     }
 
+    case "ext_game_logs": {
+      const g = schema.extPlayerGameLogs;
+      const rows = records.map(({ values: v }) => ({
+        ...stamp,
+        source: def.sourceTag,
+        externalPlayerId: v.external_player_id!,
+        playerName: textOrNull(v.player_name),
+        gameId: v.game_id!,
+        gameDate: v.game_date!,
+        season: v.season!,
+        gameType: v.game_type!,
+        teamAbbrev: textOrNull(v.team_abbrev),
+        opponentAbbrev: textOrNull(v.opponent_abbrev),
+        homeRoad: textOrNull(v.home_road),
+        goals: intOrNull(v.goals),
+        assists: intOrNull(v.assists),
+        points: intOrNull(v.points),
+        plusMinus: intOrNull(v.plus_minus),
+        penaltyMinutes: intOrNull(v.penalty_minutes),
+        shots: intOrNull(v.shots),
+        powerPlayGoals: intOrNull(v.pp_goals),
+        powerPlayPoints: intOrNull(v.pp_points),
+        shortHandedGoals: intOrNull(v.sh_goals),
+        shortHandedPoints: intOrNull(v.sh_points),
+        gameWinningGoals: intOrNull(v.gw_goals),
+        otGoals: intOrNull(v.ot_goals),
+        shifts: intOrNull(v.shifts),
+        toiSeconds: intOrNull(v.toi_seconds),
+        gamesStarted: intOrNull(v.games_started),
+        decision: textOrNull(v.decision),
+        shotsAgainst: intOrNull(v.shots_against),
+        goalsAgainst: intOrNull(v.goals_against),
+        savePct: realOrNull(v.save_pct),
+        shutouts: intOrNull(v.shutouts),
+      }));
+      await insertChunks(rows, (chunk) =>
+        tx
+          .insert(g)
+          .values(chunk)
+          .onConflictDoUpdate({
+            target: [g.organizationId, g.source, g.externalPlayerId, g.gameId],
+            set: upsertSet(g, "overwrite", []),
+          }),
+      );
+      return rows.length;
+    }
+
     case "ext_team_seasons": {
       const s = schema.extTeamSeasons;
       const rows = records.map(({ values: v }) => ({
@@ -362,6 +409,16 @@ async function countChunk(
         .from(t)
         .where(and(eq(t.organizationId, organizationId), eq(t.source, def.sourceTag), inArray(t.rowKey, keys)));
       return row?.n ?? 0;
+    }
+    case "ext_game_logs": {
+      const g = schema.extPlayerGameLogs;
+      const pids = [...new Set(records.map((x) => x.values.external_player_id ?? ""))];
+      const rows = await db
+        .select({ pid: g.externalPlayerId, gameId: g.gameId })
+        .from(g)
+        .where(and(eq(g.organizationId, organizationId), eq(g.source, def.sourceTag), inArray(g.externalPlayerId, pids)));
+      const byKey = new Set(keys);
+      return rows.filter((x) => byKey.has(`${x.pid}|${x.gameId}`)).length;
     }
     case "ext_draft_picks": {
       const t = schema.extDraftPicks;

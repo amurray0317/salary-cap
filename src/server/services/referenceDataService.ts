@@ -68,6 +68,18 @@ export async function listReferencePlayers(organizationId: string, opts: { q?: s
     .where(and(eq(s.organizationId, organizationId), q ? ilike(s.playerName, `%${q}%`) : undefined))
     .groupBy(s.externalPlayerId);
 
+  const g = schema.extPlayerGameLogs;
+  const logs = await db
+    .select({
+      externalId: g.externalPlayerId,
+      name: sql<string | null>`max(${g.playerName})`,
+      latestSeason: sql<string | null>`max(${g.season})`,
+      n: count(),
+    })
+    .from(g)
+    .where(and(eq(g.organizationId, organizationId), q ? ilike(g.playerName, `%${q}%`) : undefined))
+    .groupBy(g.externalPlayerId);
+
   const byId = new Map<string, PlayerListRow>();
   for (const b of bios) {
     byId.set(`${b.source}:${b.externalId}`, {
@@ -105,6 +117,26 @@ export async function listReferencePlayers(organizationId: string, opts: { q?: s
       });
     }
   }
+  for (const l of logs) {
+    const key = `nhl:${l.externalId}`;
+    const existing = byId.get(key);
+    if (existing) {
+      existing.sources = [...new Set([...existing.sources, "nhl_game_logs"])];
+      if (!existing.latestSeason || (l.latestSeason && l.latestSeason > existing.latestSeason)) existing.latestSeason = l.latestSeason;
+    } else {
+      byId.set(key, {
+        externalId: l.externalId,
+        name: l.name ?? l.externalId,
+        position: null,
+        team: null,
+        dateOfBirth: null,
+        bioSource: null,
+        seasonLines: 0,
+        sources: ["nhl_game_logs"],
+        latestSeason: l.latestSeason,
+      });
+    }
+  }
   return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name)).slice(0, opts.limit ?? 500);
 }
 
@@ -124,7 +156,12 @@ export async function getReferencePlayer(organizationId: string, externalId: str
     .from(schema.extRosterEntries)
     .where(and(eq(schema.extRosterEntries.organizationId, organizationId), eq(schema.extRosterEntries.externalPlayerId, externalId)))
     .orderBy(desc(schema.extRosterEntries.season));
-  const sourceIds = [...new Set([...bios, ...seasons, ...roster].map((r) => r.sourceId).filter((x): x is string => !!x))];
+  const gameLogs = await db
+    .select()
+    .from(schema.extPlayerGameLogs)
+    .where(and(eq(schema.extPlayerGameLogs.organizationId, organizationId), eq(schema.extPlayerGameLogs.externalPlayerId, externalId)))
+    .orderBy(asc(schema.extPlayerGameLogs.gameDate));
+  const sourceIds = [...new Set([...bios, ...seasons, ...roster, ...gameLogs].map((r) => r.sourceId).filter((x): x is string => !!x))];
   const sources =
     sourceIds.length > 0
       ? await db
@@ -133,8 +170,8 @@ export async function getReferencePlayer(organizationId: string, externalId: str
           .where(and(eq(schema.dataSources.organizationId, organizationId), inArray(schema.dataSources.id, sourceIds)))
           .orderBy(desc(schema.dataSources.retrievedAt))
       : [];
-  if (bios.length === 0 && seasons.length === 0 && roster.length === 0) return null;
-  return { bios, seasons, roster, sources };
+  if (bios.length === 0 && seasons.length === 0 && roster.length === 0 && gameLogs.length === 0) return null;
+  return { bios, seasons, roster, gameLogs, sources };
 }
 
 export async function listDraftRankings(organizationId: string, opts: { year?: number; category?: number }) {

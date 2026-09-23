@@ -181,6 +181,27 @@ describe("gated connector imports", () => {
     expect(entries.every((e) => e.season === "2024-25")).toBe(true);
   });
 
+  it("game logs: two requests per player, NULL goalie fields for skaters, upsert on re-import", async () => {
+    const f = fixtureFetch();
+    const res = await run({ dataset: "nhl_game_logs", playerIds: ["8478402", "8476945"], season: "2024-25", gameType: "regular" }, f);
+    expect(res.validCount).toBe(67 + 63);
+    expect(f.calls.filter((u) => u.includes("/game-log/"))).toHaveLength(2);
+    const detail = await getImportDetail(res.importId, fx.orgId);
+    expect(detail.sourceMeta?.urls).toHaveLength(4);
+    expect(detail.sourceMeta?.warnings.some((w) => w.includes("relief appearance"))).toBe(true);
+    await commitImport({ importId: res.importId, organizationId: fx.orgId, userId: fx.userId });
+    const logs = await db.select().from(schema.extPlayerGameLogs).where(eq(schema.extPlayerGameLogs.organizationId, fx.orgId));
+    expect(logs).toHaveLength(130);
+    const mcdavid = logs.filter((l) => l.externalPlayerId === "8478402");
+    expect(mcdavid.every((l) => l.shotsAgainst === null && l.decision === null && l.toiSeconds !== null)).toBe(true);
+    const relief = logs.find((l) => l.externalPlayerId === "8476945" && l.gamesStarted === 0);
+    expect(relief).toMatchObject({ decision: null, toiSeconds: 610, points: null });
+    const again = await run({ dataset: "nhl_game_logs", playerIds: ["8478402", "8476945"], season: "2024-25", gameType: "regular" });
+    expect((await getImportDetail(again.importId, fx.orgId)).existingCount).toBe(130);
+    await commitImport({ importId: again.importId, organizationId: fx.orgId, userId: fx.userId });
+    expect(await db.select().from(schema.extPlayerGameLogs)).toHaveLength(130);
+  });
+
   it("MoneyPuck import credits MoneyPuck and keeps metrics under source names", async () => {
     const res = await run({ dataset: "moneypuck_skaters", season: "2024-25", gameType: "regular", situations: ["all", "5on5"] });
     expect(res.validCount).toBe(16);

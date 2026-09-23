@@ -10,6 +10,7 @@ const SOURCE_LABELS: Record<string, string> = {
   nhl: "NHL bio",
   nhl_career: "NHL career",
   nhl_stats: "NHL stats",
+  nhl_game_logs: "NHL game logs",
   moneypuck: "MoneyPuck",
   eliteprospects: "EliteProspects",
 };

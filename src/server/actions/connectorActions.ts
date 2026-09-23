@@ -19,6 +19,13 @@ function requestFromForm(fd: FormData): unknown {
     case "nhl_players":
     case "nhl_player_seasons":
       return { dataset, playerIds: [...new Set(str(fd, "playerIds").split(/[\s,;]+/).filter(Boolean))] };
+    case "nhl_game_logs":
+      return {
+        dataset,
+        playerIds: [...new Set(str(fd, "playerIds").split(/[\s,;]+/).filter(Boolean))],
+        season: str(fd, "season"),
+        gameType: str(fd, "gameType"),
+      };
     case "nhl_roster":
       return { dataset, team: str(fd, "team").toUpperCase(), season: str(fd, "season") };
     case "nhl_skater_stats":

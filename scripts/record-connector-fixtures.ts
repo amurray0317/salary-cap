@@ -96,6 +96,11 @@ async function main() {
     const partial = all.filter((r) => r.finalRank === undefined || r.midtermRank === undefined || r.lastAmateurClub === undefined).slice(0, 6);
     return [{ ...d, rankings: [...head, ...partial.filter((p) => !head.includes(p))] }, `first 20 rankings + up to 6 entries missing finalRank/midtermRank/lastAmateurClub; ${all.length} in original`];
   });
+  await json("nhl/game-log-8478402-20242025-2.json", `${web}/player/8478402/game-log/20242025/2`);
+  await json("nhl/game-log-8478402-20242025-3.json", `${web}/player/8478402/game-log/20242025/3`);
+  // Goalie with relief appearances (no `decision` key) and OT/SO losses ("O").
+  await json("nhl/game-log-8476945-20242025-2.json", `${web}/player/8476945/game-log/20242025/2`);
+  await json("nhl/player-landing-8476945.json", `${web}/player/8476945/landing`);
   await json("nhl/draft-rankings-2025-3.json", `${web}/draft/rankings/2025/3`);
   await json("nhl/draft-picks-2024-1.json", `${web}/draft/picks/2024/1`);
 

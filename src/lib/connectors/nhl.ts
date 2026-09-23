@@ -65,6 +65,8 @@ const sortBy = (prop: string) => `sort=${encodeURIComponent(JSON.stringify([{ pr
 
 export const nhlUrls = {
   playerLanding: (id: string) => `${NHL_WEB}/player/${assertPlayerId(id)}/landing`,
+  gameLog: (id: string, seasonId: string, gameTypeId: 2 | 3) =>
+    `${NHL_WEB}/player/${assertPlayerId(id)}/game-log/${assertSeasonId(seasonId)}/${gameTypeId}`,
   roster: (team: string, seasonId: string) => `${NHL_WEB}/roster/${assertTeam(team)}/${assertSeasonId(seasonId)}`,
   draftPicks: (year: number, round: number | "all") => {
     if (!Number.isInteger(year) || year < 1963 || year > 2100) throw new ConnectorParseError("Invalid draft year");
@@ -204,6 +206,68 @@ export function parsePlayerCareer(json: unknown): ParsedDataset {
   const noToi = records.filter((r) => r.toi_per_game_seconds === "" && r.toi_seconds === "").length;
   if (noToi > 0) warnings.push(`${name}: ${noToi} of ${records.length} season line(s) have no time-on-ice in the source — left blank.`);
   return { records, effectiveSeason: latestSeason(records.map((r) => r.season!)), warnings };
+}
+
+/* ------------------------------------------------------------------ */
+/* Game logs                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `gameLog` → nhl_game_logs records. The game-log response carries no player
+ * name, so the caller passes the player's landing (also used for position).
+ * Goalie rows are recognized by the goalie-only `shotsAgainst` key.
+ */
+export function parseGameLog(json: unknown, playerId: string, landing?: unknown): ParsedDataset {
+  const d = requireObject(json, "Game log");
+  const games = requireArray(d, "gameLog", "Game log");
+  const season = nhlSeasonLabel(d.seasonId);
+  const gameType = gameTypeLabel(d.gameTypeId);
+  if (season === "" || gameType === "") throw new ConnectorParseError("Game log: missing seasonId/gameTypeId");
+  const name = isObject(landing) ? fullName(landing.firstName, landing.lastName) : "";
+  const label = name || playerId;
+  let noDecision = 0;
+  const records: NormalizedRecord[] = [];
+  for (const g of games) {
+    if (!isObject(g)) continue;
+    const goalie = "shotsAgainst" in g;
+    if (goalie && g.decision === undefined) noDecision += 1;
+    records.push({
+      external_player_id: playerId,
+      player_name: name,
+      game_id: int(g.gameId),
+      game_date: str(g.gameDate),
+      season,
+      game_type: gameType,
+      team_abbrev: str(g.teamAbbrev),
+      opponent_abbrev: str(g.opponentAbbrev),
+      home_road: str(g.homeRoadFlag),
+      goals: int(g.goals),
+      assists: int(g.assists),
+      points: int(g.points),
+      plus_minus: int(g.plusMinus),
+      penalty_minutes: int(g.pim),
+      shots: int(g.shots),
+      pp_goals: int(g.powerPlayGoals),
+      pp_points: int(g.powerPlayPoints),
+      sh_goals: int(g.shorthandedGoals),
+      sh_points: int(g.shorthandedPoints),
+      gw_goals: int(g.gameWinningGoals),
+      ot_goals: int(g.otGoals),
+      shifts: int(g.shifts),
+      toi_seconds: clockToSeconds(g.toi),
+      games_started: int(g.gamesStarted),
+      decision: str(g.decision),
+      shots_against: int(g.shotsAgainst),
+      goals_against: int(g.goalsAgainst),
+      save_pct: num(g.savePctg),
+      shutouts: int(g.shutouts),
+    });
+  }
+  const warnings: string[] = [];
+  if (records.length === 0) warnings.push(`${label}: no ${gameType} games in ${season}.`);
+  if (noDecision > 0) warnings.push(`${label}: ${noDecision} relief appearance(s) with no decision in the source (left blank).`);
+  if (!name) warnings.push(`${playerId}: player name unavailable (landing not returned).`);
+  return { records, effectiveSeason: season, warnings };
 }
 
 /* ------------------------------------------------------------------ */
