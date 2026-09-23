@@ -66,7 +66,7 @@ it is implemented" rule.
   weight, birthplace, and stats are intentionally not mapped yet.
 - **Reference data is not linked to official records.** Imported NHL players live in
   `ext_*` tables and are not matched to RosterIQ `players`, NCAA `amateur_prospects`, or the
-  draft board (Phase 3 boards are in a separate PR). Draft picks and Central Scouting
+  Phase 3 draft or CFA boards. Draft picks and Central Scouting
   rankings carry no NHL player id in the source, so they are not linked to player pages.
 - **No cross-source reconciliation.** NHL and MoneyPuck rows are shown per source, never
   blended; they can differ (e.g. MoneyPuck assigns a traded player's season to one team
@@ -137,6 +137,22 @@ it is implemented" rule.
   weight-editing UI are deferred (weights change via new model versions).
 - Depth snapshots are captured per run; the needs-page depth summary is computed live
   and can drift from the last snapshot until the next run.
+
+## Acquisition boards
+
+- Board mutations run as sequential statements, not a single database transaction per
+  change; a crash mid-change could leave a version row without its snapshot. Acceptable
+  at demo scale; wrap `commitBoardVersion` callers in `db.transaction` before production.
+- Consensus uses a plain mean/median over submitted ranks; it does not weight scouts by
+  seniority or coverage, and ranks from scouts who saw a prospect once count equally.
+- The statistical-model rank is the best persisted role score, not a draft-value model;
+  organizational-fit rank uses the best fit across all active needs.
+- Viewing counts come from `scout_viewings`; there is no viewing-entry UI yet (seeded
+  data only), and assignment scheduling is out of scope for this phase.
+- CFA boards can be archived but not locked; there is no CFA version snapshot (field
+  history is kept instead).
+- Real data sources (NHL APIs, NHL Central Scouting, MoneyPuck, EliteProspects) are not
+  connected yet — all board data is fictional (see the roadmap).
 
 ## Platform
 

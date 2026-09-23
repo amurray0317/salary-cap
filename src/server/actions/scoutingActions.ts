@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/db/client";
 import { requireOrgAccess, writeAudit } from "@/server/context";
@@ -266,76 +266,35 @@ const boardAddSchema = z.object({
   boardId: z.string().uuid(),
 });
 
+/** Profile-page shortcut; delegates to the versioned board-service path. */
 export async function addToDraftBoardAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = boardAddSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { error: "Invalid input" };
   const ctx = await requireOrgAccess(parsed.data.organizationId, "manage_draft_boards");
-  const prospect = await ownedProspect(parsed.data.prospectId, ctx.organizationId);
-  if (!prospect) return { error: "Prospect not found" };
-  const db = getDb();
-  const [board] = await db
-    .select()
-    .from(schema.draftBoards)
-    .where(and(eq(schema.draftBoards.id, parsed.data.boardId), eq(schema.draftBoards.organizationId, ctx.organizationId)))
-    .limit(1);
-  if (!board) return { error: "Board not found" };
-
-  const [last] = await db
-    .select({ overallRank: schema.draftBoardEntries.overallRank })
-    .from(schema.draftBoardEntries)
-    .where(eq(schema.draftBoardEntries.boardId, board.id))
-    .orderBy(desc(schema.draftBoardEntries.overallRank))
-    .limit(1);
-  await db
-    .insert(schema.draftBoardEntries)
-    .values({ boardId: board.id, prospectId: prospect.id, overallRank: (last?.overallRank ?? 0) + 1 })
-    .onConflictDoNothing();
+  const { addProspectToBoard } = await import("@/server/services/boardService");
+  const { ScoutingError } = await import("@/server/services/scoutingService");
+  try {
+    await addProspectToBoard({
+      boardId: parsed.data.boardId,
+      prospectId: parsed.data.prospectId,
+      organizationId: ctx.organizationId,
+      userId: ctx.user.id,
+    });
+  } catch (err) {
+    if (err instanceof ScoutingError) return { error: err.message };
+    throw err;
+  }
   await writeAudit({
     organizationId: ctx.organizationId,
     userId: ctx.user.id,
-    action: "scouting.board_add",
+    action: "board.entry_add",
     entityType: "draft_board",
-    entityId: board.id,
-    newValues: { prospectId: prospect.id },
+    entityId: parsed.data.boardId,
+    newValues: { prospectId: parsed.data.prospectId },
   });
-  revalidatePath(`/scouting/players/${prospect.id}`);
-  revalidatePath("/scouting/board");
+  revalidatePath(`/scouting/players/${parsed.data.prospectId}`);
+  revalidatePath(`/scouting/board/${parsed.data.boardId}`);
   return {};
-}
-
-const boardRankSchema = z.object({
-  organizationId: z.string().uuid(),
-  entryId: z.string().uuid(),
-  direction: z.enum(["up", "down"]),
-});
-
-/** Swaps an entry with its neighbor (simple, atomic re-ranking). */
-export async function moveBoardEntryAction(formData: FormData): Promise<void> {
-  const parsed = boardRankSchema.safeParse(Object.fromEntries(formData.entries()));
-  if (!parsed.success) return;
-  const ctx = await requireOrgAccess(parsed.data.organizationId, "manage_draft_boards");
-  const db = getDb();
-  const [entry] = await db
-    .select({ entry: schema.draftBoardEntries, board: schema.draftBoards })
-    .from(schema.draftBoardEntries)
-    .innerJoin(schema.draftBoards, eq(schema.draftBoardEntries.boardId, schema.draftBoards.id))
-    .where(and(eq(schema.draftBoardEntries.id, parsed.data.entryId), eq(schema.draftBoards.organizationId, ctx.organizationId)))
-    .limit(1);
-  if (!entry) return;
-  const targetRank = parsed.data.direction === "up" ? entry.entry.overallRank - 1 : entry.entry.overallRank + 1;
-  if (targetRank < 1) return;
-  const [neighbor] = await db
-    .select()
-    .from(schema.draftBoardEntries)
-    .where(and(eq(schema.draftBoardEntries.boardId, entry.entry.boardId), eq(schema.draftBoardEntries.overallRank, targetRank)))
-    .limit(1);
-  await db.transaction(async (tx) => {
-    if (neighbor) {
-      await tx.update(schema.draftBoardEntries).set({ overallRank: entry.entry.overallRank, updatedAt: new Date() }).where(eq(schema.draftBoardEntries.id, neighbor.id));
-    }
-    await tx.update(schema.draftBoardEntries).set({ overallRank: targetRank, updatedAt: new Date() }).where(eq(schema.draftBoardEntries.id, entry.entry.id));
-  });
-  revalidatePath("/scouting/board");
 }
 
 /* ---------------- Assignments ---------------- */

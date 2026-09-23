@@ -181,9 +181,8 @@ profiles with multi-season stats and versioned trend classifications, transparen
 role scoring against 34 configurable archetypes (weights stored in the database,
 every score explained with inputs × weights, missing data, and contradicting
 evidence), scout-assigned roles kept strictly separate from statistical inference,
-structured scouting reports on a 20–80 scale, watchlists, a draft board that shows
-model-vs-scout rank disagreement instead of averaging it away, a college free-agent
-board, scout assignments, and an explainable organizational-fit system wired into
+structured scouting reports on a 20–80 scale, watchlists, collaborative acquisition
+boards (below), scout assignments, and an explainable organizational-fit system wired into
 RosterIQ's live contract data. Organizational needs (Org needs tab) capture what the
 front office is looking for — position, handedness, target statistical role and
 scout-defined role (kept separate), an NHL-arrival window, acquisition path,
@@ -208,6 +207,34 @@ updates all import through the same gated CSV pipeline. Demo login:
 `scouting@aurora.demo` / `rosteriq-demo` (scouting director). Time-on-ice is never
 fabricated, and every model output is a labeled, versioned estimate — the system
 supports scouts, it does not replace them (`docs/SCOUTING.md`).
+
+### Acquisition boards (draft + college free agents)
+
+**Draft boards** (Draft board tab) are multi-board and multi-year. Each entry carries five
+ranking sources in separate columns that never overwrite one another: the working
+overall order, the statistical-model rank (best persisted role score), the scout
+consensus, the organizational-fit rank (best fit across needs), and the director's final
+rank. Scouts submit personal rankings; the consensus shows the number of submissions,
+mean, median, best–worst range, and standard deviation, and flags 10+ spot splits and
+samples under three rankings rather than hiding disagreement behind an average. Boards
+support drag-and-drop reordering (with an optional reason), recomputed position ranks,
+expected round and selection range, risk/floor/ceiling, viewing and report counts,
+recommendations, private notes, meeting notes, 14 filters, a 2–5 prospect comparison,
+CSV export, and lock/unlock/archive. Every meaningful change bumps the board version,
+writes an immutable ordered snapshot, and records previous/new value, rank, user,
+timestamp, and reason; the history page compares any earlier version with the current
+board. A locked board rejects ranking, add/remove, and rank-field changes (notes and
+recommendations stay editable for board managers); locking and unlocking are
+director-level capabilities and are audit-logged.
+
+**College free-agent boards** (College FAs tab) track undrafted targets: signing
+priority (drag-and-drop, history-tracked), NHL rights status, remaining eligibility,
+expected availability, readiness, projected AHL/NHL roles, organizational fit, signing
+competition, agent, a ten-stage relationship pipeline, last contact, next action + due
+date, and an assigned staff member. Field-level history records every change; an
+org-wide follow-up view flags overdue actions. Agent/relationship/contact fields and
+follow-up assignment are separately permissioned, and all board records are
+organization-isolated.
 
 ## Data imports
 

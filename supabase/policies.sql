@@ -154,7 +154,7 @@ create policy rules_read on league_rules for select using (auth.uid() is not nul
 create policy comparables_read on comparable_contracts
   for select using (organization_id is null or is_org_member(organization_id));
 
--- Real-data connectors (migration 0006): the response cache and every
+-- Real-data connectors (migration 0008): the response cache and every
 -- external reference table are organization-scoped. Rows are written only
 -- by the app server when a member approves a connector import.
 alter table connector_cache    enable row level security;
