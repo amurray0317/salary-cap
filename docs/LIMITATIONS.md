@@ -97,6 +97,22 @@ it is implemented" rule.
 - Depth snapshots are captured per run; the needs-page depth summary is computed live
   and can drift from the last snapshot until the next run.
 
+## Acquisition boards
+
+- Board mutations run as sequential statements, not a single database transaction per
+  change; a crash mid-change could leave a version row without its snapshot. Acceptable
+  at demo scale; wrap `commitBoardVersion` callers in `db.transaction` before production.
+- Consensus uses a plain mean/median over submitted ranks; it does not weight scouts by
+  seniority or coverage, and ranks from scouts who saw a prospect once count equally.
+- The statistical-model rank is the best persisted role score, not a draft-value model;
+  organizational-fit rank uses the best fit across all active needs.
+- Viewing counts come from `scout_viewings`; there is no viewing-entry UI yet (seeded
+  data only), and assignment scheduling is out of scope for this phase.
+- CFA boards can be archived but not locked; there is no CFA version snapshot (field
+  history is kept instead).
+- Real data sources (NHL APIs, NHL Central Scouting, MoneyPuck, EliteProspects) are not
+  connected yet — all board data is fictional (see the roadmap).
+
 ## Platform
 
 - Roster optimization (OR-Tools/PuLP) not built yet; schema reserved.

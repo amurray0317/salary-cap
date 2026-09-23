@@ -1,106 +1,94 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { asc, eq, and } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
 import { resolveAppContext } from "@/server/appContext";
-import { moveBoardEntryAction } from "@/server/actions/scoutingActions";
+import { createDraftBoardAction } from "@/server/actions/boardActions";
+import { CreateDraftBoardForm } from "@/components/BoardForms";
 import { Card, EmptyState, Td, Th } from "@/components/ui";
 import { roleHasCapability } from "@/lib/auth/roles";
+import { formatDate } from "@/lib/format";
 
-export const metadata: Metadata = { title: "Draft board" };
+export const metadata: Metadata = { title: "Draft boards" };
 
-export default async function DraftBoardPage() {
+export default async function DraftBoardsPage({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
   const ctx = await resolveAppContext();
+  const { show } = await searchParams;
   const db = getDb();
   const boards = await db
-    .select()
+    .select({
+      b: schema.draftBoards,
+      entryCount: sql<number>`(select count(*)::int from ${schema.draftBoardEntries} where ${schema.draftBoardEntries.boardId} = ${schema.draftBoards.id})`,
+    })
     .from(schema.draftBoards)
-    .where(and(eq(schema.draftBoards.organizationId, ctx.org.id), eq(schema.draftBoards.boardType, "draft")));
+    .where(and(eq(schema.draftBoards.organizationId, ctx.org.id), eq(schema.draftBoards.boardType, "draft")))
+    .orderBy(desc(schema.draftBoards.draftYear), desc(schema.draftBoards.createdAt));
+  const showArchived = show === "archived";
+  const visible = boards.filter((r) => (r.b.status === "archived") === showArchived);
   const canManage = roleHasCapability(ctx.role, "manage_draft_boards");
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Draft board</h1>
-        <p className="text-sm text-ink-muted">
-          Model rank and scout rank are displayed side by side — disagreements are shown, never
-          averaged away. Add prospects from their profiles.
-        </p>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-semibold">Draft boards</h1>
+          <p className="text-sm text-ink-muted">
+            Five ranking sources stay separate — working order, statistical model, scout consensus, organizational
+            fit, and the director&rsquo;s final call. Every change is versioned with an immutable snapshot.
+          </p>
+        </div>
+        <Link href={showArchived ? "/scouting/board" : "/scouting/board?show=archived"} className="text-sm text-accent-text hover:underline">
+          {showArchived ? "← Active boards" : "Archived boards →"}
+        </Link>
       </div>
-      {boards.length === 0 ? (
-        <EmptyState title="No draft board" body="The seed creates one; add prospects from their profiles." />
+
+      {visible.length === 0 ? (
+        <EmptyState
+          title={showArchived ? "No archived boards" : "No draft boards"}
+          body={showArchived ? "Archived boards appear here." : "Create one below to start ranking draft-eligible prospects."}
+        />
       ) : (
-        await Promise.all(
-          boards.map(async (board) => {
-            const entries = await db
-              .select({ e: schema.draftBoardEntries, p: schema.amateurProspects })
-              .from(schema.draftBoardEntries)
-              .innerJoin(schema.amateurProspects, eq(schema.draftBoardEntries.prospectId, schema.amateurProspects.id))
-              .where(eq(schema.draftBoardEntries.boardId, board.id))
-              .orderBy(asc(schema.draftBoardEntries.overallRank));
-            return (
-              <Card key={board.id} title={`${board.name}${board.draftYear ? ` · ${board.draftYear}` : ""} (${entries.length} prospects)`}>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-line">
-                        <Th right>Rank</Th>
-                        <Th>Prospect</Th>
-                        <Th>Pos</Th>
-                        <Th right>Model rank</Th>
-                        <Th right>Scout rank</Th>
-                        <Th right>Δ</Th>
-                        <Th>Risk</Th>
-                        <Th>Recommendation</Th>
-                        {canManage && <Th>Move</Th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {entries.map(({ e, p }) => {
-                        const delta = e.modelRank !== null && e.scoutRank !== null ? e.scoutRank - e.modelRank : null;
-                        return (
-                          <tr key={e.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
-                            <Td right className="font-medium">{e.overallRank}</Td>
-                            <Td><Link href={`/scouting/players/${p.id}`} className="font-medium hover:text-accent-text">{p.fullName}</Link></Td>
-                            <Td>{p.position}</Td>
-                            <Td right className="text-ink-secondary">{e.modelRank ?? "—"}</Td>
-                            <Td right className="text-ink-secondary">{e.scoutRank ?? "—"}</Td>
-                            <Td right className={delta !== null && Math.abs(delta) >= 3 ? "text-warn" : "text-ink-muted"}>
-                              {delta === null ? "—" : delta > 0 ? `+${delta}` : delta}
-                            </Td>
-                            <Td className={e.risk === "high" ? "text-critical" : e.risk === "low" ? "text-good" : "text-warn"}>{e.risk ?? "—"}</Td>
-                            <Td className="text-ink-secondary">{e.recommendation ?? "—"}</Td>
-                            {canManage && (
-                              <Td>
-                                <div className="flex gap-1">
-                                  <form action={moveBoardEntryAction}>
-                                    <input type="hidden" name="organizationId" value={ctx.org.id} />
-                                    <input type="hidden" name="entryId" value={e.id} />
-                                    <input type="hidden" name="direction" value="up" />
-                                    <button className="rounded border border-line px-1.5 text-xs text-ink-secondary hover:text-ink" aria-label={`Move ${p.fullName} up`}>↑</button>
-                                  </form>
-                                  <form action={moveBoardEntryAction}>
-                                    <input type="hidden" name="organizationId" value={ctx.org.id} />
-                                    <input type="hidden" name="entryId" value={e.id} />
-                                    <input type="hidden" name="direction" value="down" />
-                                    <button className="rounded border border-line px-1.5 text-xs text-ink-secondary hover:text-ink" aria-label={`Move ${p.fullName} down`}>↓</button>
-                                  </form>
-                                </div>
-                              </Td>
-                            )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="mt-2 text-xs text-ink-muted">
-                  Δ = scout rank − model rank; gaps of 3+ are flagged for review rather than hidden.
-                </p>
-              </Card>
-            );
-          }),
-        )
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-line">
+                  <Th>Board</Th>
+                  <Th right>Draft year</Th>
+                  <Th right>Prospects</Th>
+                  <Th>Status</Th>
+                  <Th right>Version</Th>
+                  <Th>Updated</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map(({ b, entryCount }) => (
+                  <tr key={b.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                    <Td>
+                      <Link href={`/scouting/board/${b.id}`} className="font-medium hover:text-accent-text">{b.name}</Link>
+                      {b.description && <p className="text-xs text-ink-muted">{b.description}</p>}
+                    </Td>
+                    <Td right>{b.draftYear ?? "—"}</Td>
+                    <Td right>{entryCount}</Td>
+                    <Td>
+                      <span className={b.status === "locked" ? "text-warn" : b.status === "archived" ? "text-ink-muted" : "text-good"}>
+                        {b.status === "locked" ? "🔒 locked" : b.status}
+                      </span>
+                    </Td>
+                    <Td right className="text-ink-secondary">v{b.version}</Td>
+                    <Td className="text-xs text-ink-muted">{formatDate(b.updatedAt)}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {canManage && (
+        <Card title="Create a draft board">
+          <CreateDraftBoardForm action={createDraftBoardAction} organizationId={ctx.org.id} />
+        </Card>
       )}
     </div>
   );
