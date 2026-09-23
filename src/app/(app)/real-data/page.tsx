@@ -102,6 +102,18 @@ export default async function RealDataPage() {
               fields={[{ name: "playerIds", label: "NHL player ids (up to 25)", type: "textarea", placeholder: "8478402", hint: "Every league and team stint in the player's career; TOI only where the NHL reports it." }]}
             />
           </Card>
+          <Card title="Player game logs">
+            <ConnectorForm
+              {...common}
+              dataset="nhl_game_logs"
+              submitLabel="Fetch game logs → preview"
+              fields={[
+                { name: "playerIds", label: "NHL player ids (up to 10)", type: "textarea", placeholder: "8478402", hint: "One row per game, with per-game TOI as the NHL reports it." },
+                season,
+                gameType,
+              ]}
+            />
+          </Card>
           <Card title="Team roster">
             <ConnectorForm
               {...common}

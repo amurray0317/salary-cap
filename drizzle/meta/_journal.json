@@ -64,6 +64,13 @@
       "when": 1790125919100,
       "tag": "0008_real_data_connectors",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790126109259,
+      "tag": "0009_nhl_game_logs",
+      "breakpoints": true
     }
   ]
 }

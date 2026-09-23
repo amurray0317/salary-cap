@@ -13,8 +13,8 @@
  * Flow: analyst signs in → EliteProspects shows "Disabled until configured"
  * → Central Scouting rankings fetch → preview with provenance, nothing in
  * reference tables yet → approve → draft page → MoneyPuck skaters (all +
- * 5on5) → approve → McDavid career via NHL API → approve → player page shows
- * NHL + MoneyPuck with TOI honesty → repeat fetch is served from cache →
+ * 5on5) → approve → McDavid career via NHL API → approve → McDavid 2024-25
+ * game logs → approve → player page shows NHL + MoneyPuck + game log with TOI honesty → repeat fetch is served from cache →
  * rival organization sees none of it and gets 404 on the import.
  */
 import { chromium } from "playwright-core";
@@ -130,12 +130,26 @@ try {
     await expectText(page, "Committed");
   });
 
+  await step(page, "NHL game logs for Connor McDavid → approve", async () => {
+    await page.goto(`${BASE}/real-data`);
+    const f = form(page, "nhl_game_logs");
+    await f.locator('textarea[name="playerIds"]').fill("8478402");
+    await f.locator('select[name="season"]').selectOption("2024-25");
+    await f.locator("button").click();
+    await page.waitForURL(/\/imports\/[0-9a-f-]+$/);
+    await expectText(page, "https://api-web.nhle.com/v1/player/8478402/game-log/20242025/2");
+    await page.locator("button:has-text('Approve & commit 67 valid rows')").click();
+    await expectText(page, "Committed");
+  });
+
   await step(page, "player page merges NHL career and MoneyPuck with credit and TOI honesty", async () => {
     await page.goto(`${BASE}/real-data/players?q=McDavid`);
     await page.locator("a:has-text('Connor McDavid')").first().click();
     await page.waitForURL(/\/real-data\/players\/8478402$/);
     await expectText(page, "Career by season — NHL API");
     await expectText(page, "MoneyPuck season summaries — Data: MoneyPuck.com");
+    await expectText(page, "Game log 2024-25 regular season — NHL API (67 games)");
+    await expectText(page, "Last 10:");
     await expectText(page, "never estimated");
     await expectText(page, "Data sources & provenance");
   });

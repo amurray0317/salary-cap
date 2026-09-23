@@ -282,6 +282,22 @@
       EP data mapping beyond identity (needs a recorded real response), scheduled
       refreshes, shared multi-instance rate limiter, MoneyPuck lines/shots datasets
 
+## Real data — NHL game logs
+- [x] Real responses recorded first: McDavid 2024-25 regular + playoffs, Hellebuyck
+      2024-25 (goalie with a relief appearance that has no `decision`, and "O" OT/SO
+      losses), plus Hellebuyck's landing for the name the game log omits
+- [x] Migration 0009: `ext_player_game_logs` (org-scoped, unique per player + game,
+      skater and goalie columns nullable) + RLS policy
+- [x] `nhl_game_logs` connector dataset (≤10 players per request, 2 rate-limited
+      requests each), gated preview → approval → upsert, provenance as for all
+      connectors
+- [x] Player page: game log per season/type with season and last-10 summaries derived
+      from the per-game rows (per-60 uses only games with reported TOI)
+- [x] Reconciliation test: summed game-log rows equal the career season line (67 GP,
+      26 G, 100 P, 22:02 average TOI); goalie totals 47-12-3, 1,664 SA, 125 GA
+- [x] 4 new tests (177 total) · typecheck · lint · build · live browser run 10/10
+      (adds the game-log import and player-page checks)
+
 ## MVP acceptance test status
 1–8 (register→commitments) ✓ · 9–14 (scenarios, violations) ✓ · 15–16 (valuation, surplus) ✓ ·
 17–18 (compare, export) ✓ · 19 (sign out/in persistence) ✓ · 20 (cross-org denial) ✓

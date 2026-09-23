@@ -17,6 +17,7 @@ export const CONNECTOR_IMPORT_TYPES = [
   "nhl_players",
   "nhl_roster",
   "nhl_player_seasons",
+  "nhl_game_logs",
   "nhl_skater_stats",
   "nhl_goalie_stats",
   "nhl_team_stats",
@@ -33,6 +34,7 @@ export type ExtTable =
   | "ext_players"
   | "ext_roster"
   | "ext_player_seasons"
+  | "ext_game_logs"
   | "ext_team_seasons"
   | "ext_draft_picks"
   | "ext_draft_rankings";
@@ -236,6 +238,48 @@ export const CONNECTOR_DEFINITIONS: Record<ConnectorImportType, ConnectorDataset
       count("toi_seconds", "TOI (s)", "`timeOnIce` mm:ss → seconds (goalies); blank when not reported"),
     ],
     rowKey: (v) => `${v.external_player_id}|${v.season}|${v.game_type}|${v.league}|${v.m_sequence}`,
+  },
+
+  nhl_game_logs: {
+    type: "nhl_game_logs",
+    connectorKey: "nhl_api",
+    table: "ext_game_logs",
+    sourceTag: "nhl",
+    label: "NHL API · player game logs",
+    description:
+      "One row per game from api-web.nhle.com /v1/player/{id}/game-log/{season}/{type}. Skater and goalie columns are filled only for the player's role; a goalie decision is blank for relief appearances (the source omits it).",
+    fields: [
+      playerIdField("Requested NHL player id"),
+      text("player_name", "Player", "NHL landing first + last name"),
+      text("game_id", "Game id", "`gameId`", true),
+      dateField("game_date", "Date", "`gameDate`"),
+      seasonField("`seasonId`"),
+      gameTypeField("`gameTypeId`"),
+      text("team_abbrev", "Team", "`teamAbbrev`"),
+      text("opponent_abbrev", "Opponent", "`opponentAbbrev`"),
+      enumField("home_road", "H/R", ["H", "R"], "`homeRoadFlag`"),
+      count("goals", "G", "`goals`"),
+      count("assists", "A", "`assists`"),
+      count("points", "P", "`points` (skaters)"),
+      intField("plus_minus", "+/-", "`plusMinus` (skaters)"),
+      count("penalty_minutes", "PIM", "`pim`"),
+      count("shots", "SOG", "`shots` (skaters)"),
+      count("pp_goals", "PPG", "`powerPlayGoals`"),
+      count("pp_points", "PPP", "`powerPlayPoints`"),
+      count("sh_goals", "SHG", "`shorthandedGoals`"),
+      count("sh_points", "SHP", "`shorthandedPoints`"),
+      count("gw_goals", "GWG", "`gameWinningGoals`"),
+      count("ot_goals", "OTG", "`otGoals`"),
+      count("shifts", "Shifts", "`shifts` (skaters)"),
+      intField("toi_seconds", "TOI (s)", "`toi` mm:ss → seconds", { min: 0, max: 10800 }),
+      intField("games_started", "GS", "`gamesStarted` (goalies)", { min: 0, max: 1 }),
+      enumField("decision", "Decision", ["W", "L", "O"], "`decision` (goalies; O = OT/SO loss; blank = no decision)"),
+      count("shots_against", "SA", "`shotsAgainst` (goalies)"),
+      count("goals_against", "GA", "`goalsAgainst` (goalies)"),
+      fraction("save_pct", "SV%", "`savePctg` (goalies)"),
+      intField("shutouts", "SO", "`shutouts` (goalies)", { min: 0, max: 1 }),
+    ],
+    rowKey: (v) => `${v.external_player_id}|${v.game_id}`,
   },
 
   nhl_skater_stats: {

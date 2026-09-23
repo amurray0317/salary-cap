@@ -9,6 +9,7 @@ import type { schema } from "@/db/client";
 export const metadata: Metadata = { title: "Real data · player" };
 
 type Season = typeof schema.extPlayerSeasons.$inferSelect;
+type GameLog = typeof schema.extPlayerGameLogs.$inferSelect;
 
 const dash = "—";
 const n = (v: number | null | undefined) => (v === null || v === undefined ? dash : String(v));
@@ -180,6 +181,107 @@ function MoneyPuckTable({ rows, goalie }: { rows: Season[]; goalie: boolean }) {
   );
 }
 
+const sum = (rows: GameLog[], pick: (g: GameLog) => number | null) => {
+  let total = 0;
+  let seen = 0;
+  for (const g of rows) {
+    const v = pick(g);
+    if (v !== null) {
+      total += v;
+      seen += 1;
+    }
+  }
+  return seen === 0 ? null : total;
+};
+
+/** Totals derived from the imported per-game rows (never from estimates). */
+function GameLogSummary({ label, rows, goalie }: { label: string; rows: GameLog[]; goalie: boolean }) {
+  const withToi = rows.filter((g) => g.toiSeconds !== null);
+  const avgToi = withToi.length ? sum(withToi, (g) => g.toiSeconds)! / withToi.length : null;
+  if (goalie) {
+    const sa = sum(rows, (g) => g.shotsAgainst);
+    const ga = sum(rows, (g) => g.goalsAgainst);
+    const sv = sa && ga !== null ? (sa - ga) / sa : null;
+    const dec = (d: string) => rows.filter((g) => g.decision === d).length;
+    return (
+      <span>
+        <span className="text-ink-muted">{label}:</span> {rows.length} GP · {dec("W")}-{dec("L")}-{dec("O")} · SV% {svPct(sv)} · GA/60{" "}
+        {per60(sum(withToi, (g) => g.goalsAgainst), sum(withToi, (g) => g.toiSeconds))}
+      </span>
+    );
+  }
+  const pts = sum(rows, (g) => g.points);
+  return (
+    <span>
+      <span className="text-ink-muted">{label}:</span> {rows.length} GP · {n(sum(rows, (g) => g.goals))} G · {n(pts)} P · avg TOI {clock(avgToi)} · P/60{" "}
+      {per60(sum(withToi, (g) => g.points), sum(withToi, (g) => g.toiSeconds))}
+    </span>
+  );
+}
+
+function GameLogTable({ rows, goalie }: { rows: GameLog[]; goalie: boolean }) {
+  return (
+    <div className="max-h-96 overflow-auto">
+      <table className="w-full">
+        <thead className="sticky top-0 bg-navy-900">
+          <tr className="border-b border-line">
+            <Th>Date</Th>
+            <Th>Opp</Th>
+            {goalie ? (
+              <>
+                <Th>Dec</Th>
+                <Th right>GS</Th>
+                <Th right>SA</Th>
+                <Th right>GA</Th>
+                <Th right>SV%</Th>
+              </>
+            ) : (
+              <>
+                <Th right>G</Th>
+                <Th right>A</Th>
+                <Th right>P</Th>
+                <Th right>+/-</Th>
+                <Th right>SOG</Th>
+                <Th right>PPP</Th>
+                <Th right>Shifts</Th>
+              </>
+            )}
+            <Th right>TOI</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...rows].reverse().map((g) => (
+            <tr key={g.id} className="border-b border-line/50 last:border-0">
+              <Td className="whitespace-nowrap">{g.gameDate}</Td>
+              <Td>{g.homeRoad === "R" ? "@" : "vs"} {g.opponentAbbrev ?? dash}</Td>
+              {goalie ? (
+                <>
+                  <Td>{g.decision ?? dash}</Td>
+                  <Td right>{n(g.gamesStarted)}</Td>
+                  <Td right>{n(g.shotsAgainst)}</Td>
+                  <Td right>{n(g.goalsAgainst)}</Td>
+                  <Td right>{svPct(g.savePct)}</Td>
+                </>
+              ) : (
+                <>
+                  <Td right>{n(g.goals)}</Td>
+                  <Td right>{n(g.assists)}</Td>
+                  <Td right>{n(g.points)}</Td>
+                  <Td right>{n(g.plusMinus)}</Td>
+                  <Td right>{n(g.shots)}</Td>
+                  <Td right>{n(g.powerPlayPoints)}</Td>
+                  <Td right>{n(g.shifts)}</Td>
+                </>
+              )}
+              <Td right>{clock(g.toiSeconds)}</Td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default async function RealDataPlayerPage({ params }: { params: Promise<{ playerId: string }> }) {
   const ctx = await resolveAppContext();
   const { playerId } = await params;
@@ -247,6 +349,35 @@ export default async function RealDataPlayerPage({ params }: { params: Promise<{
           <MoneyPuckTable rows={mp} goalie={goalie} />
         </Card>
       )}
+
+      {(() => {
+        const groups = new Map<string, GameLog[]>();
+        for (const g of data.gameLogs) {
+          const key = `${g.season}|${g.gameType}`;
+          groups.set(key, [...(groups.get(key) ?? []), g]);
+        }
+        return [...groups.entries()]
+          .sort(([a], [b]) => b.localeCompare(a))
+          .map(([key, rows]) => {
+            const [season, type] = key.split("|");
+            const g = rows.some((r) => r.shotsAgainst !== null);
+            return (
+              <Card key={key} title={`Game log ${season} ${type === "regular" ? "regular season" : "playoffs"} — NHL API (${rows.length} games)`}>
+                <div className="mb-3 space-y-1 text-sm">
+                  <div><GameLogSummary label="Season" rows={rows} goalie={g} /></div>
+                  {rows.length > 10 && (
+                    <div><GameLogSummary label="Last 10" rows={rows.slice(-10)} goalie={g} /></div>
+                  )}
+                </div>
+                <GameLogTable rows={rows} goalie={g} />
+                <p className="mt-2 text-xs text-ink-muted">
+                  Summary lines are derived in RosterIQ from these per-game rows (per-60 uses only games with reported TOI;
+                  goalie record is W-L-O with O = OT/SO loss; relief appearances have no decision). Data: NHL.com.
+                </p>
+              </Card>
+            );
+          });
+      })()}
 
       {data.roster.length > 0 && (
         <Card title="Roster history (imported seasons)">
