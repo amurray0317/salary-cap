@@ -27,6 +27,7 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
   }
   const { row, raw, errors, preview, existingCount, sourceMeta, dataSource } = detail;
   const isConnector = row.sourceKind === "connector" && sourceMeta !== null;
+  const isModelOutput = isConnector && sourceMeta?.connectorKey === "rosteriq_models";
   const importType = row.importType as ImportType;
   const def = IMPORT_DEFINITIONS[importType];
   const storedMapping = row.mapping as Record<string, string>;
@@ -67,7 +68,14 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
           {isConnector ? (
             <>
               Reference data is now available under{" "}
-              <Link href="/real-data/players" className="underline">Real data</Link>
+              <Link
+                href={
+                  importType === "rosteriq_prospects" ? "/real-data/prospects" : importType === "rosteriq_nhle" ? "/real-data/models" : "/real-data/players"
+                }
+                className="underline"
+              >
+                Real data
+              </Link>
               {dataSource ? ` (data source recorded: ${dataSource.name}).` : "."}
             </>
           ) : (
@@ -86,16 +94,33 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
           <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
             <dt className="text-ink-muted">Source</dt>
             <dd className="font-medium">{sourceMeta.sourceName}</dd>
-            <dt className="text-ink-muted">Request URL{sourceMeta.urls.length > 1 ? "s" : ""}</dt>
+            <dt className="text-ink-muted">{isModelOutput ? "Model file" : `Request URL${sourceMeta.urls.length > 1 ? "s" : ""}`}</dt>
             <dd className="space-y-0.5">
               {sourceMeta.urls.map((u, i) => (
                 <div key={u} className="break-all font-mono text-xs">
                   {u}{" "}
-                  <span className="text-ink-muted">({sourceMeta.fromCache[i] ? "served from this organization's cache" : "fetched live"})</span>
+                  <span className="text-ink-muted">
+                    (
+                    {isModelOutput
+                      ? "read from the committed model output"
+                      : sourceMeta.fromCache[i]
+                        ? "served from this organization's cache"
+                        : "fetched live"}
+                    )
+                  </span>
                 </div>
               ))}
             </dd>
-            <dt className="text-ink-muted">Retrieved</dt>
+            {isModelOutput && (
+              <>
+                <dt className="text-ink-muted">Model version</dt>
+                <dd>
+                  {String(sourceMeta.params.modelVersion ?? "—")}{" "}
+                  <Link href="/real-data/models" className="text-accent-text hover:underline">model card</Link>
+                </dd>
+              </>
+            )}
+            <dt className="text-ink-muted">{isModelOutput ? "Model trained" : "Retrieved"}</dt>
             <dd>{sourceMeta.retrievedAt.replace("T", " ").slice(0, 19)} UTC</dd>
             <dt className="text-ink-muted">Effective season</dt>
             <dd>{sourceMeta.effectiveSeason ?? "—"}</dd>
@@ -112,8 +137,9 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
             </ul>
           )}
           <p className="mt-3 text-xs text-ink-muted">
-            Columns were produced by the connector, so there is no field-mapping step. Blank cells are values the
-            source did not report; they are stored as empty, never estimated.
+            {isModelOutput
+              ? "Columns were written by the modelling pipeline and must match this import type exactly, so there is no field-mapping step. Blank cells are values the model does not produce for that row (for example an outcome that is not known yet); they are stored as empty."
+              : "Columns were produced by the connector, so there is no field-mapping step. Blank cells are values the source did not report; they are stored as empty, never estimated."}
           </p>
         </Card>
       )}

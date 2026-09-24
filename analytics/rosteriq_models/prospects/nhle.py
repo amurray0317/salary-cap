@@ -123,7 +123,16 @@ def estimate(pairs: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     })
     table["nhle_multiplier"] = np.exp(-table["f"])
     table = pd.concat([pd.DataFrame([{"league": REF, "f": 0.0, "se": 0.0, "pairs": int(counts.get(REF, 0)), "nhle_multiplier": 1.0}]), table], ignore_index=True)
-    growth = pd.DataFrame({"age": ages, "one_year_log_ppg_change": beta[n_f:], "se": se[n_f:]})
+    # Same-league consecutive seasons are what separate development from
+    # league difficulty; report how many support each age's growth term.
+    same = use[use["consecutive"] & (use["league_a"] == use["league_b"])]
+    same_counts = np.clip(np.floor(same["age"].to_numpy()), AGE_MIN, AGE_MAX).astype(int)
+    growth = pd.DataFrame({
+        "age": ages,
+        "one_year_log_ppg_change": beta[n_f:],
+        "se": se[n_f:],
+        "same_league_pairs": [int((same_counts == a).sum()) for a in ages],
+    })
     report = {
         "pairs_total": int(len(pairs)),
         "pairs_used": int(len(use)),

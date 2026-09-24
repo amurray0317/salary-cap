@@ -101,12 +101,14 @@ def load_careers(player_ids: list[int]) -> tuple[pd.DataFrame, pd.DataFrame]:
                 "assists": int(s.get("assists") or 0),
                 "points": int(s.get("points") or 0),
             })
-    bio = pd.DataFrame(bios)
-    ln = pd.DataFrame(lines)
-    ln["league"] = ln["league"].replace(LEAGUE_ALIASES)
+    return pd.DataFrame(bios), clean_lines(pd.DataFrame(lines))
+
+
+def clean_lines(ln: pd.DataFrame) -> pd.DataFrame:
+    """Merge league aliases, drop tournaments, one line per player/season/league."""
+    ln = ln.assign(league=ln["league"].replace(LEAGUE_ALIASES))
     ln = ln[~ln["league"].isin(TOURNAMENTS)]
-    ln = ln.groupby(["player_id", "season", "league"], as_index=False)[["gp", "goals", "assists", "points"]].sum()
-    return bio, ln
+    return ln.groupby(["player_id", "season", "league"], as_index=False)[["gp", "goals", "assists", "points"]].sum()
 
 
 def tournament_lines(player_ids: list[int]) -> int:
