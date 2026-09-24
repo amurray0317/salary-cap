@@ -99,10 +99,11 @@ def _teams(t: pd.DataFrame) -> pd.DataFrame:
 XG_FILES = {"player": ("import_xg_skaters.csv", _skaters), "goalie": ("import_xg_goalies.csv", _goalies), "team": ("import_xg_teams.csv", _teams)}
 
 
-def write_xg_imports(totals: dict[str, pd.DataFrame], season: int | None = None) -> dict[str, int]:
+def write_xg_imports(totals: dict[str, pd.DataFrame], season: int | None = None, dst=None) -> dict[str, int]:
     """Writes import files from train-format totals. With `season`, only that
-    season's rows are replaced in the existing files (in-season scoring)."""
-    dst = MODELS / XG_VERSION
+    season's rows are replaced in the existing files (in-season scoring).
+    `dst` defaults to models/<version> (a rehearsal writes elsewhere)."""
+    dst = MODELS / XG_VERSION if dst is None else dst
     dst.mkdir(parents=True, exist_ok=True)
     counts = {}
     for key, (name, convert) in XG_FILES.items():
