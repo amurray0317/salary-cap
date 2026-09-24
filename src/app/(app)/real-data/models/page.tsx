@@ -41,7 +41,7 @@ const get = <T,>(o: unknown, ...path: string[]): T | undefined =>
 const fx = (v: number | null | undefined, d: number) => (v === null || v === undefined ? dash : v.toFixed(d));
 const pc = (v: number | null | undefined, d = 1) => (v === null || v === undefined ? dash : `${(v * 100).toFixed(d)}%`);
 
-function ScoresTable({ rows, unit }: { rows: Array<[string, Scores | undefined]>; unit: "shots" | "players" }) {
+function ScoresTable({ rows, unit, outcome = "Actual 200-GP players" }: { rows: Array<[string, Scores | undefined]>; unit: "shots" | "players"; outcome?: string }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
@@ -49,7 +49,7 @@ function ScoresTable({ rows, unit }: { rows: Array<[string, Scores | undefined]>
           <tr className="border-b border-line">
             <Th>Model</Th>
             <Th right>{unit === "shots" ? "Shots" : "Players"}</Th>
-            <Th right>{unit === "shots" ? "Goals" : "Actual 200-GP players"}</Th>
+            <Th right>{unit === "shots" ? "Goals" : outcome}</Th>
             <Th right>{unit === "shots" ? "Predicted goals" : "Predicted"}</Th>
             <Th right>Log loss ↓</Th>
             <Th right>AUC ↑</Th>
@@ -354,6 +354,184 @@ function CssBenchmark({ css }: { css?: Record<string, unknown> }) {
   );
 }
 
+/** "(5, 10]" → "Picks 6–10". */
+const pickRange = (bin: string) => {
+  const m = /^\((\d+), (\d+)\]$/.exec(bin);
+  return m ? `Picks ${Number(m[1]) + 1}–${m[2]}` : bin;
+};
+type Boot = { auc_diff_ci95: number[]; log_loss_diff_ci95: number[] };
+const ciText = (v?: number[], d = 3) => (v ? `${v[1]! >= 0 ? "+" : ""}${v[1]!.toFixed(d)} [${v[0]!.toFixed(d)}, ${v[2]!.toFixed(d)}]` : dash);
+
+function V2Research({ v2 }: { v2?: Record<string, unknown> }) {
+  if (!v2) return null;
+  const tiers = get<Record<string, string | number>>(v2, "tiers") ?? {};
+  const test = get<Record<string, Record<string, Record<string, Scores>>>>(v2, "test") ?? {};
+  const boot = get<Record<string, Record<string, Record<string, Boot>>>>(v2, "bootstrap") ?? {};
+  const pop = get<Record<string, unknown>>(v2, "population") ?? {};
+  const summary = get<Record<string, number | string[]>>(pop, "summary") ?? {};
+  const recall = get<Record<string, number>>(pop, "linker_recall_on_known_drafted") ?? {};
+  const bias = get<Record<string, Record<string, unknown>>>(pop, "drafted_only_bias") ?? {};
+  const rates = get<Array<Record<string, number | string>>>(v2, "base_rates_by_pick") ?? [];
+  const drafts = get<number[]>(v2, "test_drafts") ?? [];
+  const range = drafts.length ? `${drafts[0]}–${drafts[drafts.length - 1]}` : dash;
+  const bootRows: Array<[string, Boot | undefined, Boot | undefined]> = [
+    ["January (midterm list): stats + midterm vs midterm only", boot.nhl_regular?.vs_css_midterm?.["all:stats_plus_css_midterm"], boot.top_lineup?.vs_css_midterm?.["all:stats_plus_css_midterm"]],
+    ["  … after round 1", boot.nhl_regular?.vs_css_midterm?.["rounds_2_plus:stats_plus_css_midterm"], boot.top_lineup?.vs_css_midterm?.["rounds_2_plus:stats_plus_css_midterm"]],
+    ["April (final list): stats + final vs final only", boot.nhl_regular?.vs_css_final?.["all:stats_plus_css_final"], boot.top_lineup?.vs_css_final?.["all:stats_plus_css_final"]],
+    ["  … after round 1", boot.nhl_regular?.vs_css_final?.["rounds_2_plus:stats_plus_css_final"], boot.top_lineup?.vs_css_final?.["rounds_2_plus:stats_plus_css_final"]],
+    ["Stats only vs draft position (actual draft order)", boot.nhl_regular?.vs_draft_position?.["all:stats_only"], boot.top_lineup?.vs_draft_position?.["all:stats_only"]],
+  ];
+  const biasRow = (key: string, model: string, sub: string) => get<Scores>(bias, key, model, sub);
+  return (
+    <div className="space-y-3 rounded-md border border-ice/40 bg-accent-soft/40 p-3">
+      <h3 className="text-sm font-medium">
+        Prospect model v2 — research results <span className="ml-1 rounded bg-track px-1.5 text-[10px] uppercase tracking-wide text-ink-secondary">not yet in the projections</span>
+      </h3>
+      <div className="grid gap-3 text-xs text-ink-secondary lg:grid-cols-2">
+        <p>
+          <span className="font-medium text-ink">Two tiers.</span> NHL regular: {String(tiers.regular ?? dash)}. Top of lineup: {String(tiers.top_lineup ?? dash)}.
+          P(top) = P(regular) × P(top | regular), so it can never exceed P(regular).
+        </p>
+        <p>
+          <span className="font-medium text-ink">Why the second tier.</span> The 200-game bar stops separating the top of the draft (see the table): almost every
+          top-5 pick becomes a regular, fewer become top-of-lineup players.
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-line">
+              <Th>Draft slot (2005–2019 drafts)</Th>
+              <Th right>Skaters</Th>
+              <Th right>Became regulars</Th>
+              <Th right>Became top of lineup</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {rates.map((r) => (
+              <tr key={String(r.pick_bin)} className="border-b border-line/50 last:border-0">
+                <Td>{pickRange(String(r.pick_bin))}</Td>
+                <Td right>{String(r.players)}</Td>
+                <Td right>{pc(r.regular as number, 0)}</Td>
+                <Td right>{pc(r.top_lineup as number, 0)}</Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div>
+          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-muted">NHL regular · {range} drafts</h4>
+          <ScoresTable
+            unit="players"
+            outcome="Actual regulars"
+            rows={[
+              ["Central Scouting midterm only", test.nhl_regular?.all?.css_midterm_only],
+              ["Stats + midterm (January)", test.nhl_regular?.all?.stats_plus_css_midterm],
+              ["Central Scouting final only", test.nhl_regular?.all?.css_final_only],
+              ["Stats + final (April)", test.nhl_regular?.all?.stats_plus_css_final],
+              ["Stats only", test.nhl_regular?.all?.stats_only],
+              ["(Draft position — after the draft)", test.nhl_regular?.all?.draft_position_only],
+            ]}
+          />
+        </div>
+        <div>
+          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-muted">Top of lineup · {range} drafts</h4>
+          <ScoresTable
+            unit="players"
+            outcome="Actual top-of-lineup"
+            rows={[
+              ["Central Scouting midterm only", test.top_lineup?.all?.css_midterm_only],
+              ["Stats + midterm (January)", test.top_lineup?.all?.stats_plus_css_midterm],
+              ["Central Scouting final only", test.top_lineup?.all?.css_final_only],
+              ["Stats + final (April)", test.top_lineup?.all?.stats_plus_css_final],
+              ["Stats only", test.top_lineup?.all?.stats_only],
+              ["(Draft position — after the draft)", test.top_lineup?.all?.draft_position_only],
+            ]}
+          />
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-line">
+              <Th>Paired bootstrap, 95% (same players)</Th>
+              <Th right>Regular: AUC diff</Th>
+              <Th right>Regular: log-loss diff</Th>
+              <Th right>Top: AUC diff</Th>
+              <Th right>Top: log-loss diff</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {bootRows.map(([label, a, b]) => (
+              <tr key={label} className="border-b border-line/50 last:border-0">
+                <Td className="whitespace-pre">{label}</Td>
+                <Td right>{ciText(a?.auc_diff_ci95)}</Td>
+                <Td right>{ciText(a?.log_loss_diff_ci95, 4)}</Td>
+                <Td right>{ciText(b?.auc_diff_ci95)}</Td>
+                <Td right>{ciText(b?.log_loss_diff_ci95, 4)}</Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="space-y-2">
+        <h4 className="text-xs font-medium uppercase tracking-wide text-ink-muted">Everyone Central Scouting ranked, not only drafted players</h4>
+        <p className="text-xs text-ink-secondary">
+          {String(summary.ranked_players ?? dash)} ranked skaters ({String(get<number[]>(pop, "years")?.join("–") ?? dash)}), linked to NHL ids by name + exact birth date
+          ({pc(recall.recall, 1)} of ranked players known to be drafted were found; the rest, nickname spellings, are filled from the draft records).{" "}
+          {String(summary.never_drafted ?? dash)} were never drafted; {String(summary.regulars_never_drafted ?? dash)} of them became NHL regulars (
+          {(summary.never_drafted_regular_examples as string[] | undefined)?.join(", ") ?? dash}). A model that has only seen drafted players therefore
+          overstates the chances of the many ranked players who will not be picked. Same Central Scouting inputs (list, rank, age, size, position), two
+          training sets, scored on every ranked player in the test years:
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-line">
+                <Th>Outcome · list</Th>
+                <Th>Trained on</Th>
+                <Th right>Predicted / actual (all ranked)</Th>
+                <Th right>Log loss ↓</Th>
+                <Th right>Predicted / actual (not drafted that year)</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.keys(bias).flatMap((key) =>
+                (["trained_on_drafted_only", "trained_on_all_ranked"] as const).map((m) => {
+                  const a = biasRow(key, m, "all_ranked");
+                  const u = biasRow(key, m, "not_drafted_that_year");
+                  const [lab, col] = key.split(":");
+                  return (
+                    <tr key={`${key}-${m}`} className="border-b border-line/50 last:border-0">
+                      <Td>{m === "trained_on_drafted_only" ? `${lab === "nhl_regular" ? "Regular" : "Top of lineup"} · ${col === "css_final" ? "final" : "midterm"}` : ""}</Td>
+                      <Td>{m === "trained_on_drafted_only" ? "Drafted players only" : "Everyone ranked"}</Td>
+                      <Td right>
+                        {fx(a?.expected, 1)} / {a?.regulars ?? dash}
+                      </Td>
+                      <Td right className="font-medium">{fx(a?.log_loss, 4)}</Td>
+                      <Td right>
+                        {fx(u?.expected, 1)} / {u?.regulars ?? dash}
+                      </Td>
+                    </tr>
+                  );
+                }),
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p className="text-xs text-ink-muted">
+        Reading: before the draft, stats + Central Scouting beats Central Scouting alone for NHL regulars, and the gain is largest in January, when only the
+        midterm list exists. For top-of-lineup players the gains point the same way but the intervals reach zero ({String(get<number>(v2, "test_top_lineup") ?? dash)} such
+        players in the test drafts). Scoring the whole ranked population needs a model trained on the whole ranked population. Caveats: draft-year stats
+        exist only for drafted players (the NHL feed has no pages for others), so the population test uses Central Scouting inputs only; one window of four
+        drafts; the 2016–2019 drafts produced fewer regulars than every model expected, even after scaling for shortened seasons.
+      </p>
+    </div>
+  );
+}
+
 function ProspectCardView({ card }: { card: Record<string, unknown> }) {
   const res = get<Record<string, Record<string, Scores>>>(card, "results");
   const drafts = get<Record<string, number[]>>(card, "drafts");
@@ -405,6 +583,7 @@ function ProspectCardView({ card }: { card: Record<string, unknown> }) {
       </div>
       <BootstrapTable boot={get<Record<string, { auc_diff_ci95: number[]; log_loss_diff_ci95: number[] }>>(card, "results", "bootstrap_vs_draft_position")} />
       <CssBenchmark css={get<Record<string, unknown>>(card, "benchmark_css")} />
+      <V2Research v2={get<Record<string, unknown>>(card, "v2_research")} />
       <div className="grid gap-5 xl:grid-cols-2">
         <div>
           <h3 className="mb-1 text-sm font-medium">League equivalency (NHLe), most-connected leagues</h3>
