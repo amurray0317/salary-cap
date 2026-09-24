@@ -20,7 +20,7 @@ The trees are kept only if they beat the LR alone on the validation data.
 
 ```bash
 # 1. Raw data (NHL API; cached gzip under .data/raw, safe to re-run)
-npm run data:fetch -- --pbp 20252026,20242025,20232024,20222023,20212022 --draft 2005-2025
+npm run data:fetch -- --pbp 20252026,20242025,20232024,20222023,20212022 --draft 2005-2026 --rankings 2008-2026
 
 # 2. Python environment (pinned)
 python3 -m venv .venv && .venv/bin/pip install -r analytics/requirements.txt
@@ -33,10 +33,17 @@ cd analytics
 ../.venv/bin/python -m rosteriq_models.xg.train \
     --train 20212022,20222023,20232024 --valid 20242025 --test 20252026
 ../.venv/bin/python -m rosteriq_models.prospects.train \
-    --drafts 2005-2025 --train 2005-2013 --valid 2014-2015 --test 2016-2019
+    --drafts 2005-2026 --train 2005-2013 --valid 2014-2015 --test 2016-2019
 
-# 5. Write import-ready files + model cards to models/<version>/ (committed)
+# 5. Uncertainty vs MoneyPuck (game-level bootstrap), written into the xG model card
+../.venv/bin/python -m rosteriq_models.xg.bootstrap
+
+# 6. Write import-ready files + model cards to models/<version>/ (committed)
 ../.venv/bin/python -m rosteriq_models.export
+
+# 7. Benchmark the prospect model against NHL Central Scouting final ranks
+#    (needs: npm run data:fetch -- --rankings 2008-2026); written into the committed card
+../.venv/bin/python -m rosteriq_models.prospects.css --train 2008-2015 --test 2016-2019
 
 # Tests
 ../.venv/bin/pytest -q tests

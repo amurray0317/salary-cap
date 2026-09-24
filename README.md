@@ -134,7 +134,7 @@ No secrets are committed; `.env*` is gitignored.
 | `npm run db:generate` | regenerate SQL migrations from `src/db/schema.ts` |
 | `npm run db:migrate` | apply migrations (PGlite or `DATABASE_URL`) |
 | `npm run db:seed` | load fictional demo data (local DB only; refuses `DATABASE_URL`) |
-| `npm run db:reset` | wipe local DB, re-migrate, re-seed |
+| `npm run db:reset` | wipe the local database only (`.data/pglite`, or `PGLITE_DATA_DIR`), re-migrate, re-seed — cached raw data in `.data/raw` and model work files in `.data/models` are kept |
 | `npm run typecheck` / `npm run lint` / `npm test` | quality gates |
 | `npm run fixtures:record` | re-record real connector fixtures into `tests/fixtures/connectors/` |
 | `npm run test:e2e:real-data` | live browser run of the connectors (needs a running server with network access) |

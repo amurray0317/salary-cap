@@ -14,7 +14,7 @@
  * is written to .data/raw/_report.json and counted in the exit summary.
  *
  * Usage (Node's fetch needs NODE_USE_ENV_PROXY=1 behind an HTTPS proxy):
- *   npm run data:fetch -- --pbp 20212022,20222023 --draft 2005-2025
+ *   npm run data:fetch -- --pbp 20212022,20222023 --draft 2005-2025 --rankings 2008-2026
  */
 import fs from "fs";
 import path from "path";
@@ -174,17 +174,33 @@ async function fetchDraftYear(year: number) {
   console.log(`[draft] ${year}: ${linked}/${picks.length} picks linked`);
 }
 
+// --------------------------------------------------------- central scouting
+
+/** NHL Central Scouting final/midterm lists, skaters only (1 North American, 2 International). */
+async function fetchRankings(year: number) {
+  for (const category of [1, 2]) {
+    await cached(
+      path.join(RAW_DIR, "nhl", "rankings", `rankings_${year}_${category}.json.gz`),
+      `https://api-web.nhle.com/v1/draft/rankings/${year}/${category}`,
+    );
+  }
+  bump("ranking_years");
+}
+
 // -------------------------------------------------------------------- main
 
 function parseArgs(argv: string[]) {
-  const out: { pbp: string[]; draft: number[] } = { pbp: [], draft: [] };
+  const out: { pbp: string[]; draft: number[]; rankings: number[] } = { pbp: [], draft: [], rankings: [] };
+  const range = (spec: string | undefined, flag: string) => {
+    const [a, b] = (spec ?? "").split("-").map(Number);
+    if (!a || !b || b < a) throw new Error(`${flag} expects a range like 2008-2026`);
+    return Array.from({ length: b - a + 1 }, (_, i) => a + i);
+  };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--pbp") out.pbp = (argv[++i] ?? "").split(",").filter(Boolean);
-    else if (argv[i] === "--draft") {
-      const [a, b] = (argv[++i] ?? "").split("-").map(Number);
-      if (!a || !b || b < a) throw new Error("--draft expects a range like 2005-2025");
-      for (let y = a; y <= b; y++) out.draft.push(y);
-    } else throw new Error(`unknown argument ${argv[i]}`);
+    else if (argv[i] === "--draft") out.draft = range(argv[++i], "--draft");
+    else if (argv[i] === "--rankings") out.rankings = range(argv[++i], "--rankings");
+    else throw new Error(`unknown argument ${argv[i]}`);
   }
   for (const s of out.pbp) if (!/^\d{8}$/.test(s)) throw new Error(`season ${s} must look like 20252026`);
   return out;
@@ -192,11 +208,16 @@ function parseArgs(argv: string[]) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (args.pbp.length === 0 && args.draft.length === 0) throw new Error("nothing to do: pass --pbp and/or --draft");
+  if (args.pbp.length === 0 && args.draft.length === 0 && args.rankings.length === 0) {
+    throw new Error("nothing to do: pass --pbp, --draft and/or --rankings");
+  }
   // PBP and draft run concurrently; the shared limiter still spaces requests per host.
   await Promise.all([
     (async () => {
       for (const s of args.pbp) await fetchSeasonPbp(s);
+    })(),
+    (async () => {
+      for (const y of args.rankings) await fetchRankings(y);
     })(),
     // Two draft years at a time; each year's picks are linked in order. A
     // failing year is recorded and the others continue.
