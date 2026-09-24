@@ -203,7 +203,7 @@ export default async function RealDataPage() {
       <section className="space-y-4">
         <h2 className="text-base font-semibold">
           EliteProspects <span className="text-xs font-normal text-ink-muted">official API only</span>{" "}
-          <span className={`ml-1 rounded px-1.5 py-0.5 text-xs ${status.eliteprospects.enabled ? "bg-good/10 text-good" : "bg-navy-800 text-ink-muted"}`}>
+          <span className={`ml-1 rounded px-1.5 py-0.5 text-xs ${status.eliteprospects.enabled ? "bg-good/10 text-good" : "bg-track text-ink-muted"}`}>
             {status.eliteprospects.enabled ? "Enabled" : "Disabled until configured"}
           </span>
         </h2>
@@ -238,7 +238,7 @@ export default async function RealDataPage() {
                   Descriptive: ixG measures the chances a player got, not what he will get.
                 </p>
                 {Object.entries(inSeason).map(([sid, v]) => (
-                  <p key={sid} className="mb-3 rounded-md border border-line bg-navy-850 px-3 py-2 text-xs text-ink-secondary">
+                  <p key={sid} className="mb-3 rounded-md border border-line bg-subtle px-3 py-2 text-xs text-ink-secondary">
                     {`${sid.slice(0, 4)}-${sid.slice(6)}`} in progress: data through {v.through ?? "—"} ({v.games ?? 0} games). Stage and approve to refresh the app.
                   </p>
                 ))}

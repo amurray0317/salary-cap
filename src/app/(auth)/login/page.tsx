@@ -9,7 +9,7 @@ export default function LoginPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-12">
       <Link href="/" className="mb-8 flex items-center gap-2">
-        <span className="inline-block h-6 w-6 rounded bg-accent" aria-hidden />
+        <span className="inline-block h-6 w-6 rounded bg-linear-to-br from-ice-bright to-accent" aria-hidden />
         <span className="text-lg font-semibold">RosterIQ</span>
       </Link>
       <h1 className="text-2xl font-semibold">Sign in</h1>

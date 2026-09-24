@@ -58,7 +58,7 @@ export default async function WatchlistsPage() {
                     </thead>
                     <tbody>
                       {members.map(({ m, p }) => (
-                        <tr key={m.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                        <tr key={m.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                           <Td>{PRIORITY_LABELS[m.priority] ?? m.priority}</Td>
                           <Td><Link href={`/scouting/players/${p.id}`} className="font-medium hover:text-accent-text">{p.fullName}</Link></Td>
                           <Td>{p.position}</Td>

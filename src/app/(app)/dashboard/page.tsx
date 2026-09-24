@@ -169,8 +169,8 @@ export default async function DashboardPage() {
                       <span className="text-ink-secondary">{positionLabel(pos)}</span>
                       <span className="tabular-nums">{moneyCompact(amount)}</span>
                     </div>
-                    <div className="mt-1 h-2 rounded bg-navy-800">
-                      <div className="h-full rounded bg-accent" style={{ width: `${(amount / maxPosSpend) * 100}%` }} />
+                    <div className="mt-1 h-2 rounded bg-track">
+                      <div className="h-full rounded bg-ice" style={{ width: `${(amount / maxPosSpend) * 100}%` }} />
                     </div>
                   </div>
                 );
@@ -243,7 +243,7 @@ export default async function DashboardPage() {
       <Card title="Calculation detail (every line, with formula and rule)">
         <div className="max-h-96 overflow-auto">
           <table className="w-full">
-            <thead className="sticky top-0 bg-navy-900">
+            <thead className="sticky top-0 bg-surface">
               <tr className="border-b border-line">
                 <Th>Line</Th>
                 <Th>Category</Th>

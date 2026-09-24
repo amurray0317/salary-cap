@@ -36,7 +36,7 @@ export default async function LandingPage() {
     <main className="mx-auto max-w-5xl px-6 py-16">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="inline-block h-6 w-6 rounded bg-accent" aria-hidden />
+          <span className="inline-block h-6 w-6 rounded bg-linear-to-br from-ice-bright to-accent" aria-hidden />
           <span className="text-lg font-semibold tracking-tight">RosterIQ</span>
         </div>
         <nav className="flex items-center gap-4 text-sm">
@@ -83,7 +83,7 @@ export default async function LandingPage() {
 
       <section className="mt-20 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {MODULES.map((m) => (
-          <div key={m.title} className="rounded-lg border border-line bg-navy-900 p-5">
+          <div key={m.title} className="rounded-lg border border-line bg-surface p-5">
             <h2 className="font-medium">{m.title}</h2>
             <p className="mt-2 text-sm leading-relaxed text-ink-muted">{m.body}</p>
           </div>

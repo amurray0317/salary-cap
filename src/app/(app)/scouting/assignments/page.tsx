@@ -67,7 +67,7 @@ export default async function AssignmentsPage() {
                   <Td className="text-ink-secondary">{scoutName ?? "Unassigned"}</Td>
                   <Td className="text-ink-secondary">{a.dueDate ? formatDate(a.dueDate) : "—"}</Td>
                   <Td>
-                    <span className={`rounded px-1.5 py-0.5 text-xs ${a.status === "complete" ? "bg-good/10 text-good" : a.status === "open" ? "bg-navy-800 text-ink-secondary" : "bg-accent-soft text-accent-text"}`}>
+                    <span className={`rounded px-1.5 py-0.5 text-xs ${a.status === "complete" ? "bg-good/10 text-good" : a.status === "open" ? "bg-track text-ink-secondary" : "bg-accent-soft text-accent-text"}`}>
                       {a.status.replace(/_/g, " ")}
                     </span>
                   </Td>

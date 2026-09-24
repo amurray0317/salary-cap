@@ -154,7 +154,7 @@ export default async function DraftBoardDetailPage({
 
   const splitCount = consensus.filter((c) => c.spread >= 10).length;
   const selectCls =
-    "rounded-md border border-line bg-navy-900 px-2 py-1.5 text-sm text-ink-secondary focus:border-accent focus:outline-none";
+    "rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink-secondary focus:border-accent focus:outline-none";
 
   return (
     <div className="space-y-4">
@@ -215,7 +215,7 @@ export default async function DraftBoardDetailPage({
         </p>
       )}
       {archived && (
-        <p className="rounded-md border border-line bg-navy-900 px-3 py-2 text-sm text-ink-muted">This board is archived and read-only.</p>
+        <p className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink-muted">This board is archived and read-only.</p>
       )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -322,7 +322,7 @@ export default async function DraftBoardDetailPage({
                     const c = consensusBy.get(r.p.id);
                     const age = draftAge(r.p.dateOfBirth, board.draftYear);
                     return (
-                      <tr key={r.e.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                      <tr key={r.e.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                         <Td><input type="checkbox" name="ids" value={r.p.id} aria-label={`Compare ${r.p.fullName}`} /></Td>
                         <Td right className="font-medium">{r.e.overallRank}</Td>
                         <Td>
@@ -371,7 +371,7 @@ export default async function DraftBoardDetailPage({
                                 max={500}
                                 defaultValue={r.e.directorFinalRank ?? ""}
                                 aria-label={`Director rank for ${r.p.fullName}`}
-                                className="w-14 rounded-md border border-line bg-navy-950 px-2 py-1 text-right text-xs text-ink outline-none focus:border-accent"
+                                className="w-14 rounded-md border border-line bg-canvas px-2 py-1 text-right text-xs text-ink outline-none focus:border-accent"
                               />
                               <button className="rounded border border-line px-1.5 py-1 text-xs text-ink-secondary hover:text-ink">✓</button>
                             </form>

@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import type { ConnectorFormState } from "@/server/actions/connectorActions";
 
 const input =
-  "w-full rounded-md border border-line bg-navy-950 px-3 py-2 text-sm text-ink outline-none focus:border-accent";
+  "w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-accent";
 const labelCls = "mb-1 block text-sm text-ink-secondary";
 
 export type ConnectorField =

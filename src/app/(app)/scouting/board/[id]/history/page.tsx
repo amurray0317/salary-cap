@@ -171,7 +171,7 @@ export default async function BoardHistoryPage({
             </thead>
             <tbody>
               {versions.map((v) => (
-                <tr key={v.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                <tr key={v.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                   <Td right className="font-medium">v{v.version}</Td>
                   <Td className="text-ink-secondary">{v.reason ?? "—"}</Td>
                   <Td className="text-ink-secondary">{formatDate(v.createdAt)}</Td>

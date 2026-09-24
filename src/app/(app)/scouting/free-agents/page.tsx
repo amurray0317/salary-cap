@@ -67,7 +67,7 @@ export default async function CfaBoardsPage({ searchParams }: { searchParams: Pr
                 {followUps.slice(0, 20).map((f) => {
                   const overdue = f.e.nextActionDate! < today;
                   return (
-                    <tr key={f.e.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                    <tr key={f.e.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                       <Td className={overdue ? "font-medium text-critical" : "text-ink-secondary"}>
                         {formatDate(f.e.nextActionDate)}{overdue && " (overdue)"}
                       </Td>
@@ -101,7 +101,7 @@ export default async function CfaBoardsPage({ searchParams }: { searchParams: Pr
               </thead>
               <tbody>
                 {boards.map(({ b, entryCount }) => (
-                  <tr key={b.id} className={`border-b border-line/50 last:border-0 hover:bg-navy-850 ${b.status === "archived" ? "opacity-60" : ""}`}>
+                  <tr key={b.id} className={`border-b border-line/50 last:border-0 hover:bg-subtle ${b.status === "archived" ? "opacity-60" : ""}`}>
                     <Td>
                       <Link href={`/scouting/free-agents/${b.id}`} className="font-medium hover:text-accent-text">{b.name}</Link>
                       {b.description && <p className="text-xs text-ink-muted">{b.description}</p>}

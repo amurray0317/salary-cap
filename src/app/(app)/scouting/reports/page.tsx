@@ -50,7 +50,7 @@ export default async function ScoutingReportsPage() {
               </thead>
               <tbody>
                 {reports.map((row) => (
-                  <tr key={row.r.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                  <tr key={row.r.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                     <Td><Link href={`/scouting/players/${row.prospectId}`} className="font-medium hover:text-accent-text">{row.prospectName}</Link></Td>
                     <Td>{row.position}</Td>
                     <Td className="text-ink-secondary">{row.scoutName ?? "—"}</Td>

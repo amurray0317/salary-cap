@@ -63,7 +63,7 @@ export default async function DraftBoardsPage({ searchParams }: { searchParams: 
               </thead>
               <tbody>
                 {visible.map(({ b, entryCount }) => (
-                  <tr key={b.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                  <tr key={b.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                     <Td>
                       <Link href={`/scouting/board/${b.id}`} className="font-medium hover:text-accent-text">{b.name}</Link>
                       {b.description && <p className="text-xs text-ink-muted">{b.description}</p>}

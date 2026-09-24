@@ -34,13 +34,13 @@ export default async function RealDataTeamsPage({ searchParams }: { searchParams
         <Card title={`${data.season} · situation: ${data.situation} (${data.rows.length} rows)`}>
           <div className="mb-3 flex flex-wrap gap-1.5 text-xs">
             {data.seasons.map((s) => (
-              <Link key={s} href={`/real-data/teams?season=${s}&sit=${data.situation}`} className={`rounded px-2 py-1 ${s === data.season ? "bg-accent-soft text-accent-text" : "bg-navy-850 text-ink-secondary hover:text-ink"}`}>
+              <Link key={s} href={`/real-data/teams?season=${s}&sit=${data.situation}`} className={`rounded px-2 py-1 ${s === data.season ? "bg-accent-soft text-accent-text" : "bg-subtle text-ink-secondary hover:text-ink"}`}>
                 {s}
               </Link>
             ))}
             <span className="mx-2 text-ink-muted">|</span>
             {MONEYPUCK_SITUATIONS.map((s) => (
-              <Link key={s} href={`/real-data/teams?season=${data.season}&sit=${s}`} className={`rounded px-2 py-1 ${s === data.situation ? "bg-accent-soft text-accent-text" : "bg-navy-850 text-ink-secondary hover:text-ink"}`}>
+              <Link key={s} href={`/real-data/teams?season=${data.season}&sit=${s}`} className={`rounded px-2 py-1 ${s === data.situation ? "bg-accent-soft text-accent-text" : "bg-subtle text-ink-secondary hover:text-ink"}`}>
                 {s}
               </Link>
             ))}

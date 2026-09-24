@@ -34,7 +34,7 @@ export default async function PlayersPage({
     .limit(300);
 
   const selectCls =
-    "rounded-md border border-line bg-navy-900 px-2 py-1.5 text-sm text-ink-secondary focus:border-accent focus:outline-none";
+    "rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink-secondary focus:border-accent focus:outline-none";
 
   return (
     <div className="space-y-4">
@@ -50,7 +50,7 @@ export default async function PlayersPage({
           name="q"
           defaultValue={q ?? ""}
           placeholder="Search name…"
-          className="w-56 rounded-md border border-line bg-navy-900 px-3 py-1.5 text-sm placeholder:text-ink-muted focus:border-accent focus:outline-none"
+          className="w-56 rounded-md border border-line bg-surface px-3 py-1.5 text-sm placeholder:text-ink-muted focus:border-accent focus:outline-none"
         />
         <select name="pos" defaultValue={pos ?? ""} className={selectCls}>
           <option value="">All positions</option>
@@ -92,7 +92,7 @@ export default async function PlayersPage({
               </thead>
               <tbody>
                 {players.map(({ player, teamName }) => (
-                  <tr key={player.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                  <tr key={player.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                     <Td>
                       <Link href={`/players/${player.id}`} className="font-medium hover:text-accent-text">
                         {player.fullName}

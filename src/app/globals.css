@@ -1,30 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  /* RosterIQ dark front-office theme */
-  --color-navy-950: #0a0f1c; /* page background */
-  --color-navy-900: #0e1626; /* chart + card surface (validated) */
-  --color-navy-850: #121c30;
-  --color-navy-800: #1a2440;
-  --color-navy-700: #24314d;
-  --color-ink: #e7ecf5;
-  --color-ink-secondary: #b3bfd4;
-  --color-ink-muted: #8593ad;
-  --color-accent: #0d9488; /* validated categorical slot on navy-900 */
-  --color-accent-soft: #0d948826;
-  --color-accent-text: #45d0c1; /* links/large text on dark, AA on navy-950 */
-  --color-good: #4ade80;
-  --color-warn: #fbbf24;
-  --color-critical: #f87171;
-  --color-line: #223049;
+  /* RosterIQ light theme: ice blue + purple. Contrast (WCAG) noted per token. */
+  --color-canvas: #f4f7fb; /* page background */
+  --color-surface: #ffffff; /* cards, tables, sidebar */
+  --color-subtle: #eef3f9; /* row / item hover */
+  --color-track: #e3e9f2; /* meter tracks, chips, inputs */
+  --color-strong: #c3cedd; /* scrollbars, heavy dividers */
+  --color-ink: #0f172a; /* body text: 17:1 on surface */
+  --color-ink-secondary: #334155; /* 10:1 */
+  --color-ink-muted: #5b6b82; /* 5.3:1 on surface, 5.0:1 on canvas */
+  --color-accent: #6d28d9; /* purple: buttons (white text 7.1:1), meters */
+  --color-accent-soft: #e0f2fe; /* ice-blue wash: active nav, selected rows */
+  --color-accent-text: #5b21b6; /* purple links: 8.6:1 on surface, 7.9:1 on accent-soft */
+  --color-ice: #0284c7; /* ice blue for marks and focus: 4.1:1 (graphics need 3:1) */
+  --color-ice-bright: #38bdf8; /* decorative only (brand), never text */
+  --color-good: #15803d; /* 5.0:1 */
+  --color-warn: #b45309; /* 5.0:1 */
+  --color-critical: #b91c1c; /* 6.5:1 */
+  --color-line: #dbe3ee;
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
-  background: var(--color-navy-950);
+  background: var(--color-canvas);
   color: var(--color-ink);
   font-feature-settings: "tnum";
 }
@@ -32,7 +34,7 @@ body {
 /* recessive scrollbars for data tables */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-navy-700) transparent;
+  scrollbar-color: var(--color-strong) transparent;
 }
 
 @media print {

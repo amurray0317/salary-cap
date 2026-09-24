@@ -64,7 +64,7 @@ export default async function ModelCenterPage() {
       <Card title={`Role metric weights (${weights.length} active rows, model ${ROLE_MODEL_VERSION})`}>
         <div className="max-h-[32rem] overflow-auto">
           <table className="w-full">
-            <thead className="sticky top-0 bg-navy-900">
+            <thead className="sticky top-0 bg-surface">
               <tr className="border-b border-line">
                 <Th>Group</Th>
                 <Th>Archetype</Th>

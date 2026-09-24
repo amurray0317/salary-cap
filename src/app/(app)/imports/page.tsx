@@ -84,7 +84,7 @@ export default async function ImportsPage() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                <tr key={r.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                   <Td>
                     <Link href={`/imports/${r.id}`} className="font-medium hover:text-accent-text">
                       {r.fileName}
@@ -103,7 +103,7 @@ export default async function ImportsPage() {
                           ? "bg-good/10 text-good"
                           : r.status === "rejected" || r.status === "failed"
                             ? "bg-critical/10 text-critical"
-                            : "bg-navy-800 text-ink-secondary"
+                            : "bg-track text-ink-secondary"
                       }`}
                     >
                       {STATUS_LABELS[r.status] ?? r.status}

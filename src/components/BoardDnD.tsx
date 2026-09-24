@@ -104,7 +104,7 @@ export function BoardDnD({
             name="reason"
             placeholder="Reason for the change (optional, kept in history)"
             maxLength={300}
-            className="w-72 rounded-md border border-line bg-navy-950 px-3 py-1.5 text-sm text-ink outline-none focus:border-accent"
+            className="w-72 rounded-md border border-line bg-canvas px-3 py-1.5 text-sm text-ink outline-none focus:border-accent"
           />
         )}
         <button

@@ -17,7 +17,7 @@ export default function RealDataLayout({ children }: { children: React.ReactNode
           <Link
             key={t.href}
             href={t.href}
-            className="rounded-md px-2.5 py-1.5 text-sm text-ink-secondary hover:bg-navy-850 hover:text-ink"
+            className="rounded-md px-2.5 py-1.5 text-sm text-ink-secondary hover:bg-subtle hover:text-ink"
           >
             {t.label}
           </Link>

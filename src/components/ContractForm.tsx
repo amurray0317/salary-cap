@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import type { FormState } from "@/server/actions/contractActions";
 
 const input =
-  "w-full rounded-md border border-line bg-navy-950 px-3 py-2 text-ink outline-none focus:border-accent";
+  "w-full rounded-md border border-line bg-canvas px-3 py-2 text-ink outline-none focus:border-accent";
 const label = "mb-1 block text-sm text-ink-secondary";
 
 export function ContractForm({

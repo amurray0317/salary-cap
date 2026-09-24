@@ -20,7 +20,7 @@ export default async function ScoutingLayout({ children }: { children: React.Rea
   const ctx = await resolveAppContext();
   if (!roleHasCapability(ctx.role, "view_scouting")) {
     return (
-      <div className="rounded-lg border border-line bg-navy-900 px-6 py-12 text-center">
+      <div className="rounded-lg border border-line bg-surface px-6 py-12 text-center">
         <h1 className="font-medium">Amateur scouting is not available for your role</h1>
         <p className="mt-1 text-sm text-ink-muted">
           Ask an organization administrator to grant scouting access.
@@ -35,7 +35,7 @@ export default async function ScoutingLayout({ children }: { children: React.Rea
           <Link
             key={t.href}
             href={t.href}
-            className="rounded-md px-2.5 py-1.5 text-sm text-ink-secondary hover:bg-navy-850 hover:text-ink"
+            className="rounded-md px-2.5 py-1.5 text-sm text-ink-secondary hover:bg-subtle hover:text-ink"
           >
             {t.label}
           </Link>

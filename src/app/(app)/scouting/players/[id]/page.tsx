@@ -99,7 +99,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
   const secondary = scores.filter((s) => s.score !== null)[1] ?? null;
 
   const input =
-    "rounded-md border border-line bg-navy-950 px-3 py-2 text-sm text-ink outline-none focus:border-accent";
+    "rounded-md border border-line bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-accent";
 
   return (
     <div className="space-y-6">
@@ -282,8 +282,8 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
                     {s.score} <span className="text-xs text-ink-muted">/ 100 · confidence {pct(s.confidence)} · pool {s.poolSize}</span>
                   </span>
                 </div>
-                <div className="mt-1.5 h-2 rounded bg-navy-800" role="img" aria-label={`${s.archetypeLabel} score ${s.score} of 100`}>
-                  <div className="h-full rounded bg-accent" style={{ width: `${s.score}%` }} />
+                <div className="mt-1.5 h-2 rounded bg-track" role="img" aria-label={`${s.archetypeLabel} score ${s.score} of 100`}>
+                  <div className="h-full rounded bg-ice" style={{ width: `${s.score}%` }} />
                 </div>
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
                   {s.contributions.map((c) => (

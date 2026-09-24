@@ -71,7 +71,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               id="status-select"
               name="rosterStatus"
               defaultValue={player.rosterStatus}
-              className="rounded-md border border-line bg-navy-900 px-2 py-1.5 text-sm"
+              className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm"
             >
               {schema.rosterStatus.enumValues.map((s) => (
                 <option key={s} value={s}>{statusLabel(s)}</option>

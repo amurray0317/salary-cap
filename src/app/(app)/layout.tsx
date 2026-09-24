@@ -12,7 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-screen">
       <Sidebar />
       <div className="min-w-0 flex-1">
-        <header className="no-print sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-line bg-navy-950/95 px-4 py-2.5 backdrop-blur">
+        <header className="no-print sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-line bg-canvas/95 px-4 py-2.5 backdrop-blur">
           <ContextSelect
             name="org"
             label="Organization"
@@ -46,12 +46,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               id="global-search"
               name="q"
               placeholder="Search players…"
-              className="w-52 rounded-md border border-line bg-navy-900 px-3 py-1.5 text-sm placeholder:text-ink-muted focus:border-accent focus:outline-none"
+              className="w-52 rounded-md border border-line bg-surface px-3 py-1.5 text-sm placeholder:text-ink-muted focus:border-accent focus:outline-none"
             />
           </form>
           <span className="ml-2 hidden text-sm text-ink-muted lg:inline" title={ctx.user.email}>
             {ctx.user.fullName}
-            <span className="ml-1 rounded bg-navy-800 px-1.5 py-0.5 text-xs">{ctx.role.replace(/_/g, " ")}</span>
+            <span className="ml-1 rounded bg-track px-1.5 py-0.5 text-xs">{ctx.role.replace(/_/g, " ")}</span>
           </span>
           <Link href="/settings" className="text-sm text-ink-muted hover:text-ink">
             Settings

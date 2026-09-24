@@ -48,7 +48,7 @@ export default async function RealDataDraftPage({
                   <Link
                     key={`${r.year}-${r.category}`}
                     href={`/real-data/draft?ry=${r.year}&rc=${r.category}${picks.year ? `&py=${picks.year}` : ""}`}
-                    className={`rounded px-2 py-1 ${active ? "bg-accent-soft text-accent-text" : "bg-navy-850 text-ink-secondary hover:text-ink"}`}
+                    className={`rounded px-2 py-1 ${active ? "bg-accent-soft text-accent-text" : "bg-subtle text-ink-secondary hover:text-ink"}`}
                   >
                     {r.year} · {label}
                   </Link>
@@ -57,7 +57,7 @@ export default async function RealDataDraftPage({
             </div>
             <div className="max-h-[32rem] overflow-auto">
               <table className="w-full">
-                <thead className="sticky top-0 bg-navy-900">
+                <thead className="sticky top-0 bg-surface">
                   <tr className="border-b border-line">
                     <Th right>Final</Th>
                     <Th right>Midterm</Th>
@@ -111,7 +111,7 @@ export default async function RealDataDraftPage({
                 <Link
                   key={y}
                   href={`/real-data/draft?py=${y}${rankings.year ? `&ry=${rankings.year}&rc=${rankings.category}` : ""}`}
-                  className={`rounded px-2 py-1 ${y === picks.year ? "bg-accent-soft text-accent-text" : "bg-navy-850 text-ink-secondary hover:text-ink"}`}
+                  className={`rounded px-2 py-1 ${y === picks.year ? "bg-accent-soft text-accent-text" : "bg-subtle text-ink-secondary hover:text-ink"}`}
                 >
                   {y}
                 </Link>
@@ -119,7 +119,7 @@ export default async function RealDataDraftPage({
             </div>
             <div className="max-h-[32rem] overflow-auto">
               <table className="w-full">
-                <thead className="sticky top-0 bg-navy-900">
+                <thead className="sticky top-0 bg-surface">
                   <tr className="border-b border-line">
                     <Th right>Ovr</Th>
                     <Th right>Rd</Th>

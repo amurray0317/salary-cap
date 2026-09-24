@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import type { FormState } from "@/server/actions/scenarioActions";
 
 const input =
-  "w-full rounded-md border border-line bg-navy-950 px-3 py-2 text-sm text-ink outline-none focus:border-accent";
+  "w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-accent";
 const label = "mb-1 block text-sm text-ink-secondary";
 
 function ErrorNote({ error }: { error?: string }) {
@@ -157,14 +157,14 @@ export function AddTransactionForm({
 
       {kind === "ir_placement" && (
         <label className="flex items-center gap-2 text-sm text-ink-secondary">
-          <input type="checkbox" name="longTerm" className="accent-[#0d9488]" />
+          <input type="checkbox" name="longTerm" className="accent-accent" />
           Long-term injured reserve (generates simplified LTIR relief)
         </label>
       )}
 
       {kind === "sign_free_agent" && (
         <label className="flex items-center gap-2 text-sm text-ink-secondary">
-          <input type="checkbox" name="isTwoWay" className="accent-[#0d9488]" />
+          <input type="checkbox" name="isTwoWay" className="accent-accent" />
           Two-way contract
         </label>
       )}

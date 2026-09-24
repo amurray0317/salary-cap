@@ -93,7 +93,7 @@ export default async function FitPage() {
                   </thead>
                   <tbody>
                     {needFits.map((f, i) => (
-                      <tr key={f.f.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                      <tr key={f.f.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                         <Td right className="text-ink-muted">{i + 1}</Td>
                         <Td><Link href={`/scouting/players/${f.prospectId}`} className="font-medium hover:text-accent-text">{f.name}</Link></Td>
                         <Td>{f.position}</Td>

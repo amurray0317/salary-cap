@@ -59,7 +59,7 @@ export default async function ContractsPage() {
               </thead>
               <tbody>
                 {rows.map(({ contract, playerName, position, teamAbbr }) => (
-                  <tr key={contract.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                  <tr key={contract.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                     <Td>
                       <Link href={`/players/${contract.playerId}`} className="font-medium hover:text-accent-text">
                         {playerName}
