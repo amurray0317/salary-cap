@@ -77,9 +77,9 @@ function ScoresTable({ rows, unit }: { rows: Array<[string, Scores | undefined]>
 function CalibrationTable({ title, rows, keyName }: { title: string; rows: CalRow[] | undefined; keyName: string }) {
   if (!rows?.length) return null;
   return (
-    <div>
+    <div className="overflow-x-auto">
       <h3 className="mb-1 text-sm font-medium">{title}</h3>
-      <table className="w-full">
+      <table className="w-full min-w-[22rem]">
         <thead>
           <tr className="border-b border-line">
             <Th>{keyName.replace(/_/g, " ")}</Th>
@@ -158,13 +158,13 @@ function XgCard({ card }: { card: Record<string, unknown> }) {
           </p>
         )}
         <p className="mt-1 text-xs text-ink-muted">
-          Shots matched to MoneyPuck&rsquo;s shot file: {pc(join?.matched_share_of_ours, 2)} of ours, {pc(join?.matched_share_of_moneypuck, 2)} of
-          theirs; goal labels agree on {pc(join?.goal_label_agreement, 2)}. MoneyPuck&rsquo;s published values may have been fitted with this
-          season included, which would flatter them; ours never saw it.
+          Shots matched to MoneyPuck&rsquo;s shot file: {pc(join?.matched_share_of_ours, 2)} of ours,{" "}
+          {pc(join?.matched_share_of_moneypuck_goalie_in_net ?? join?.matched_share_of_moneypuck, 2)} of theirs with a goalie in net; goal labels agree on {pc(join?.goal_label_agreement, 2)}. MoneyPuck&rsquo;s published values may have been fitted with this
+          season included, which would flatter them; our test model was not trained on it.
         </p>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-3">
+      <div className="grid gap-5 lg:grid-cols-2">
         <CalibrationTable title="By distance (ft)" rows={cal?.distance} keyName="distance_ft" />
         <CalibrationTable title="By shot type" rows={cal?.shot_type} keyName="shot_type" />
         <CalibrationTable title="By strength (shooter v defenders)" rows={cal?.strength} keyName="strength" />
