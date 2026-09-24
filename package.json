@@ -17,7 +17,8 @@
     "db:reset": "rm -rf .data && npm run db:migrate && npm run db:seed",
     "test:e2e": "node tests/e2e/vertical-slice.mjs",
     "test:e2e:real-data": "node tests/e2e/real-data.mjs",
-    "fixtures:record": "NODE_USE_ENV_PROXY=1 tsx scripts/record-connector-fixtures.ts"
+    "fixtures:record": "NODE_USE_ENV_PROXY=1 tsx scripts/record-connector-fixtures.ts",
+    "data:fetch": "NODE_USE_ENV_PROXY=1 tsx scripts/data/fetch-raw.ts"
   },
   "repository": {
     "type": "git",

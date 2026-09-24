@@ -1,0 +1,35 @@
+{
+ "playerId": 8473654,
+ "isActive": false,
+ "firstName": {
+  "default": "Jordan"
+ },
+ "lastName": {
+  "default": "Henry"
+ },
+ "badges": [],
+ "sweaterNumber": 42,
+ "position": "D",
+ "headshot": "https://assets.nhle.com/mugs/nhl/latest/8473654.png",
+ "heroImage": "https://assets.nhle.com/mugs/actionshots/1296x729/8473654.jpg",
+ "heightInInches": 74,
+ "heightInCentimeters": 188,
+ "weightInPounds": 198,
+ "weightInKilograms": 90,
+ "birthDate": "1986-02-11",
+ "birthCity": {
+  "default": "Strathmore"
+ },
+ "birthStateProvince": {
+  "default": "Alberta"
+ },
+ "birthCountry": "CAN",
+ "shootsCatches": "R",
+ "playerSlug": "jordan-henry-8473654",
+ "inTop100AllTime": 0,
+ "inHHOF": 0,
+ "shopLink": "#TODO",
+ "twitterLink": "#TODO",
+ "watchLink": "#TODO",
+ "seasonTotals": []
+}

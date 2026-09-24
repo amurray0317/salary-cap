@@ -1,0 +1,99 @@
+{
+ "playerId": 8471778,
+ "isActive": false,
+ "firstName": {
+  "default": "Jordan"
+ },
+ "lastName": {
+  "default": "Lavallee-Smotherman"
+ },
+ "badges": [],
+ "sweaterNumber": 50,
+ "position": "L",
+ "headshot": "https://assets.nhle.com/mugs/nhl/latest/8471778.png",
+ "heroImage": "https://assets.nhle.com/mugs/actionshots/1296x729/8471778.jpg",
+ "heightInInches": 75,
+ "heightInCentimeters": 191,
+ "weightInPounds": 225,
+ "weightInKilograms": 102,
+ "birthDate": "1986-05-11",
+ "birthCity": {
+  "default": "Corvallis"
+ },
+ "birthStateProvince": {
+  "default": "Oregon"
+ },
+ "birthCountry": "USA",
+ "shootsCatches": "L",
+ "draftDetails": {
+  "year": 2005,
+  "teamAbbrev": "ATL",
+  "round": 4,
+  "pickInRound": 25,
+  "overallPick": 116
+ },
+ "playerSlug": "jordan-lavallee-smotherman-8471778",
+ "inTop100AllTime": 0,
+ "inHHOF": 0,
+ "featuredStats": {
+  "season": 20082009,
+  "regularSeason": {
+   "subSeason": {
+    "assists": 0,
+    "gameWinningGoals": 0,
+    "gamesPlayed": 2,
+    "goals": 0,
+    "otGoals": 0,
+    "pim": 0,
+    "plusMinus": -1,
+    "points": 0,
+    "powerPlayGoals": 0,
+    "powerPlayPoints": 0,
+    "shootingPctg": 0,
+    "shorthandedGoals": 0,
+    "shorthandedPoints": 0,
+    "shots": 1
+   },
+   "career": {
+    "assists": 1,
+    "gameWinningGoals": 0,
+    "gamesPlayed": 4,
+    "goals": 1,
+    "otGoals": 0,
+    "pim": 0,
+    "plusMinus": 1,
+    "points": 2,
+    "powerPlayGoals": 0,
+    "powerPlayPoints": 0,
+    "shootingPctg": 0.5,
+    "shorthandedGoals": 0,
+    "shorthandedPoints": 0,
+    "shots": 2
+   }
+  }
+ },
+ "careerTotals": {
+  "regularSeason": {
+   "assists": 1,
+   "avgToi": "9:04",
+   "gameWinningGoals": 0,
+   "gamesPlayed": 4,
+   "goals": 1,
+   "otGoals": 0,
+   "pim": 0,
+   "plusMinus": 1,
+   "points": 2,
+   "powerPlayGoals": 0,
+   "powerPlayPoints": 0,
+   "shootingPctg": 0.5,
+   "shorthandedGoals": 0,
+   "shorthandedPoints": 0,
+   "shots": 2
+  }
+ },
+ "shopLink": "#TODO",
+ "twitterLink": "#TODO",
+ "watchLink": "#TODO",
+ "last5Games": [],
+ "seasonTotals": []
+}

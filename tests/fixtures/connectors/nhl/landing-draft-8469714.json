@@ -1,0 +1,97 @@
+{
+ "playerId": 8469714,
+ "isActive": false,
+ "firstName": {
+  "default": "Mikko"
+ },
+ "lastName": {
+  "default": "Lehtonen"
+ },
+ "badges": [],
+ "sweaterNumber": 42,
+ "position": "D",
+ "headshot": "https://assets.nhle.com/mugs/nhl/latest/8469714.png",
+ "heroImage": "https://assets.nhle.com/mugs/actionshots/1296x729/8469714.jpg",
+ "heightInInches": 73,
+ "heightInCentimeters": 185,
+ "weightInPounds": 194,
+ "weightInKilograms": 88,
+ "birthDate": "1978-06-12",
+ "birthCity": {
+  "default": "Oulu",
+  "sv": "Ule\u00e5borg"
+ },
+ "birthCountry": "FIN",
+ "shootsCatches": "L",
+ "draftDetails": {
+  "year": 2001,
+  "teamAbbrev": "NSH",
+  "round": 9,
+  "pickInRound": 12,
+  "overallPick": 271
+ },
+ "playerSlug": "mikko-lehtonen-8469714",
+ "inTop100AllTime": 0,
+ "inHHOF": 0,
+ "featuredStats": {
+  "season": 20062007,
+  "regularSeason": {
+   "subSeason": {
+    "assists": 2,
+    "gameWinningGoals": 0,
+    "gamesPlayed": 15,
+    "goals": 1,
+    "otGoals": 0,
+    "pim": 8,
+    "plusMinus": 0,
+    "points": 3,
+    "powerPlayGoals": 0,
+    "powerPlayPoints": 0,
+    "shootingPctg": 0.0714,
+    "shorthandedGoals": 0,
+    "shorthandedPoints": 0,
+    "shots": 14
+   },
+   "career": {
+    "assists": 2,
+    "gameWinningGoals": 0,
+    "gamesPlayed": 15,
+    "goals": 1,
+    "otGoals": 0,
+    "pim": 8,
+    "plusMinus": 0,
+    "points": 3,
+    "powerPlayGoals": 0,
+    "powerPlayPoints": 0,
+    "shootingPctg": 0.07139999999999999,
+    "shorthandedGoals": 0,
+    "shorthandedPoints": 0,
+    "shots": 14
+   }
+  }
+ },
+ "careerTotals": {
+  "regularSeason": {
+   "assists": 2,
+   "avgToi": "14:36",
+   "gameWinningGoals": 0,
+   "gamesPlayed": 15,
+   "goals": 1,
+   "otGoals": 0,
+   "pim": 8,
+   "plusMinus": 0,
+   "points": 3,
+   "powerPlayGoals": 0,
+   "powerPlayPoints": 0,
+   "shootingPctg": 0.07139999999999999,
+   "shorthandedGoals": 0,
+   "shorthandedPoints": 0,
+   "shots": 14
+  }
+ },
+ "shopLink": "#TODO",
+ "twitterLink": "#TODO",
+ "watchLink": "#TODO",
+ "last5Games": [],
+ "seasonTotals": []
+}
