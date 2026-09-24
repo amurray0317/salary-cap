@@ -318,6 +318,11 @@
       ixG reasons / GSAx / prospect card, Prospects page, Model cards page
 - [x] Nightly in-season scoring (`rosteriq_models.xg.score`, `nightly-xg.yml`, drift check)
 - [x] CI: Python tests job; `npm run test:e2e:models` browser run
+- [x] Pre-draft benchmark vs NHL Central Scouting final rank (2016–2019): stats + Central Scouting
+      beats Central Scouting alone (bootstrap intervals exclude zero, overall and after round 1);
+      linking by name + birth date with reviewed transliterations; on the model card
+- [x] `db:reset` deletes only the local database (it used to remove all of `.data`, including the
+      raw download cache)
 
 ## MVP acceptance test status
 1–8 (register→commitments) ✓ · 9–14 (scenarios, violations) ✓ · 15–16 (valuation, surplus) ✓ ·

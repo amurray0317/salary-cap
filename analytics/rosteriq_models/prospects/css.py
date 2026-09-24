@@ -23,6 +23,7 @@ Results are written into the committed prospect model card
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import unicodedata
 
@@ -39,6 +40,7 @@ from rosteriq_models.export import MODELS
 from rosteriq_models.raw import RAW, read_gz
 
 CATEGORIES = {1: "north_american", 2: "international"}
+NAME_SIMILARITY = 0.7
 
 
 def norm(s: str) -> str:
@@ -98,6 +100,33 @@ def link(players: pd.DataFrame, css: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
             out.at[i, "css_list"] = c["css_list"]
             out.at[i, "css_final"] = float(c["css_final"])
             counts[via] += 1
+    # Third pass: exact birth date + similar name (transliterations such as
+    # Voynov / Voinov, Trunev / Trunyov). Accepted only when exactly one
+    # remaining ranking row qualifies.
+    free = css[~css.index.isin(used)]
+    by_bd = free.groupby("birth_date")
+    counts["linked_similar_name"] = 0
+    for i, row in out[out["css_final"].isna()].iterrows():
+        if not row["birth_date"] or row["birth_date"] not in by_bd.groups:
+            continue
+        cand = free.loc[by_bd.groups[row["birth_date"]]]
+        cand = cand[~cand.index.isin(used) & (cand["draft_year"] <= row["draft_year"])]
+        pn = norm(row["name"])
+        ok = [
+            idx for idx, c in cand.iterrows()
+            if max(
+                difflib.SequenceMatcher(None, pn.split(" ")[-1], norm(c["css_last"])).ratio(),
+                difflib.SequenceMatcher(None, pn, norm(c["css_name"])).ratio(),
+            ) >= NAME_SIMILARITY
+        ]
+        if len(ok) != 1:
+            counts["ambiguous"] += int(len(ok) > 1)
+            continue
+        c = css.loc[ok[0]]
+        used.add(ok[0])
+        out.at[i, "css_list"] = c["css_list"]
+        out.at[i, "css_final"] = float(c["css_final"])
+        counts["linked_similar_name"] += 1
     counts["css_final_rows"] = int(len(css))
     counts["css_rows_linked_share"] = round(len(used) / max(len(css), 1), 4)
     return out, counts

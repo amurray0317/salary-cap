@@ -35,8 +35,9 @@ export default async function RealDataProspectsPage({ searchParams }: { searchPa
         </p>
         <p className="mt-2 max-w-3xl rounded-md border border-warn/40 bg-warn/10 px-3 py-2 text-sm text-warn">
           On the 2016–2019 drafts, draft position alone predicted better than this model, and adding the stats to draft
-          position did not measurably improve it. Use the model to see why a production profile looks strong or weak, and
-          ▲/▼ (a 10-point gap from the draft slot) as a prompt to look closer — not as a ranking.{" "}
+          position did not measurably improve it. Before the draft, though, the stats did add information on top of NHL
+          Central Scouting&rsquo;s final rank (most after round 1). Use the model to see why a production profile looks strong or
+          weak, and ▲/▼ (a 10-point gap from the draft slot) as a prompt to look closer — not as a ranking.{" "}
           <Link href="/real-data/models" className="underline">Model card →</Link>
         </p>
       </div>

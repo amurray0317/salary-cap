@@ -286,6 +286,74 @@ function BootstrapTable({ boot }: { boot?: Record<string, { auc_diff_ci95: numbe
   );
 }
 
+function CssBenchmark({ css }: { css?: Record<string, unknown> }) {
+  if (!css) return null;
+  const t = get<Record<string, Scores>>(css, "test");
+  const late = get<Record<string, Scores>>(css, "test_rounds_2_plus");
+  const boot = get<Record<string, { auc_diff_ci95: number[]; log_loss_diff_ci95: number[] }>>(css, "bootstrap_vs_central_scouting") ?? {};
+  const link = get<Record<string, number>>(css, "linking");
+  const ci = (v?: number[], d = 3) => (v ? `${v[1]! >= 0 ? "+" : ""}${v[1]!.toFixed(d)} [${v[0]!.toFixed(d)}, ${v[2]!.toFixed(d)}]` : dash);
+  const tests = get<number[]>(css, "test_drafts") ?? [];
+  const range = tests.length ? `${tests[0]}–${tests[tests.length - 1]}` : dash;
+  return (
+    <div className="space-y-3 rounded-md border border-line p-3">
+      <h3 className="text-sm font-medium">Before the draft: against NHL Central Scouting&rsquo;s final rank ({range} drafts)</h3>
+      <p className="text-xs text-ink-secondary">
+        Draft position does not exist before the draft, so the fair pre-draft baseline is Central Scouting&rsquo;s final ranking
+        (North American and International lists). Same players; every model trained on earlier drafts only; the stats model&rsquo;s
+        input to the combined model is out-of-fold. {String(get(link, "linked_full_name") ?? 0)} + {String(get(link, "linked_last_name") ?? 0)} +{" "}
+        {String(get(link, "linked_similar_name") ?? 0)} drafted skaters linked to their ranking by name and exact birth date
+        (last line: transliterations such as Voynov / Voinov, each reviewed); {pc(get<number>(css, "test_share_with_final_rank"))} of test players had a final rank.
+      </p>
+      <ScoresTable
+        unit="players"
+        rows={[
+          ["Central Scouting final rank only", t?.central_scouting_only],
+          ["RosterIQ stats only", t?.stats_only],
+          ["RosterIQ stats + Central Scouting rank", t?.stats_plus_central_scouting],
+          ["(Draft position — not available before the draft)", t?.draft_position_only_reference],
+        ]}
+      />
+      <ScoresTable
+        unit="players"
+        rows={[
+          ["After round 1: Central Scouting only", late?.central_scouting_only],
+          ["After round 1: RosterIQ stats only", late?.stats_only],
+          ["After round 1: stats + Central Scouting", late?.stats_plus_central_scouting],
+        ]}
+      />
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-line">
+            <Th>Compared with Central Scouting only (paired bootstrap, 95%)</Th>
+            <Th right>AUC difference</Th>
+            <Th right>Log-loss difference (− is better)</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            ["Stats + Central Scouting, all picks", boot["all:stats_plus_css"]],
+            ["Stats + Central Scouting, after round 1", boot["rounds_2_plus:stats_plus_css"]],
+            ["Stats only, all picks", boot["all:stats"]],
+          ].map(([label, v]) => (
+            <tr key={label as string} className="border-b border-line/50 last:border-0">
+              <Td>{label as string}</Td>
+              <Td right>{ci((v as { auc_diff_ci95: number[] } | undefined)?.auc_diff_ci95)}</Td>
+              <Td right>{ci((v as { log_loss_diff_ci95: number[] } | undefined)?.log_loss_diff_ci95, 4)}</Td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-xs text-ink-muted">
+        Reading: before the draft, the stats add information on top of Central Scouting&rsquo;s rank (both intervals exclude
+        zero), most after round 1; on their own they are about as good as Central Scouting. Caveats: outcomes exist only for
+        drafted players, so ranked players who went undrafted are not in this test; one window of four drafts; every model
+        predicts more 200-game players than occurred.
+      </p>
+    </div>
+  );
+}
+
 function ProspectCardView({ card }: { card: Record<string, unknown> }) {
   const res = get<Record<string, Record<string, Scores>>>(card, "results");
   const drafts = get<Record<string, number[]>>(card, "drafts");
@@ -336,6 +404,7 @@ function ProspectCardView({ card }: { card: Record<string, unknown> }) {
         </p>
       </div>
       <BootstrapTable boot={get<Record<string, { auc_diff_ci95: number[]; log_loss_diff_ci95: number[] }>>(card, "results", "bootstrap_vs_draft_position")} />
+      <CssBenchmark css={get<Record<string, unknown>>(card, "benchmark_css")} />
       <div className="grid gap-5 xl:grid-cols-2">
         <div>
           <h3 className="mb-1 text-sm font-medium">League equivalency (NHLe), most-connected leagues</h3>
