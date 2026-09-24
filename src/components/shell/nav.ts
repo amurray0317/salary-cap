@@ -100,6 +100,12 @@ export const NAV: NavSection[] = [
     groups: [{ items: [{ label: "NHL standings", href: "/standings" }, { label: "Other leagues", planned: "Planned: as league data sources are connected." }] }],
   },
   {
+    id: "scores",
+    label: "Scores",
+    icon: "◷",
+    groups: [{ items: [{ label: "NHL scores (live)", href: "/scores" }, { label: "Other leagues", planned: "Planned: as league data sources are connected." }] }],
+  },
+  {
     id: "player-stats",
     label: "Player stats",
     icon: "▤",

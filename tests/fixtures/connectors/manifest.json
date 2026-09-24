@@ -243,5 +243,26 @@
     "status": 200,
     "retrievedAt": "2026-09-24T22:40:00.000Z",
     "trimming": "none (full response)"
+  },
+  {
+    "file": "nhl/score-2026-04-16.json",
+    "url": "https://api-web.nhle.com/v1/score/2026-04-16",
+    "status": 200,
+    "retrievedAt": "2026-09-24T22:20:00.000Z",
+    "trimming": "none (full response)"
+  },
+  {
+    "file": "nhl/score-2026-04-13.json",
+    "url": "https://api-web.nhle.com/v1/score/2026-04-13",
+    "status": 200,
+    "retrievedAt": "2026-09-24T22:25:00.000Z",
+    "trimming": "none (full response)"
+  },
+  {
+    "file": "nhl/score-2026-09-24-pregame.json",
+    "url": "https://api-web.nhle.com/v1/score/now",
+    "status": 200,
+    "retrievedAt": "2026-09-24T22:12:00.000Z",
+    "trimming": "none (full response)"
   }
 ]
