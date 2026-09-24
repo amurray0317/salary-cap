@@ -32,6 +32,8 @@ function requestFromForm(fd: FormData): unknown {
     case "nhl_goalie_stats":
     case "nhl_team_stats":
       return { dataset, season: str(fd, "season"), gameType: str(fd, "gameType") };
+    case "nhl_standings":
+      return { dataset, date: str(fd, "date") || "now" };
     case "nhl_draft_picks": {
       const round = str(fd, "round");
       return { dataset, year: Number(str(fd, "year")), round: round === "all" ? "all" : Number(round) };

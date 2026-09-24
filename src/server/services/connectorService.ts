@@ -45,6 +45,7 @@ import {
   parseSkaterSummary,
   parseTeamIndex,
   parseTeamSummary,
+  parseStandings,
 } from "@/lib/connectors/nhl";
 import {
   MONEYPUCK_CREDIT,
@@ -98,6 +99,7 @@ export const connectorRequestSchema = z.discriminatedUnion("dataset", [
   z.object({ dataset: z.literal("nhl_skater_stats"), season: seasonLabel, gameType }),
   z.object({ dataset: z.literal("nhl_goalie_stats"), season: seasonLabel, gameType }),
   z.object({ dataset: z.literal("nhl_team_stats"), season: seasonLabel, gameType }),
+  z.object({ dataset: z.literal("nhl_standings"), date: z.union([z.literal("now"), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD or now")]) }),
   z.object({ dataset: z.literal("nhl_draft_picks"), year: z.number().int().min(1963).max(2100), round: z.union([z.literal("all"), z.number().int().min(1).max(7)]) }),
   z.object({ dataset: z.literal("nhl_draft_rankings"), year: z.number().int().min(2008).max(2100), category: z.number().int().min(1).max(4) }),
   z.object({ dataset: z.literal("moneypuck_skaters"), season: seasonLabel, gameType, situations }),
@@ -296,6 +298,12 @@ function buildPlan(req: ConnectorRequest, env: Record<string, string | undefined
         `NHL API — team summary ${req.season} ${gtLabel(req.gameType)}`,
         [nhlUrls.teamSummary(seasonLabelToNhlId(req.season), gt(req.gameType)), nhlUrls.teams()],
         ([summary, index]) => parseTeamSummary(parseJson(summary!), gt(req.gameType), parseTeamIndex(parseJson(index!))),
+      );
+    case "nhl_standings":
+      return nhl(
+        `NHL API — standings as of ${req.date === "now" ? "today" : req.date}`,
+        [nhlUrls.standings(req.date)],
+        ([r]) => parseStandings(parseJson(r!)),
       );
     case "nhl_draft_picks":
       return nhl(

@@ -279,6 +279,49 @@ export async function commitConnectorRecords(
       return rows.length;
     }
 
+    case "ext_team_standings": {
+      const s = schema.extTeamStandings;
+      const rows = records.map(({ values: v }) => ({
+        ...stamp,
+        source: def.sourceTag,
+        rowKey: def.rowKey(v),
+        teamAbbrev: v.team_abbrev!,
+        teamName: v.team_name!,
+        season: v.season!,
+        gameType: v.game_type!,
+        standingsDate: v.standings_date!,
+        conference: textOrNull(v.conference),
+        division: textOrNull(v.division),
+        gamesPlayed: Number(v.games_played),
+        wins: Number(v.wins),
+        losses: Number(v.losses),
+        otLosses: Number(v.ot_losses),
+        points: Number(v.points),
+        pointPct: realOrNull(v.point_pct),
+        regulationWins: intOrNull(v.regulation_wins),
+        regulationPlusOtWins: intOrNull(v.regulation_plus_ot_wins),
+        goalsFor: intOrNull(v.goals_for),
+        goalsAgainst: intOrNull(v.goals_against),
+        leagueRank: intOrNull(v.league_rank),
+        conferenceRank: intOrNull(v.conference_rank),
+        divisionRank: intOrNull(v.division_rank),
+        wildcardRank: intOrNull(v.wildcard_rank),
+        clinch: textOrNull(v.clinch),
+        streak: textOrNull(v.streak),
+        lastTen: textOrNull(v.last_ten),
+        homeRecord: textOrNull(v.home_record),
+        roadRecord: textOrNull(v.road_record),
+        metrics: metricsOf(v),
+      }));
+      await insertChunks(rows, (chunk) =>
+        tx
+          .insert(s)
+          .values(chunk)
+          .onConflictDoUpdate({ target: [s.organizationId, s.source, s.rowKey], set: upsertSet(s, "overwrite", []) }),
+      );
+      return rows.length;
+    }
+
     case "ext_draft_picks": {
       const s = schema.extDraftPicks;
       const rows = records.map(({ values: v }) => ({
@@ -470,13 +513,16 @@ async function countChunk(
     }
     case "ext_player_seasons":
     case "ext_team_seasons":
+    case "ext_team_standings":
     case "ext_draft_rankings": {
       const t =
         def.table === "ext_player_seasons"
           ? schema.extPlayerSeasons
           : def.table === "ext_team_seasons"
             ? schema.extTeamSeasons
-            : schema.extDraftRankings;
+            : def.table === "ext_team_standings"
+              ? schema.extTeamStandings
+              : schema.extDraftRankings;
       const [row] = await db
         .select({ n: count })
         .from(t)

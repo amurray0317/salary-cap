@@ -26,6 +26,7 @@ import {
   parsePlayerCareer,
   parseRoster,
   parseSkaterSummary,
+  parseStandings,
   parseTeamIndex,
   parseTeamSummary,
 } from "@/lib/connectors/nhl";
@@ -359,5 +360,24 @@ describe("rate limiting and upload guard", () => {
   it("connector datasets can never be uploaded as CSV", () => {
     expect(isCsvImportType("players")).toBe(true);
     for (const t of Object.keys(CONNECTOR_DEFINITIONS)) expect(isCsvImportType(t)).toBe(false);
+  });
+});
+
+describe("parseStandings", () => {
+  const load = (f: string) => JSON.parse(fs.readFileSync(path.join(process.cwd(), "tests", "fixtures", "connectors", "nhl", f), "utf8"));
+
+  it("maps the recorded 2025-26 final standings", () => {
+    const { records, effectiveSeason, warnings } = parseStandings(load("standings-2026-04-17.json"));
+    expect(records).toHaveLength(32);
+    expect(effectiveSeason).toBe("2025-26");
+    expect(warnings).toEqual([]);
+    const pts = records.map((r) => Number(r.points));
+    expect(pts.reduce((a, b) => a + b, 0)).toBeGreaterThan(32 * 82);
+    expect(records.every((r) => Number(r.wins) + Number(r.losses) + Number(r.ot_losses) === Number(r.games_played))).toBe(true);
+  });
+
+  it("refuses an empty standings list instead of importing nothing", () => {
+    expect(() => parseStandings({ standings: [] })).toThrow(/no teams/);
+    expect(() => parseStandings({})).toThrow(/standings/);
   });
 });

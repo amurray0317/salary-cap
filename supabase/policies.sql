@@ -204,3 +204,9 @@ alter table ext_league_equivalencies enable row level security;
 create policy ext_league_equivalencies_rw on ext_league_equivalencies
   for all using (is_org_member(organization_id))
   with check (is_org_member(organization_id));
+
+-- League standings snapshots (migration 0011), organization-scoped.
+alter table ext_team_standings enable row level security;
+create policy ext_team_standings_rw on ext_team_standings
+  for all using (is_org_member(organization_id))
+  with check (is_org_member(organization_id));

@@ -85,6 +85,11 @@ export const nhlUrls = {
   teamSummary: (seasonId: string, gameTypeId: 2 | 3) =>
     `${NHL_STATS}/team/summary?isAggregate=false&isGame=false&start=0&limit=-1&${cayenne(seasonId, gameTypeId)}`,
   teams: () => `${NHL_STATS}/team`,
+  /** Standings as of a date (YYYY-MM-DD) or "now". */
+  standings: (date: string) => {
+    if (date !== "now" && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new ConnectorParseError("Standings date must be YYYY-MM-DD or now");
+    return `${NHL_WEB}/standings/${date}`;
+  },
 };
 
 /* ------------------------------------------------------------------ */
@@ -422,6 +427,66 @@ export function parseTeamSummary(json: unknown, gameTypeId: 2 | 3, teamIndex: Ma
   }));
   const unmatched = records.filter((r) => r.team_abbrev === "").length;
   if (unmatched > 0) warnings.push(`${unmatched} team(s) could not be matched to a tri-code; stored by full name only.`);
+  return { records, effectiveSeason: latestSeason(records.map((r) => r.season)), warnings };
+}
+
+/* ------------------------------------------------------------------ */
+/* Standings                                                           */
+/* ------------------------------------------------------------------ */
+
+const record = (w: unknown, l: unknown, otl: unknown) => {
+  const parts = [int(w), int(l), int(otl)];
+  return parts.every((p) => p !== "") ? parts.join("-") : "";
+};
+
+/**
+ * /v1/standings/{date}: one row per team. Every row must carry the team,
+ * season, game type and W/L/OTL/points; ranks, streak and splits are kept
+ * when present. An empty list (a date before the season starts) throws, so
+ * an import never replaces standings with nothing.
+ */
+export function parseStandings(json: unknown): ParsedDataset {
+  const d = requireObject(json, "Standings");
+  const rows = requireArray(d, "standings", "Standings").filter(isObject);
+  if (rows.length === 0) throw new ConnectorParseError("Standings: no teams for this date (before the season started?)");
+  const records = rows.map((r, i) => {
+    const rec = {
+      team_abbrev: str(r.teamAbbrev),
+      team_name: str(r.teamName),
+      season: nhlSeasonLabel(r.seasonId),
+      game_type: gameTypeLabel(r.gameTypeId),
+      standings_date: str(r.date),
+      conference: str(r.conferenceName),
+      division: str(r.divisionName),
+      games_played: int(r.gamesPlayed),
+      wins: int(r.wins),
+      losses: int(r.losses),
+      ot_losses: int(r.otLosses),
+      points: int(r.points),
+      point_pct: num(r.pointPctg),
+      regulation_wins: int(r.regulationWins),
+      regulation_plus_ot_wins: int(r.regulationPlusOtWins),
+      goals_for: int(r.goalFor),
+      goals_against: int(r.goalAgainst),
+      league_rank: int(r.leagueSequence),
+      conference_rank: int(r.conferenceSequence),
+      division_rank: int(r.divisionSequence),
+      wildcard_rank: int(r.wildcardSequence),
+      clinch: str(r.clinchIndicator),
+      streak: str(r.streakCode) !== "" && int(r.streakCount) !== "" ? `${str(r.streakCode)}${int(r.streakCount)}` : "",
+      last_ten: record(r.l10Wins, r.l10Losses, r.l10OtLosses),
+      home_record: record(r.homeWins, r.homeLosses, r.homeOtLosses),
+      road_record: record(r.roadWins, r.roadLosses, r.roadOtLosses),
+      m_shootout_wins: int(r.shootoutWins),
+      m_shootout_losses: int(r.shootoutLosses),
+    };
+    for (const k of ["team_abbrev", "team_name", "season", "game_type", "standings_date", "games_played", "wins", "losses", "ot_losses", "points"] as const) {
+      if (rec[k] === "") throw new ConnectorParseError(`Standings row ${i}: missing ${k}`);
+    }
+    return rec;
+  });
+  const dates = [...new Set(records.map((r) => r.standings_date))];
+  const warnings = dates.length > 1 ? [`Rows carry ${dates.length} different dates (${dates.join(", ")}).`] : [];
   return { records, effectiveSeason: latestSeason(records.map((r) => r.season)), warnings };
 }
 

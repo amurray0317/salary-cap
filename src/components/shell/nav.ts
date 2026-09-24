@@ -97,7 +97,7 @@ export const NAV: NavSection[] = [
     id: "standings",
     label: "Standings",
     icon: "≡",
-    groups: [{ items: [{ label: "NHL standings", planned: "Planned: NHL standings API (free)." }] }],
+    groups: [{ items: [{ label: "NHL standings", href: "/standings" }, { label: "Other leagues", planned: "Planned: as league data sources are connected." }] }],
   },
   {
     id: "player-stats",

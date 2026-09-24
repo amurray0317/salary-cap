@@ -152,6 +152,13 @@ export default async function RealDataPage() {
             <ConnectorForm {...common} dataset="nhl_goalie_stats" submitLabel="Fetch goalie summary → preview" fields={[season, gameType]} />
             <div className="my-4 border-t border-line" />
             <ConnectorForm {...common} dataset="nhl_team_stats" submitLabel="Fetch team summary → preview" fields={[season, gameType]} />
+            <div className="my-4 border-t border-line" />
+            <ConnectorForm
+              {...common}
+              dataset="nhl_standings"
+              submitLabel="Fetch standings → preview"
+              fields={[{ name: "date", label: "As of", type: "text", defaultValue: "now", placeholder: "now or YYYY-MM-DD", hint: "Each import replaces the previous standings for that season." }]}
+            />
           </Card>
           <Card title="Draft history & NHL Central Scouting rankings">
             <ConnectorForm

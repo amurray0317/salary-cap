@@ -2010,6 +2010,55 @@ export const extTeamSeasons = pgTable(
   (t) => [uniqueIndex("ext_team_seasons_unique").on(t.organizationId, t.source, t.rowKey)],
 );
 
+/**
+ * League standings snapshots (api-web /v1/standings/{date}). One row per
+ * team, season and game type: each import replaces the team's row, so the
+ * table holds the latest standings imported (standings_date says as of when).
+ */
+export const extTeamStandings = pgTable(
+  "ext_team_standings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    rowKey: text("row_key").notNull(),
+    league: text("league").notNull().default("NHL"),
+    teamAbbrev: text("team_abbrev").notNull(),
+    teamName: text("team_name").notNull(),
+    season: text("season").notNull(),
+    gameType: text("game_type").notNull(),
+    standingsDate: date("standings_date").notNull(),
+    conference: text("conference"),
+    division: text("division"),
+    gamesPlayed: integer("games_played").notNull(),
+    wins: integer("wins").notNull(),
+    losses: integer("losses").notNull(),
+    otLosses: integer("ot_losses").notNull(),
+    points: integer("points").notNull(),
+    pointPct: real("point_pct"),
+    regulationWins: integer("regulation_wins"),
+    regulationPlusOtWins: integer("regulation_plus_ot_wins"),
+    goalsFor: integer("goals_for"),
+    goalsAgainst: integer("goals_against"),
+    leagueRank: integer("league_rank"),
+    conferenceRank: integer("conference_rank"),
+    divisionRank: integer("division_rank"),
+    wildcardRank: integer("wildcard_rank"),
+    clinch: text("clinch"),
+    streak: text("streak"),
+    lastTen: text("last_ten"),
+    homeRecord: text("home_record"),
+    roadRecord: text("road_record"),
+    metrics: jsonb("metrics").notNull().default({}),
+    sourceId: uuid("source_id").references(() => dataSources.id),
+    importId: uuid("import_id").references(() => imports.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("ext_team_standings_unique").on(t.organizationId, t.source, t.rowKey)],
+);
+
 /** NHL Entry Draft selections (api-web /v1/draft/picks). Height/weight kept in the source's units. */
 export const extDraftPicks = pgTable(
   "ext_draft_picks",
