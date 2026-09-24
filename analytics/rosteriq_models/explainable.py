@@ -19,6 +19,7 @@ per-group values add up exactly to (p - baseline p).
 from __future__ import annotations
 
 import json
+import pickle
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -71,7 +72,7 @@ class LRBase:
         return self.lr.decision_function(self.z(X))
 
 
-def fit_lr(X: pd.DataFrame, y: np.ndarray, groups: dict[str, str], C: float, spline_cols: dict[str, int]) -> LRBase:
+def fit_lr(X: pd.DataFrame, y: np.ndarray, groups: dict[str, str], C: float, spline_cols: dict[str, int], w: np.ndarray | None = None) -> LRBase:
     splines = {
         c: SplineTransformer(n_knots=k, degree=3, knots="quantile", extrapolation="linear").fit(X[[c]].to_numpy())
         for c, k in spline_cols.items()
@@ -82,7 +83,7 @@ def fit_lr(X: pd.DataFrame, y: np.ndarray, groups: dict[str, str], C: float, spl
     base.mean = Z.mean(axis=0)
     scale = Z.std(axis=0)
     base.scale = np.where(scale > 1e-12, scale, 1.0)
-    base.lr = LogisticRegression(C=C, max_iter=5000, solver="lbfgs").fit((Z - base.mean) / base.scale, y)
+    base.lr = LogisticRegression(C=C, max_iter=5000, solver="lbfgs").fit((Z - base.mean) / base.scale, y, sample_weight=w)
     return base
 
 
@@ -121,6 +122,8 @@ class Recipe:
     spline_cols: dict[str, int]
     gbm_params: dict
     label: str
+    # Optional per-row training weights (e.g. recency); None = equal weights.
+    weight: Callable[[pd.DataFrame], np.ndarray] | None = None
 
 
 def fit(recipe: Recipe, train: pd.DataFrame, valid: pd.DataFrame, C_grid=(0.01, 0.1, 1.0), max_trees=3000) -> tuple[ExplainableModel, dict]:
@@ -129,17 +132,18 @@ def fit(recipe: Recipe, train: pd.DataFrame, valid: pd.DataFrame, C_grid=(0.01, 
     Xtr, groups = design(train)
     Xva, _ = design(valid)
     ytr, yva = train[recipe.label].to_numpy(int), valid[recipe.label].to_numpy(int)
+    wtr = recipe.weight(train) if recipe.weight else None
     log: dict = {"lr_C": {}}
     best = None
     for C in C_grid:
-        lr = fit_lr(Xtr, ytr, groups, C, recipe.spline_cols)
+        lr = fit_lr(Xtr, ytr, groups, C, recipe.spline_cols, wtr)
         ll = logloss(yva, sigmoid(lr.logit(Xva)))
         log["lr_C"][str(C)] = round(ll, 6)
         if best is None or ll < best[0]:
             best = (ll, C, lr)
     lr_ll, C, lr = best
     log["chosen_C"] = C
-    dtr = xgb.DMatrix(Xtr, label=ytr, base_margin=lr.logit(Xtr))
+    dtr = xgb.DMatrix(Xtr, label=ytr, base_margin=lr.logit(Xtr), weight=wtr)
     dva = xgb.DMatrix(Xva, label=yva, base_margin=lr.logit(Xva))
     booster = xgb.train(recipe.gbm_params, dtr, num_boost_round=max_trees, evals=[(dva, "valid")], early_stopping_rounds=100, verbose_eval=False)
     n_trees = int(booster.best_iteration) + 1
@@ -155,10 +159,11 @@ def refit(recipe: Recipe, full: pd.DataFrame, C: float, n_trees: int) -> Explain
     design, info = recipe.make_design(full)
     X, groups = design(full)
     y = full[recipe.label].to_numpy(int)
-    lr = fit_lr(X, y, groups, C, recipe.spline_cols)
+    w = recipe.weight(full) if recipe.weight else None
+    lr = fit_lr(X, y, groups, C, recipe.spline_cols, w)
     booster = None
     if n_trees > 0:
-        booster = xgb.train(recipe.gbm_params, xgb.DMatrix(X, label=y, base_margin=lr.logit(X)), num_boost_round=n_trees, verbose_eval=False)
+        booster = xgb.train(recipe.gbm_params, xgb.DMatrix(X, label=y, base_margin=lr.logit(X), weight=w), num_boost_round=n_trees, verbose_eval=False)
     return ExplainableModel(design, recipe.group_names, lr, booster, n_trees, info)
 
 
@@ -210,4 +215,20 @@ def save(model: ExplainableModel, folder: Path, meta: dict) -> None:
         "spline_knots": {c: s.bsplines_[0].t.tolist() for c, s in model.lr.splines.items()},
     }
     (folder / "lr.json").write_text(json.dumps(lr, indent=1))
+    # The fitted LR (with its spline transformers) for exact re-use when
+    # scoring new games. Only ever loaded from our own committed files.
+    (folder / "lr.pkl").write_bytes(pickle.dumps(model.lr))
     (folder / "spec.json").write_text(json.dumps({"n_trees": model.n_trees, "design": model.design_info, **meta}, indent=1, default=str))
+
+
+def load(folder: Path, make_design_from_info: Callable[[dict], Design], group_names: list[str]) -> ExplainableModel:
+    """Rebuilds a saved model. `make_design_from_info` turns the saved design
+    info (e.g. category levels) back into the design function."""
+    spec = json.loads((folder / "spec.json").read_text())
+    lr = pickle.loads((folder / "lr.pkl").read_bytes())
+    n_trees = int(spec["n_trees"])
+    booster = None
+    if n_trees > 0:
+        booster = xgb.Booster()
+        booster.load_model(folder / "gbm.json")
+    return ExplainableModel(make_design_from_info(spec["design"]), group_names, lr, booster, n_trees, spec["design"])

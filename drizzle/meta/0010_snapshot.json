@@ -1,5 +1,5 @@
 {
-  "id": "5f7fa976-f8f3-48ad-b760-b4e1cbae6d7a",
+  "id": "a9dfdd59-843d-4058-9957-fc20d15361dc",
   "prevId": "33320ab1-6d5b-4678-aae2-4ff0a304fed6",
   "version": "7",
   "dialect": "postgresql",
@@ -5076,6 +5076,12 @@
           "type": "real",
           "primaryKey": false,
           "notNull": true
+        },
+        "p_by_pick": {
+          "name": "p_by_pick",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
         },
         "contributions": {
           "name": "contributions",

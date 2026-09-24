@@ -29,6 +29,11 @@ NET_X = 89.0
 OFFENSIVE_BLUE_LINE_X = 25.0
 REBOUND_SECONDS = 3
 RUSH_SECONDS = 4
+# A rush is a transition off live play: the previous event is a turnover,
+# hit, block or shot outside the offensive zone. Faceoffs and stoppages are
+# excluded (in 2025-26, 488 attempts within 4 s of a non-offensive-zone
+# faceoff produced no goals).
+RUSH_PREV_EVENTS = {"takeaway", "giveaway", "hit", "blocked-shot", "missed-shot", "shot-on-goal"}
 
 
 @dataclass
@@ -144,7 +149,13 @@ def _shot_row(p, d, prev, game, game_id, home_id, away_id, home_score, away_scor
     distance = math.hypot(NET_X - xn, yn)
     angle_signed = _signed_angle(xn, yn)
     is_rebound = bool(prev_kind in ATTEMPTS and prev_team_same and prev_dt is not None and prev_dt <= REBOUND_SECONDS)
-    is_rush = bool(prev_xn is not None and prev_xn < OFFENSIVE_BLUE_LINE_X and prev_dt is not None and prev_dt <= RUSH_SECONDS)
+    is_rush = bool(
+        prev_kind in RUSH_PREV_EVENTS
+        and prev_xn is not None
+        and prev_xn < OFFENSIVE_BLUE_LINE_X
+        and prev_dt is not None
+        and prev_dt <= RUSH_SECONDS
+    )
     prev_dist = math.hypot(xn - prev_xn, yn - prev_yn) if prev_xn is not None else None
     angle_change = None
     if is_rebound and prev_xn is not None:

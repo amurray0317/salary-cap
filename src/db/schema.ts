@@ -2168,6 +2168,8 @@ export const extProspectProjections = pgTable(
     dm1NhlePpg: real("dm1_nhle_ppg"),
     pNhlRegular: real("p_nhl_regular").notNull(),
     baselineP: real("baseline_p").notNull(),
+    /** Probability from draft position alone (same outcome), for comparison. */
+    pByPick: real("p_by_pick"),
     contributions: jsonb("contributions").notNull().default({}),
     projectionKind: text("projection_kind").notNull(),
     labelMature: boolean("label_mature").notNull(),

@@ -39,14 +39,9 @@ def _int(x):
     return "" if pd.isna(x) else int(x)
 
 
-def export_xg() -> dict[str, int]:
-    src = OUT / "xg" / XG_VERSION
-    dst = MODELS / XG_VERSION
-    dst.mkdir(parents=True, exist_ok=True)
-
-    p = pd.read_csv(src / "player_seasons.csv")
+def _skaters(p: pd.DataFrame) -> pd.DataFrame:
     p = p[p["position"] != "G"]
-    sk = pd.DataFrame({
+    return pd.DataFrame({
         "external_player_id": p["player_id"].astype(int),
         "player_name": p["name"],
         "season": p["season"].map(season_label),
@@ -65,10 +60,10 @@ def export_xg() -> dict[str, int]:
         "m_empty_net_attempts": p["empty_net_shots"].astype(int),
         "m_empty_net_goals": p["empty_net_goals"].astype(int),
     })
-    sk.to_csv(dst / "import_xg_skaters.csv", index=False)
 
-    g = pd.read_csv(src / "goalie_seasons.csv")
-    go = pd.DataFrame({
+
+def _goalies(g: pd.DataFrame) -> pd.DataFrame:
+    return pd.DataFrame({
         "external_player_id": g["player_id"].astype(int),
         "player_name": g["name"],
         "season": g["season"].map(season_label),
@@ -82,11 +77,11 @@ def export_xg() -> dict[str, int]:
         "m_unblocked_shots_against": g["shots_against"].astype(int),
         "m_gsax": g["gsax"].map(_num),
     })
-    go.to_csv(dst / "import_xg_goalies.csv", index=False)
 
-    t = pd.read_csv(src / "team_seasons.csv")
+
+def _teams(t: pd.DataFrame) -> pd.DataFrame:
     tot = t["xg_for"] + t["xg_against"]
-    te = pd.DataFrame({
+    return pd.DataFrame({
         "team_abbrev": t["team"],
         "season": t["season"].map(season_label),
         "game_type": t["game_type"],
@@ -99,13 +94,37 @@ def export_xg() -> dict[str, int]:
         "m_unblocked_for": t["shots_for"].astype(int),
         "m_unblocked_against": t["shots_against"].astype(int),
     })
-    te.to_csv(dst / "import_xg_teams.csv", index=False)
 
+
+XG_FILES = {"player": ("import_xg_skaters.csv", _skaters), "goalie": ("import_xg_goalies.csv", _goalies), "team": ("import_xg_teams.csv", _teams)}
+
+
+def write_xg_imports(totals: dict[str, pd.DataFrame], season: int | None = None) -> dict[str, int]:
+    """Writes import files from train-format totals. With `season`, only that
+    season's rows are replaced in the existing files (in-season scoring)."""
+    dst = MODELS / XG_VERSION
+    dst.mkdir(parents=True, exist_ok=True)
+    counts = {}
+    for key, (name, convert) in XG_FILES.items():
+        new = convert(totals[key])
+        if season is not None and (dst / name).exists():
+            old = pd.read_csv(dst / name, dtype=str, keep_default_na=False)
+            new = pd.concat([old[old["season"] != season_label(season)], new.astype(str).replace("nan", "")], ignore_index=True)
+        new.to_csv(dst / name, index=False)
+        counts[key] = int(len(new))
+    return counts
+
+
+def export_xg() -> dict[str, int]:
+    src = OUT / "xg" / XG_VERSION
+    dst = MODELS / XG_VERSION
+    totals = {k: pd.read_csv(src / f"{k}_seasons.csv") for k in XG_FILES}
+    counts = write_xg_imports(totals)
     shutil.copy(src / "metrics.json", dst / "metrics.json")
     if (dst / "production").exists():
         shutil.rmtree(dst / "production")
     shutil.copytree(src / "production", dst / "production")
-    return {"skaters": len(sk), "goalies": len(go), "teams": len(te)}
+    return counts
 
 
 def export_prospects() -> dict[str, int]:
@@ -137,6 +156,7 @@ def export_prospects() -> dict[str, int]:
         "dm1_nhle_ppg": d["dm1_nhle_ppg"].map(_num),
         "p_nhl_regular": d["p_nhl_regular"].map(_num),
         "baseline_p": d["baseline_p"].map(_num),
+        "p_by_pick": d["p_by_pick"].map(_num),
         **{f"m_contrib_{g}": d[f"contrib_{g}"].map(_num) for g in GROUPS_STATS},
         "projection_kind": d["projection"],
         "label_mature": d["label_mature"].map({True: "true", False: "false"}),

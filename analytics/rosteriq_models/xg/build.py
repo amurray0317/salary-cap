@@ -21,8 +21,11 @@ def build_season(season: int) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     hands = season_handedness(season)
     rows, rejects, games = [], Counter(), 0
     names: dict[int, dict] = {}
+    last_date = None
     for game in season_games(season):
         games += 1
+        if game.get("gameDate") and (last_date is None or game["gameDate"] > last_date):
+            last_date = game["gameDate"]
         abbrev = {int(game["homeTeam"]["id"]): game["homeTeam"]["abbrev"], int(game["awayTeam"]["id"]): game["awayTeam"]["abbrev"]}
         for r in game.get("rosterSpots", []):
             names[int(r["playerId"])] = {
@@ -58,6 +61,7 @@ def build_season(season: int) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
         "direction_source": df["direction_source"].value_counts().to_dict(),
         "handedness_missing": int((~known).sum()),
         "empty_net_shots": int(df["empty_net"].sum()),
+        "last_game_date": last_date,
     }
     return df, pd.DataFrame(list(names.values())), report
 

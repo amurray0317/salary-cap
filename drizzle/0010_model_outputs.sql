@@ -41,6 +41,7 @@ CREATE TABLE "ext_prospect_projections" (
 	"dm1_nhle_ppg" real,
 	"p_nhl_regular" real NOT NULL,
 	"baseline_p" real NOT NULL,
+	"p_by_pick" real,
 	"contributions" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"projection_kind" text NOT NULL,
 	"label_mature" boolean NOT NULL,

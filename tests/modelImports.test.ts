@@ -14,8 +14,8 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 import { and, eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import { setDbForTesting, type Db } from "@/db/client";
-import { ConnectorError, runConnectorImport } from "@/server/services/connectorService";
-import { commitImport, getImportDetail } from "@/server/services/importService";
+import { ConnectorError, runConnectorImport, stageXgBundle } from "@/server/services/connectorService";
+import { commitImport, getImportDetail, listBundleImports } from "@/server/services/importService";
 import { XG_GROUPS } from "@/lib/import/connectorDefinitions";
 
 const MODELS = path.join(process.cwd(), "tests", "fixtures", "models");
@@ -108,6 +108,22 @@ describe("RosterIQ xG season totals", () => {
 
   it("refuses a season the file does not cover", async () => {
     await expect(run({ dataset: "rosteriq_xg_skaters", season: "1999-00", gameType: "regular" })).rejects.toThrow(/has no rows for 1999-00/);
+  });
+});
+
+describe("staging a season's xG totals as one bundle", () => {
+  it("stages skaters, goalies and teams together and commits nothing until approved", async () => {
+    const countBefore = (await db.select().from(schema.extPlayerSeasons)).length;
+    const { bundle, importIds } = await stageXgBundle(
+      { organizationId: fx.orgId, userId: fx.userId, season: "2025-26", gameType: "regular" },
+      { modelsDir: MODELS },
+    );
+    const members = await listBundleImports(fx.orgId, bundle);
+    expect(members.map((m) => m.id)).toEqual(importIds);
+    expect(members.map((m) => m.importType)).toEqual(["rosteriq_xg_skaters", "rosteriq_xg_goalies", "rosteriq_xg_teams"]);
+    expect(members.every((m) => m.status === "awaiting_approval")).toBe(true);
+    expect(await listBundleImports(fx.otherOrgId, bundle)).toHaveLength(0);
+    expect((await db.select().from(schema.extPlayerSeasons)).length).toBe(countBefore);
   });
 });
 

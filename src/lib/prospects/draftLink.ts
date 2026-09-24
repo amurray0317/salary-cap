@@ -146,10 +146,14 @@ export async function linkDraftPick(
 ): Promise<LinkOutcome> {
   let checked = 0;
   const seen = new Set<string>();
-  const queries: Array<["full_name" | "last_name", string]> = [
-    ["full_name", `${pick.firstName} ${pick.lastName}`],
-    ["last_name", pick.lastName],
-  ];
+  // The search index sometimes spells names without accents ("Gidlof" for
+  // "Gidlöf"), so accented names are also searched in plain ASCII.
+  const fold = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const full = `${pick.firstName} ${pick.lastName}`;
+  const queries: Array<["full_name" | "last_name", string]> = [["full_name", full]];
+  if (fold(full) !== full) queries.push(["full_name", fold(full)]);
+  queries.push(["last_name", pick.lastName]);
+  if (fold(pick.lastName) !== pick.lastName) queries.push(["last_name", fold(pick.lastName)]);
   for (const [via, q] of queries) {
     const ranked = rankCandidates(pick, await deps.search(q));
     // A last-name query can return many unrelated players: only verify surname matches.

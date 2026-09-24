@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { resolveAppContext } from "@/server/appContext";
 import { roleHasCapability } from "@/lib/auth/roles";
-import { runConnectorAction } from "@/server/actions/connectorActions";
+import { runConnectorAction, stageXgBundleAction } from "@/server/actions/connectorActions";
 import { connectorStatus } from "@/server/services/connectorService";
 import { listDataSources, referenceSummary } from "@/server/services/referenceDataService";
 import { ConnectorForm, type ConnectorField } from "@/components/ConnectorForms";
@@ -62,7 +62,8 @@ export default async function RealDataPage() {
   // Model imports offer exactly the seasons / drafts the model card covers.
   const xgCard = readModelCard(XG_MODEL_VERSION);
   const prospectCard = readModelCard(PROSPECT_MODEL_VERSION);
-  const xgSeasons = ((xgCard?.seasons as number[] | undefined) ?? [])
+  const inSeason = (xgCard?.in_season as Record<string, { through?: string; games?: number }> | undefined) ?? {};
+  const xgSeasons = ((xgCard?.scored_seasons as number[] | undefined) ?? (xgCard?.seasons as number[] | undefined) ?? [])
     .slice()
     .sort((a, b) => b - a)
     .map((id) => {
@@ -232,9 +233,24 @@ export default async function RealDataPage() {
             ) : (
               <>
                 <p className="mb-3 text-xs text-ink-muted">
-                  Season totals only. Every season is scored by a model that never saw it (leave-one-season-out).
+                  Season totals only. Every season is scored by a model that never saw it (completed seasons:
+                  leave-one-season-out; the current season: the production model, updated nightly after the games).
                   Descriptive: ixG measures the chances a player got, not what he will get.
                 </p>
+                {Object.entries(inSeason).map(([sid, v]) => (
+                  <p key={sid} className="mb-3 rounded-md border border-line bg-navy-850 px-3 py-2 text-xs text-ink-secondary">
+                    {`${sid.slice(0, 4)}-${sid.slice(6)}`} in progress: data through {v.through ?? "—"} ({v.games ?? 0} games). Stage and approve to refresh the app.
+                  </p>
+                ))}
+                <ConnectorForm
+                  {...common}
+                  action={stageXgBundleAction}
+                  cacheable={false}
+                  dataset="rosteriq_xg_bundle"
+                  submitLabel="Stage all xG totals (skaters, goalies, teams) → preview"
+                  fields={[{ ...season, options: xgSeasons }, gameType]}
+                />
+                <div className="my-4 border-t border-line" />
                 <ConnectorForm {...common} cacheable={false} dataset="rosteriq_xg_skaters" submitLabel="Stage skater xG → preview" fields={[{ ...season, options: xgSeasons }, gameType]} />
                 <div className="my-4 border-t border-line" />
                 <ConnectorForm {...common} cacheable={false} dataset="rosteriq_xg_goalies" submitLabel="Stage goalie xGA / GSAx → preview" fields={[{ ...season, options: xgSeasons }, gameType]} />

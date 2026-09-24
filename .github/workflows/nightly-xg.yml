@@ -1,0 +1,99 @@
+# Nightly RosterIQ xG for the season in progress.
+#
+# Runs at 10:00 UTC (6 a.m. Eastern), after the previous night's games are
+# final: downloads only newly completed games (rate-limited, cached between
+# runs), scores them with the committed production model (never refitted
+# here), and commits the updated season-to-date files in models/ with
+# "[skip ci]". Nothing reaches the app until a user stages and approves the
+# import there.
+#
+# Drift check: if goals vs xG (overall or by distance band) moves beyond the
+# threshold in analytics/rosteriq_models/xg/score.py, the files are still
+# committed and the run is then marked failed, so GitHub emails the owner.
+#
+# Off-season runs are no-ops. Scheduled workflows run from the default branch.
+name: Nightly xG
+
+on:
+  schedule:
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-xg
+  cancel-in-progress: false
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: analytics/requirements.txt
+      - run: pip install -r analytics/requirements.txt
+
+      - name: Season in progress
+        id: season
+        run: |
+          y=$(date -u +%Y); m=$(date -u +%-m)
+          if [ "$m" -ge 9 ]; then s=$y; else s=$((y - 1)); fi
+          echo "id=${s}$((s + 1))" >> "$GITHUB_OUTPUT"
+
+      - name: Restore raw game cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .data/raw/nhl
+          key: raw-nhl-${{ steps.season.outputs.id }}-${{ github.run_id }}
+          restore-keys: raw-nhl-${{ steps.season.outputs.id }}-
+
+      - name: Download newly completed games
+        run: npx tsx scripts/data/fetch-raw.ts --pbp ${{ steps.season.outputs.id }}
+
+      - name: Save raw game cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .data/raw/nhl
+          key: raw-nhl-${{ steps.season.outputs.id }}-${{ github.run_id }}
+
+      - name: Score with the production model
+        id: score
+        working-directory: analytics
+        run: |
+          set +e
+          python -m rosteriq_models.xg.score --season ${{ steps.season.outputs.id }}
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          # 0 = ok, 2 = drift flagged (commit first, fail after); anything else is an error.
+          if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then exit "$code"; fi
+
+      - name: Commit updated totals
+        run: |
+          git config user.name "rosteriq-nightly[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add models/rosteriq-xg-v1
+          if git diff --cached --quiet; then
+            echo "No new completed games."
+          else
+            through=$(python -c "import json;c=json.load(open('models/rosteriq-xg-v1/metrics.json'));print(c.get('in_season',{}).get('${{ steps.season.outputs.id }}',{}).get('through',''))")
+            git commit -m "Nightly xG ${{ steps.season.outputs.id }} through ${through} [skip ci]"
+            git push
+          fi
+
+      - name: Fail on drift
+        if: steps.score.outputs.code == '2'
+        run: |
+          echo "::error::xG drift flagged: goals vs xG moved beyond the threshold. See models/rosteriq-xg-v1/metrics.json (in_season.drift)."
+          exit 1

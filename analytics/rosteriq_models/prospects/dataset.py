@@ -25,21 +25,26 @@ OUTCOME_SEASONS = 7
 
 LEAGUE_GROUPS = {
     "CHL": {"OHL", "WHL", "QMJHL"},
-    "NCAA": {"NCAA", "WCHA", "CCHA", "H-East", "ECAC", "Big Ten", "NCHC", "Atlantic Hockey", "CHA", "Hockey East", "Big-10"},
-    "USHL/USNTDP": {"USHL", "USDP", "USNTDP", "NTDP", "U-18", "U-17", "USHL-D"},
+    "NCAA": {"NCAA"},
+    "USHL/USNTDP": {"USHL", "NTDP"},
     "Europe pro": {"KHL", "Russia", "SHL", "Liiga", "Czechia", "NL", "DEL", "Slovakia", "ICEHL"},
-    "Europe second tier": {"VHL", "Russia-2", "HockeyAllsvenskan", "Mestis", "Finland-2", "Czechia2", "CzRep-2", "Swiss-B", "DEL2"},
-    "Europe junior": {"MHL", "Russia-Jr.", "J20 Nationell", "Swe-Jr.", "U20 SM-sarja", "Fin-Jr.", "CzRep-Jr.", "Czech-Jr.", "Swe-U18", "Fin-U18", "Svk-U18", "Swiss-Jr.", "Russia-3"},
+    "Europe second tier": {"VHL", "HockeyAllsvenskan", "Mestis", "Czechia2", "Swiss-B", "DEL2", "Slovakia2"},
+    "Europe junior": {
+        "MHL", "Russia-Jr.", "J20 Nationell", "U20 SM-sarja", "Czechia U20", "U20-Elit", "Slovakia U20",
+        "J18 Nationell", "J18 Elit", "J18 Allsvenskan", "Swe-U18", "U18 SM-sarja", "Czechia U18", "Slovakia U18",
+        "Russia U18", "Russia-3",
+    },
 }
 
 
-def league_group(league: str | None) -> str:
-    if not league:
+def league_group(league: object) -> str:
+    # No draft-year season at all arrives as a missing value (NaN).
+    if not isinstance(league, str) or not league:
         return "none"
     for g, members in LEAGUE_GROUPS.items():
         if league in members:
             return g
-    if league.startswith("High-") or league in {"USHS", "BCHL", "AJHL", "SJHL", "OJHL", "CCHL", "MJHL", "EJHL", "NAHL"}:
+    if league.startswith(("High-", "USHS")) or league in {"BCHL", "AJHL", "SJHL", "OJHL", "CCHL", "MJHL", "EJHL", "NAHL"}:
         return "North America junior A / high school"
     return "other"
 

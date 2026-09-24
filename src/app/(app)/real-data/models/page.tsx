@@ -194,6 +194,50 @@ function XgCard({ card }: { card: Record<string, unknown> }) {
   );
 }
 
+const BOOT_LABELS: Record<string, string> = {
+  stats: "Stats only",
+  stats_lr_only: "Stats only (regression only)",
+  stats_pick: "Stats + draft position",
+  stats_pick_lr_only: "Stats + draft position (regression only)",
+};
+
+function BootstrapTable({ boot }: { boot?: Record<string, { auc_diff_ci95: number[]; log_loss_diff_ci95: number[] }> }) {
+  if (!boot) return null;
+  const ci = (v: number[], d = 3) => `${v[1]! >= 0 ? "+" : ""}${v[1]!.toFixed(d)} [${v[0]!.toFixed(d)}, ${v[2]!.toFixed(d)}]`;
+  const verdict = (auc: number[], ll: number[]) =>
+    auc[0]! > 0 && ll[2]! < 0 ? "better" : auc[2]! < 0 && ll[0]! > 0 ? "worse" : "no detectable difference";
+  return (
+    <div>
+      <h3 className="mb-1 text-sm font-medium">Compared with draft position alone (paired bootstrap, 95% intervals)</h3>
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-line">
+            <Th>Model</Th>
+            <Th>Players</Th>
+            <Th right>AUC difference</Th>
+            <Th right>Log-loss difference (− is better)</Th>
+            <Th>Verdict</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(boot).map(([k, v]) => {
+            const [subset, name] = k.split(":");
+            return (
+              <tr key={k} className="border-b border-line/50 last:border-0">
+                <Td>{BOOT_LABELS[name!] ?? name}</Td>
+                <Td>{subset === "all" ? "All test picks" : "After round 1"}</Td>
+                <Td right>{ci(v.auc_diff_ci95)}</Td>
+                <Td right>{ci(v.log_loss_diff_ci95, 4)}</Td>
+                <Td>{verdict(v.auc_diff_ci95, v.log_loss_diff_ci95)}</Td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function ProspectCardView({ card }: { card: Record<string, unknown> }) {
   const res = get<Record<string, Record<string, Scores>>>(card, "results");
   const drafts = get<Record<string, number[]>>(card, "drafts");
@@ -243,6 +287,7 @@ function ProspectCardView({ card }: { card: Record<string, unknown> }) {
           If &ldquo;RosterIQ + draft position&rdquo; beats &ldquo;draft position only&rdquo;, the stats carry information teams&rsquo; picks did not fully price in.
         </p>
       </div>
+      <BootstrapTable boot={get<Record<string, { auc_diff_ci95: number[]; log_loss_diff_ci95: number[] }>>(card, "results", "bootstrap_vs_draft_position")} />
       <div className="grid gap-5 xl:grid-cols-2">
         <div>
           <h3 className="mb-1 text-sm font-medium">League equivalency (NHLe), most-connected leagues</h3>

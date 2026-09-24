@@ -379,6 +379,7 @@ export async function commitConnectorRecords(
           dm1NhlePpg: realOrNull(v.dm1_nhle_ppg),
           pNhlRegular: realOrNull(v.p_nhl_regular)!,
           baselineP: realOrNull(v.baseline_p)!,
+          pByPick: realOrNull(v.p_by_pick),
           contributions,
           projectionKind: v.projection_kind!,
           labelMature: v.label_mature === "true",

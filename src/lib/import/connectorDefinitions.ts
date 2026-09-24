@@ -704,6 +704,7 @@ export const CONNECTOR_DEFINITIONS: Record<ConnectorImportType, ConnectorDataset
       numField("dm1_nhle_ppg", "D-1 NHLe P/GP", "Season-before points per game translated with RosterIQ NHLe", { min: 0 }),
       fraction("p_nhl_regular", "P(NHL regular)", "Model probability of 200+ NHL games in seven seasons"),
       fraction("baseline_p", "Baseline P", "Probability for a league-average drafted skater"),
+      fraction("p_by_pick", "P from draft slot", "Probability from draft position alone (same outcome, same out-of-sample scheme)"),
       ...PROSPECT_GROUPS.map((g) => numField(`m_contrib_${g}`, `From ${g.replace(/_/g, " ")}`, "Contribution of this feature group (probability)")),
       enumField("projection_kind", "Projection", ["out_of_sample_leave_one_draft_out", "final_model_unlabelled_draft"], "How the player was scored", true),
       enumField("label_mature", "Outcome known", ["true", "false"], "Seven post-draft seasons completed", true),

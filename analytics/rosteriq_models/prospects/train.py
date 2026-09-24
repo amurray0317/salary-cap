@@ -28,7 +28,7 @@ from sklearn.metrics import brier_score_loss, roc_auc_score
 
 from rosteriq_models import explainable as ex
 from rosteriq_models.prospects import dataset, nhle
-from rosteriq_models.prospects.careers import load_careers, load_picks, season_id
+from rosteriq_models.prospects.careers import LEAGUE_ALIASES, TOURNAMENTS, load_careers, load_picks, tournament_lines
 from rosteriq_models.prospects.model import GROUPS_STATS, MODEL_VERSION, recipe
 from rosteriq_models.raw import OUT
 
@@ -52,6 +52,28 @@ def scores(y, p) -> dict:
     }
 
 
+def bootstrap_vs(y: np.ndarray, preds: dict[str, np.ndarray], late: np.ndarray, B: int = 2000, seed: int = 1) -> dict:
+    """95% intervals for (model − draft position only) in AUC and log loss."""
+    rng = np.random.default_rng(seed)
+    out = {}
+    for subset, mask in (("all", np.ones(len(y), bool)), ("rounds_2_plus", late)):
+        idx = np.where(mask)[0]
+        for name, p in preds.items():
+            if name == "draft_position_only":
+                continue
+            d_auc, d_ll = [], []
+            for _ in range(B):
+                s = rng.choice(idx, len(idx))
+                ys = y[s]
+                if ys.min() == ys.max():
+                    continue
+                d_auc.append(roc_auc_score(ys, p[s]) - roc_auc_score(ys, preds["draft_position_only"][s]))
+                d_ll.append(ex.logloss(ys, p[s]) - ex.logloss(ys, preds["draft_position_only"][s]))
+            q = lambda x: [round(float(v), 4) for v in np.percentile(x, [2.5, 50, 97.5])]  # noqa: E731
+            out[f"{subset}:{name}"] = {"auc_diff_ci95": q(d_auc), "log_loss_diff_ci95": q(d_ll), "resamples": len(d_auc)}
+    return out
+
+
 def pick_only(train: pd.DataFrame):
     lr = LogisticRegression(C=1.0).fit(np.log(train[["overall_pick"]].clip(1, 300)), train["nhl_regular"])
     return lambda df: lr.predict_proba(np.log(df[["overall_pick"]].clip(1, 300)))[:, 1]
@@ -69,6 +91,7 @@ def main() -> None:
     link_report = picks.groupby("draft_year")["link_status"].value_counts().unstack(fill_value=0).to_dict(orient="index")
     ids = sorted({int(i) for i in picks["player_id"].dropna()})
     bio, lines = load_careers(ids)
+    tournament_lines_dropped = tournament_lines(ids)
 
     pairs = nhle.build_pairs(lines, bio)
     factors, nhle_report = nhle.estimate(pairs)
@@ -94,6 +117,16 @@ def main() -> None:
     po = pick_only(pd.concat([train, valid]))
     pp = po(test)
     late = (test["round"] >= 2).to_numpy()
+    # Paired bootstrap of each model against draft position alone on the
+    # test drafts: are the differences distinguishable from noise?
+    tv = pd.concat([train, valid], ignore_index=True)
+    test_preds = {"draft_position_only": pp}
+    for variant, with_pick in (("stats", False), ("stats_pick", True)):
+        C_, n_ = chosen[variant]
+        mdl = ex.refit(recipe(with_pick), tv, C_, n_)
+        test_preds[variant] = mdl.predict(test)
+        test_preds[f"{variant}_lr_only"] = mdl.lr_predict(test)
+    results["bootstrap_vs_draft_position"] = bootstrap_vs(test["nhl_regular"].to_numpy(int), test_preds, late)
     results["baselines"] = {
         "constant_rate": scores(test["nhl_regular"], np.full(len(test), base_rate)),
         "draft_position_only": scores(test["nhl_regular"], pp),
@@ -107,15 +140,24 @@ def main() -> None:
     parts = []
     lab_years = sorted(labelled["draft_year"].unique())
     for y in lab_years:
-        mdl = ex.refit(rec, labelled[labelled["draft_year"] != y].reset_index(drop=True), C, n_trees)
+        others = labelled[labelled["draft_year"] != y].reset_index(drop=True)
+        mdl = ex.refit(rec, others, C, n_trees)
         rows = labelled[labelled["draft_year"] == y].reset_index(drop=True)
         e = ex.explain(mdl, rows)
-        parts.append(pd.concat([rows, e.add_prefix("contrib_")], axis=1).assign(projection="out_of_sample_leave_one_draft_out"))
+        parts.append(
+            pd.concat([rows, e.add_prefix("contrib_")], axis=1).assign(
+                projection="out_of_sample_leave_one_draft_out", p_by_pick=pick_only(others)(rows)
+            )
+        )
     prod = ex.refit(rec, labelled.reset_index(drop=True), C, n_trees)
     recent = data[~data["label_mature"]].reset_index(drop=True)
     if len(recent):
         e = ex.explain(prod, recent)
-        parts.append(pd.concat([recent, e.add_prefix("contrib_")], axis=1).assign(projection="final_model_unlabelled_draft"))
+        parts.append(
+            pd.concat([recent, e.add_prefix("contrib_")], axis=1).assign(
+                projection="final_model_unlabelled_draft", p_by_pick=pick_only(labelled)(recent)
+            )
+        )
     proj = pd.concat(parts, ignore_index=True).rename(columns={"contrib_p": "p_nhl_regular", "contrib_baseline_p": "baseline_p"})
 
     out = OUT / "prospects" / MODEL_VERSION
@@ -126,7 +168,7 @@ def main() -> None:
         "birth_date", "age_at_draft", "draft_height_in", "draft_weight_lb",
         "d0_main_league", "d0_league_group", "d0_gp", "d0_points", "d0_ppg", "d0_nhle_ppg", "d0_known_share",
         "dm1_main_league", "dm1_gp", "dm1_points", "dm1_nhle_ppg",
-        "p_nhl_regular", "baseline_p", *[f"contrib_{g}" for g in GROUPS_STATS],
+        "p_nhl_regular", "baseline_p", "p_by_pick", *[f"contrib_{g}" for g in GROUPS_STATS],
         "label_mature", "nhl_regular", "nhl_gp_7", "nhl_gp_to_date", "projection",
     ]
     proj[keep].to_csv(out / "prospects.csv", index=False)
@@ -141,6 +183,11 @@ def main() -> None:
         "skaters": int(len(data)),
         "labelled_skaters": int(len(labelled)),
         "base_rate": round(base_rate, 4),
+        "league_cleaning": {
+            "aliases": LEAGUE_ALIASES,
+            "tournaments_excluded": sorted(TOURNAMENTS),
+            "tournament_lines_dropped": int(tournament_lines_dropped),
+        },
         "nhle": nhle_report,
         "results": results,
         "source": "NHL draft picks, player search and player landing pages (api-web.nhle.com, search.d3.nhle.com)",

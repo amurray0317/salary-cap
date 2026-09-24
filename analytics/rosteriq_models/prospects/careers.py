@@ -16,32 +16,45 @@ from rosteriq_models.raw import RAW, read_gz
 
 
 # The NHL feed labels some leagues differently over time (sometimes both
-# labels in the same seasons). Each alias maps to one current name.
+# labels in the same seasons). Each alias maps to one current name. These
+# are judgement calls, listed so they can be reviewed.
 LEAGUE_ALIASES = {
-    "Sweden": "SHL",
-    "Finland": "Liiga",
-    "CzRep": "Czechia",
-    "Swiss": "NL",
-    "NLA": "NL",
-    "Germany": "DEL",
-    "EBEL": "ICEHL",
-    "Rus-KHL": "KHL",
-    "Sweden-2": "HockeyAllsvenskan",
-    "Allsvenskan": "HockeyAllsvenskan",
+    # Senior pro
+    "Sweden": "SHL", "Finland": "Liiga", "CzRep": "Czechia", "Czech": "Czechia", "Swiss": "NL", "NLA": "NL",
+    "Germany": "DEL", "EBEL": "ICEHL", "Rus-KHL": "KHL",
+    "Sweden-2": "HockeyAllsvenskan", "Allsvenskan": "HockeyAllsvenskan", "Sweden-3": "HockeyEttan",
+    "Russia-2": "VHL", "Finland-2": "Mestis", "Czech2": "Czechia2", "CzRep-2": "Czechia2", "German-2": "DEL2",
     "Russia3": "Russia-3",
-    "Czech": "Czechia",
-    "Czech2": "Czechia2",
-    "CzRep-2": "Czechia2",
-    "German-2": "DEL2",
+    # NCAA: conference labels until 2015-16, one "NCAA" label after.
+    "WCHA": "NCAA", "CCHA": "NCAA", "H-East": "NCAA", "ECAC": "NCAA", "NCHC": "NCAA", "Big Ten": "NCAA",
+    # U.S. National Team Development Program
+    "USDP": "NTDP", "U-18": "NTDP", "U-17": "NTDP",
+    # European junior
+    "Swe-Jr.": "J20 Nationell", "J20 SuperElit": "J20 Nationell", "U20 Nationell": "J20 Nationell",
+    "Fin-Jr.": "U20 SM-sarja", "U20 SM-liiga": "U20 SM-sarja", "Fin-U18": "U18 SM-sarja",
+    "CzRep-Jr.": "Czechia U20", "Czech U18": "Czechia U18", "CzR-U18": "Czechia U18",
+    "CzR-U17": "Czechia U17", "Czech U16": "Czechia U16",
+    "Swiss-Jr.": "U20-Elit", "Swiss-U17": "U17-Elit", "Slovak-Jr.": "Slovakia U20", "Svk-U18": "Slovakia U18",
+    # North American junior / high school
+    "OPJHL": "OJHL", "High-MN": "USHS-MN",
 }
 
-# Tournaments and cups are not leagues: excluded from careers used for
-# NHLe and draft-year production (the run reports how many lines).
+# Tournaments, cups, showcases and exhibitions are not leagues: excluded
+# from careers used for NHLe and draft-year production (the train step
+# reports how many lines were dropped).
 TOURNAMENTS = {
-    "WC", "WC-A", "WC-B", "WJC", "WJC-A", "WJC-B", "WJ18", "WJ18-A", "WJ18-B", "WJAC-19", "WHC-17", "U17-Dev",
-    "OG", "Olympics", "WCup", "World Cup", "Champions HL", "Spengler Cup", "EHT", "Continental Cup",
-    "Hlinka Gretzky Cup", "Hlinka-Gretzky Cup", "Ivan Hlinka", "5 Nations", "4 Nations", "YOG", "EYOF",
-    "Sweden-Q",  # top-flight qualification series
+    # International
+    "WC", "WC-A", "WC-B", "WJC", "WJC-A", "WJC-B", "WJC-20", "WJC-18", "WJC-20 D1A", "WJC-18 D1A",
+    "WJ18", "WJ18-A", "WJ18-B", "WJAC-19", "WHC-17", "U17-Dev", "OG", "Olympics", "OGQ", "OGC-16", "QGC-16",
+    "WCup", "World Cup", "EHT", "International", "5 Nations", "4 Nations", "YOG", "EYOF", "CWG",
+    "Hlinka Gretzky Cup", "Hlinka-Gretzky Cup", "Ivan Hlinka", "Ivan Hlinka Memorial",
+    "USA-S15", "USA-S16", "USA-S17", "WSI U12", "WSI U13", "WSI U14", "WSI U15",
+    # Club / junior cups and showcases
+    "Champions HL", "Spengler Cup", "Continental Cup", "Memorial Cup", "OHL Cup", "M-Cup", "JCWC",
+    "Prospects Challenge", "QC Int PW", "Brick Invitational", "TV-Pucken", "John Reid Memorial", "Alberta Cup",
+    "MNHP", "JPL-Pro",
+    # Qualification series and exhibitions
+    "Sweden-Q", "Jr. C SM-sarja Q", "Exhib.",
 }
 
 

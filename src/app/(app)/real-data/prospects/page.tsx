@@ -30,8 +30,14 @@ export default async function RealDataProspectsPage({ searchParams }: { searchPa
         <p className="max-w-3xl text-sm text-ink-muted">
           RosterIQ prospect model: the chance each drafted skater plays 200+ NHL regular-season games in the
           seven seasons after his draft, from draft-time information only (production translated with RosterIQ
-          NHLe, age, size, position, league). It does not use where the player was picked. Past drafts are scored
-          by a model trained without that draft. <Link href="/real-data/models" className="text-accent-text hover:underline">Model card →</Link>
+          NHLe, age, size, position, league). It does not use where the player was picked; &ldquo;From draft slot&rdquo;
+          is the same probability from draft position alone. Past drafts are scored by models trained without that draft.
+        </p>
+        <p className="mt-2 max-w-3xl rounded-md border border-warn/40 bg-warn/10 px-3 py-2 text-sm text-warn">
+          On the 2016–2019 drafts, draft position alone predicted better than this model, and adding the stats to draft
+          position did not measurably improve it. Use the model to see why a production profile looks strong or weak, and
+          ▲/▼ (a 10-point gap from the draft slot) as a prompt to look closer — not as a ranking.{" "}
+          <Link href="/real-data/models" className="underline">Model card →</Link>
         </p>
       </div>
 
@@ -77,6 +83,7 @@ export default async function RealDataProspectsPage({ searchParams }: { searchPa
                     <Th right>NHLe P/GP</Th>
                     <Th right>Age</Th>
                     <Th right>P(200 GP)</Th>
+                    <Th right>From draft slot</Th>
                     <Th>Biggest reasons (pts)</Th>
                     <Th right>NHL GP (7 yrs)</Th>
                   </tr>
@@ -99,6 +106,14 @@ export default async function RealDataProspectsPage({ searchParams }: { searchPa
                         <Td right>{r.d0NhlePpg === null ? dash : r.d0NhlePpg.toFixed(2)}</Td>
                         <Td right>{r.ageAtDraft === null ? dash : r.ageAtDraft.toFixed(1)}</Td>
                         <Td right className="font-medium">{(r.pNhlRegular * 100).toFixed(0)}%</Td>
+                        <Td right className="text-ink-secondary">
+                          {r.pByPick === null ? dash : `${(r.pByPick * 100).toFixed(0)}%`}
+                          {r.pByPick !== null && Math.abs(r.pNhlRegular - r.pByPick) >= 0.1 && (
+                            <span className={`ml-1 text-xs ${r.pNhlRegular > r.pByPick ? "text-good" : "text-critical"}`}>
+                              {r.pNhlRegular > r.pByPick ? "▲" : "▼"}
+                            </span>
+                          )}
+                        </Td>
                         <Td className="text-xs text-ink-secondary">{reasons.map((x) => `${x.label} ${signed(x.value * 100, 0)}`).join(" · ")}</Td>
                         <Td right>
                           {r.labelMature ? (

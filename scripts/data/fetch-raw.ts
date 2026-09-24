@@ -110,13 +110,18 @@ async function cached(file: string, url: string, accept: (d: unknown) => boolean
 // ---------------------------------------------------------------- play-by-play
 
 const FINAL_STATES = new Set(["OFF", "FINAL"]);
+/** Schedule gameStateId values for completed games (6 FINAL, 7 OFF). */
+const FINAL_STATE_IDS = new Set([6, 7]);
 
 async function fetchSeasonPbp(season: string) {
   for (const gameType of [2, 3]) {
     const listUrl = `https://api.nhle.com/stats/rest/en/game?cayenneExp=season=${season}%20and%20gameType=${gameType}`;
     const list = (await getJson(listUrl)) as { data?: Array<{ id: number; gameStateId: number }> };
     if (!Array.isArray(list.data)) throw new Error(`game list for ${season}/${gameType} has no data array`);
-    const games = list.data.map((g) => g.id).sort((a, b) => a - b);
+    // Playoff schedules list "if necessary" games that may never be played;
+    // only completed games are requested. The rest are counted, not failed.
+    const games = list.data.filter((g) => FINAL_STATE_IDS.has(g.gameStateId)).map((g) => g.id).sort((a, b) => a - b);
+    bump(`not_completed_${season}_${gameType}`, list.data.length - games.length);
     await cached(
       path.join(RAW_DIR, "nhl", "bios", `skaters_${season}_${gameType}.json.gz`),
       `https://api.nhle.com/stats/rest/en/skater/bios?limit=-1&cayenneExp=seasonId=${season}%20and%20gameTypeId=${gameType}`,

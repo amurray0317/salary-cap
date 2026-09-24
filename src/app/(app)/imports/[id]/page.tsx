@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { resolveAppContext } from "@/server/appContext";
-import { getImportDetail, ImportError } from "@/server/services/importService";
+import { getImportDetail, ImportError, listBundleImports } from "@/server/services/importService";
 import {
   applyMappingAction,
+  approveBundleAction,
   approveImportAction,
   rejectImportAction,
 } from "@/server/actions/importActions";
-import { ApproveImportForm, MappingForm } from "@/components/ImportForms";
+import { ApproveBundleForm, ApproveImportForm, MappingForm } from "@/components/ImportForms";
 import { Card, Td, Th } from "@/components/ui";
 import { IMPORT_DEFINITIONS, autoMapHeaders, type ImportType } from "@/lib/import/definitions";
 
@@ -28,6 +29,8 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
   const { row, raw, errors, preview, existingCount, sourceMeta, dataSource } = detail;
   const isConnector = row.sourceKind === "connector" && sourceMeta !== null;
   const isModelOutput = isConnector && sourceMeta?.connectorKey === "rosteriq_models";
+  const bundle = isModelOutput && typeof sourceMeta?.params.bundle === "string" ? sourceMeta.params.bundle : null;
+  const bundleMembers = bundle ? await listBundleImports(ctx.org.id, bundle) : [];
   const importType = row.importType as ImportType;
   const def = IMPORT_DEFINITIONS[importType];
   const storedMapping = row.mapping as Record<string, string>;
@@ -141,6 +144,31 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
               ? "Columns were written by the modelling pipeline and must match this import type exactly, so there is no field-mapping step. Blank cells are values the model does not produce for that row (for example an outcome that is not known yet); they are stored as empty."
               : "Columns were produced by the connector, so there is no field-mapping step. Blank cells are values the source did not report; they are stored as empty, never estimated."}
           </p>
+        </Card>
+      )}
+
+      {bundle && bundleMembers.length > 1 && (
+        <Card title="Staged together (one bundle)">
+          <ul className="mb-3 space-y-1 text-sm">
+            {bundleMembers.map((b) => (
+              <li key={b.id}>
+                <Link href={`/imports/${b.id}`} className={b.id === row.id ? "font-medium" : "text-accent-text hover:underline"}>
+                  {IMPORT_DEFINITIONS[b.importType as ImportType]?.label ?? b.importType}
+                </Link>{" "}
+                <span className="text-ink-muted">· {b.rowCount} rows · {b.status.replace(/_/g, " ")}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mb-2 text-xs text-ink-muted">
+            Each import can be previewed on its own page. Approving the bundle commits every import in it that is awaiting
+            approval, each in its own transaction and audit-logged like a single approval.
+          </p>
+          <ApproveBundleForm
+            action={approveBundleAction}
+            organizationId={ctx.org.id}
+            bundle={bundle}
+            pendingCount={bundleMembers.filter((b) => b.status === "awaiting_approval").length}
+          />
         </Card>
       )}
 

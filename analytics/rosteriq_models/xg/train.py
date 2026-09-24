@@ -76,6 +76,9 @@ def join_moneypuck(df: pd.DataFrame, season: int) -> tuple[pd.DataFrame, dict]:
         "matched": int(matched.sum()),
         "matched_share_of_ours": round(float(matched.mean()), 4),
         "matched_share_of_moneypuck": round(float(matched.sum() / max(len(mp), 1)), 4),
+        # When only modelled shots are passed (goalie in net), compare with
+        # MoneyPuck's goalie-in-net shots too.
+        "matched_share_of_moneypuck_goalie_in_net": round(float(matched.sum() / max(int((mp["shotOnEmptyNet"] == 0).sum()), 1)), 4),
         "duplicate_keys": {"moneypuck": dup_mp, "ours": dup_ours},
         "goal_label_agreement": round(float((j.loc[matched, "goal"].astype(int) == j.loc[matched, "goal_mp"].astype(int)).mean()), 5),
         "empty_net_agreement": round(float((j.loc[matched, "empty_net"].astype(int) == j.loc[matched, "shotOnEmptyNet"].astype(int)).mean()), 5),
@@ -201,18 +204,25 @@ def main() -> None:
     mod = {s: shots[s][modelled(shots[s])].reset_index(drop=True) for s in all_s}
     cat = lambda ss: pd.concat([mod[s] for s in ss], ignore_index=True)  # noqa: E731
 
-    # A. selection
-    sel_model, sel_log = m.fit(cat(train_s), mod[valid_s])
+    start = lambda s: s // 10000  # noqa: E731
+
+    # A. selection: recency half-life, LR C and number of trees, all on the
+    #    validation season. (C barely matters here: 0.01–1.0 were within
+    #    0.00002 log loss in the first run, so two values are tried.)
     yv = mod[valid_s]["goal"].to_numpy(int)
-    sel_log["valid_scores"] = {
-        "lr_only": scores(yv, sel_model.lr_predict(mod[valid_s])),
-        "lr_plus_gbm": scores(yv, sel_model.predict(mod[valid_s])),
-    }
-    C, n_trees = sel_log["chosen_C"], sel_log["gbm_trees"]
-    print("selection:", json.dumps(sel_log))
+    candidates = {}
+    for hl in (None, 2.0, 1.0):
+        mdl, log = m.fit(cat(train_s), mod[valid_s], C_grid=(0.1, 1.0), half_life=hl, target_start=start(valid_s))
+        log["valid_scores"] = {"lr_only": scores(yv, mdl.lr_predict(mod[valid_s])), "lr_plus_gbm": scores(yv, mdl.predict(mod[valid_s]))}
+        candidates["none" if hl is None else str(hl)] = log
+        print(f"half-life {hl}:", json.dumps(log["valid_scores"]["lr_plus_gbm"]))
+    best_key = min(candidates, key=lambda k: candidates[k]["valid_scores"]["lr_plus_gbm"]["log_loss"])
+    sel_log = {**candidates[best_key], "half_life": None if best_key == "none" else float(best_key), "half_life_candidates": candidates}
+    C, n_trees, hl = sel_log["chosen_C"], sel_log["gbm_trees"], sel_log["half_life"]
+    print("selection:", json.dumps({k: sel_log[k] for k in ("half_life", "chosen_C", "gbm_trees")}))
 
     # B. test
-    test_model = m.refit(cat(train_s + [valid_s]), C, n_trees)
+    test_model = m.refit(cat(train_s + [valid_s]), C, n_trees, hl, start(test_s))
     t = mod[test_s].copy()
     t["xg"] = test_model.predict(t)
     t["xg_lr"] = test_model.lr_predict(t)
@@ -246,7 +256,7 @@ def main() -> None:
     reconcile = {}
     for s in all_s:
         others = [o for o in all_s if o != s]
-        mdl = test_model if s == test_s else m.refit(cat(others), C, n_trees)
+        mdl = test_model if s == test_s else m.refit(cat(others), C, n_trees, hl, start(s))
         ex = m.explain(mdl, mod[s])
         full = shots[s][modelled(shots[s])].index  # same order as mod[s]
         assert len(full) == len(ex)
@@ -278,7 +288,8 @@ def main() -> None:
         pd.concat(frames, ignore_index=True).to_csv(version_dir / f"{k}_seasons.csv", index=False)
 
     # D. production model
-    prod = m.refit(cat(all_s), C, n_trees)
+    # Production scores the coming season: weights centre on the season after the newest.
+    prod = m.refit(cat(all_s), C, n_trees, hl, start(max(all_s)) + 1)
     meta = {
         "trained_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "seasons": all_s,

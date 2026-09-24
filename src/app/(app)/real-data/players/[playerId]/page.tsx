@@ -272,6 +272,17 @@ function ProspectCard({ p }: { p: Prospect }) {
           {(p.baselineP * 100).toFixed(0)}%). Drafted {p.overallPick} overall by {p.draftedBy ?? dash}.
         </span>
       </p>
+      {p.pByPick !== null && (
+        <p className="text-ink-secondary">
+          From draft slot alone: <span className="font-medium">{(p.pByPick * 100).toFixed(0)}%</span>.{" "}
+          {Math.abs(p.pNhlRegular - p.pByPick) < 0.05
+            ? "The production profile and the draft slot roughly agree."
+            : p.pNhlRegular > p.pByPick
+              ? "The production profile looks stronger than where he was picked."
+              : "The production profile looks weaker than where he was picked."}{" "}
+          <span className="text-xs text-ink-muted">(On past drafts, draft slot alone predicted better than this model; the gap is a prompt to look closer, not a verdict.)</span>
+        </p>
+      )}
       <table className="w-full max-w-lg">
         <tbody>
           {reasons.map((r) => (

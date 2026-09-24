@@ -13,6 +13,7 @@
  *
  * No "server-only" import so integration tests can run it with a stub fetch.
  */
+import { randomUUID } from "crypto";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db/client";
@@ -438,7 +439,7 @@ function isModelRequest(r: ConnectorRequest): r is ModelRequest {
  * the file path, its SHA-256, the model version and when it was trained.
  */
 async function runModelImport(
-  opts: { organizationId: string; userId: string; request: ModelRequest },
+  opts: { organizationId: string; userId: string; request: ModelRequest; bundle?: string },
   deps: ConnectorDeps,
 ): Promise<{ importId: string; validCount: number; errorCount: number }> {
   const req = opts.request;
@@ -493,7 +494,7 @@ async function runModelImport(
     termsNote: ROSTERIQ_MODELS_TERMS,
     fromCache: [false],
     warnings: trainedAt ? [] : ["The model card (metrics.json) is missing, so the training time is unknown."],
-    params: { ...req, modelVersion: version, sha256: file.sha256, trainedAt },
+    params: { ...req, modelVersion: version, sha256: file.sha256, trainedAt, ...(opts.bundle ? { bundle: opts.bundle } : {}) },
   };
   try {
     return await createConnectorImport({
@@ -508,6 +509,25 @@ async function runModelImport(
     if (err instanceof ImportError) throw new ConnectorError(err.message);
     throw err;
   }
+}
+
+/**
+ * Stages skater, goalie and team xG totals for one season as three imports
+ * linked by a bundle id. Each is still previewed on its own; approving the
+ * bundle commits all three (importActions.approveBundleAction).
+ */
+export async function stageXgBundle(
+  opts: { organizationId: string; userId: string; season: string; gameType: "regular" | "playoffs" },
+  deps: ConnectorDeps = {},
+): Promise<{ bundle: string; importIds: string[] }> {
+  const bundle = randomUUID();
+  const importIds: string[] = [];
+  for (const dataset of ["rosteriq_xg_skaters", "rosteriq_xg_goalies", "rosteriq_xg_teams"] as const) {
+    const request = connectorRequestSchema.parse({ dataset, season: opts.season, gameType: opts.gameType }) as ModelRequest;
+    const res = await runModelImport({ organizationId: opts.organizationId, userId: opts.userId, request, bundle }, deps);
+    importIds.push(res.importId);
+  }
+  return { bundle, importIds };
 }
 
 /** Status of each connector for the Real data page (no secrets). */
