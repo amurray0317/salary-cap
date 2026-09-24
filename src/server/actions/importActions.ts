@@ -9,6 +9,7 @@ import {
   commitImport,
   createImport,
   ImportError,
+  listBundleImports,
   rejectImport,
   validateImport,
 } from "@/server/services/importService";
@@ -117,4 +118,32 @@ export async function rejectImportAction(formData: FormData): Promise<void> {
   }
   revalidatePath(`/imports/${parsed.data.importId}`);
   revalidatePath("/imports");
+}
+
+const bundleRefSchema = z.object({ organizationId: z.string().uuid(), bundle: z.string().uuid() });
+
+/**
+ * Approves every import in a staged bundle that is awaiting approval (each
+ * committed in its own transaction, each audit-logged as a normal approval).
+ */
+export async function approveBundleAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = bundleRefSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: "Invalid input" };
+  if (formData.get("confirm") !== "yes") return { error: "Confirmation missing" };
+  const ctx = await requireOrgAccess(parsed.data.organizationId, "edit_data");
+  const members = await listBundleImports(ctx.organizationId, parsed.data.bundle);
+  const pending = members.filter((m) => m.status === "awaiting_approval");
+  if (pending.length === 0) return { error: "Nothing in this bundle is awaiting approval" };
+  try {
+    for (const m of pending) {
+      await commitImport({ importId: m.id, organizationId: ctx.organizationId, userId: ctx.user.id });
+      revalidatePath(`/imports/${m.id}`);
+    }
+  } catch (err) {
+    if (err instanceof ImportError) return { error: err.message };
+    throw err;
+  }
+  revalidatePath("/imports");
+  revalidatePath("/real-data");
+  return {};
 }

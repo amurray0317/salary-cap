@@ -1,0 +1,36 @@
+{
+ "playerId": 8475114,
+ "isActive": false,
+ "firstName": {
+  "default": "Jordan"
+ },
+ "lastName": {
+  "default": "Pearce"
+ },
+ "badges": [],
+ "sweaterNumber": 36,
+ "position": "G",
+ "headshot": "https://assets.nhle.com/mugs/nhl/latest/8475114.png",
+ "heroImage": "https://assets.nhle.com/mugs/actionshots/1296x729/8475114.jpg",
+ "heightInInches": 73,
+ "heightInCentimeters": 185,
+ "weightInPounds": 195,
+ "weightInKilograms": 88,
+ "birthDate": "1986-10-10",
+ "birthCity": {
+  "default": "Anchorage"
+ },
+ "birthStateProvince": {
+  "default": "Alaska",
+  "sk": "Alja\u0161ka"
+ },
+ "birthCountry": "USA",
+ "shootsCatches": "L",
+ "playerSlug": "jordan-pearce-8475114",
+ "inTop100AllTime": 0,
+ "inHHOF": 0,
+ "shopLink": "#TODO",
+ "twitterLink": "#TODO",
+ "watchLink": "#TODO",
+ "seasonTotals": []
+}

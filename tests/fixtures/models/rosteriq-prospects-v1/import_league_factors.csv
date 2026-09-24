@@ -1,0 +1,7 @@
+league,multiplier,log_factor,standard_error,pairs,model_version
+NHL,1.0,0.0,0.0,21076,rosteriq-prospects-v1
+KHL,0.5884,0.5304,0.0162,5329,rosteriq-prospects-v1
+SHL,0.5078,0.6776,0.0161,5023,rosteriq-prospects-v1
+AHL,0.4341,0.8345,0.0075,23361,rosteriq-prospects-v1
+OHL,0.1334,2.0147,0.0157,6402,rosteriq-prospects-v1
+WHL,0.1266,2.0669,0.017,5744,rosteriq-prospects-v1

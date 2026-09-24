@@ -12,7 +12,7 @@ export const USER_AGENT = "RosterIQ/0.1 (+https://github.com/amurray0317/salary-
 
 /** Allowed hosts per connector — requests anywhere else are refused. */
 export const CONNECTOR_HOSTS: Record<ConnectorKey, string[]> = {
-  nhl_api: ["api-web.nhle.com", "api.nhle.com"],
+  nhl_api: ["api-web.nhle.com", "api.nhle.com", "search.d3.nhle.com"],
   moneypuck: ["moneypuck.com"],
   eliteprospects: ["api.eliteprospects.com"],
 };
@@ -21,6 +21,7 @@ export const CONNECTOR_HOSTS: Record<ConnectorKey, string[]> = {
 export const HOST_MIN_INTERVAL_MS: Record<string, number> = {
   "api-web.nhle.com": 500,
   "api.nhle.com": 500,
+  "search.d3.nhle.com": 500,
   "moneypuck.com": 2000,
   "api.eliteprospects.com": 1000,
 };

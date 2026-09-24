@@ -1,0 +1,133 @@
+{
+ "playerId": 8474586,
+ "isActive": true,
+ "currentTeamId": 55,
+ "currentTeamAbbrev": "SEA",
+ "fullTeamName": {
+  "default": "Seattle Kraken",
+  "fr": "Kraken de Seattle"
+ },
+ "teamCommonName": {
+  "default": "Kraken"
+ },
+ "teamPlaceNameWithPreposition": {
+  "default": "Seattle",
+  "fr": "de Seattle"
+ },
+ "firstName": {
+  "default": "Jordan"
+ },
+ "lastName": {
+  "default": "Eberle"
+ },
+ "badges": [],
+ "teamLogo": "https://assets.nhle.com/logos/nhl/svg/SEA_light.svg",
+ "sweaterNumber": 7,
+ "position": "R",
+ "headshot": "https://assets.nhle.com/mugs/nhl/20262027/SEA/8474586.png",
+ "heroImage": "https://assets.nhle.com/mugs/actionshots/1296x729/8474586.jpg",
+ "heightInInches": 71,
+ "heightInCentimeters": 180,
+ "weightInPounds": 180,
+ "weightInKilograms": 82,
+ "birthDate": "1990-05-15",
+ "birthCity": {
+  "default": "Regina"
+ },
+ "birthStateProvince": {
+  "default": "Saskatchewan"
+ },
+ "birthCountry": "CAN",
+ "shootsCatches": "R",
+ "draftDetails": {
+  "year": 2008,
+  "teamAbbrev": "EDM",
+  "round": 1,
+  "pickInRound": 22,
+  "overallPick": 22
+ },
+ "playerSlug": "jordan-eberle-8474586",
+ "inTop100AllTime": 0,
+ "inHHOF": 0,
+ "featuredStats": {
+  "season": 20252026,
+  "regularSeason": {
+   "subSeason": {
+    "assists": 29,
+    "gameWinningGoals": 3,
+    "gamesPlayed": 80,
+    "goals": 26,
+    "otGoals": 0,
+    "pim": 28,
+    "plusMinus": 2,
+    "points": 55,
+    "powerPlayGoals": 4,
+    "powerPlayPoints": 16,
+    "shootingPctg": 0.154762,
+    "shorthandedGoals": 0,
+    "shorthandedPoints": 0,
+    "shots": 168
+   },
+   "career": {
+    "assists": 449,
+    "gameWinningGoals": 50,
+    "gamesPlayed": 1140,
+    "goals": 334,
+    "otGoals": 6,
+    "pim": 293,
+    "plusMinus": -58,
+    "points": 783,
+    "powerPlayGoals": 74,
+    "powerPlayPoints": 201,
+    "shootingPctg": 0.1292,
+    "shorthandedGoals": 3,
+    "shorthandedPoints": 3,
+    "shots": 2585
+   }
+  }
+ },
+ "careerTotals": {
+  "regularSeason": {
+   "assists": 449,
+   "avgToi": "17:36",
+   "faceoffWinningPctg": 0.41340000000000005,
+   "gameWinningGoals": 50,
+   "gamesPlayed": 1140,
+   "goals": 334,
+   "otGoals": 6,
+   "pim": 293,
+   "plusMinus": -58,
+   "points": 783,
+   "powerPlayGoals": 74,
+   "powerPlayPoints": 201,
+   "shootingPctg": 0.1292,
+   "shorthandedGoals": 3,
+   "shorthandedPoints": 3,
+   "shots": 2585
+  },
+  "playoffs": {
+   "assists": 28,
+   "avgToi": "17:04",
+   "faceoffWinningPctg": 0.46549999999999997,
+   "gameWinningGoals": 4,
+   "gamesPlayed": 76,
+   "goals": 19,
+   "otGoals": 2,
+   "pim": 24,
+   "plusMinus": 4,
+   "points": 47,
+   "powerPlayGoals": 6,
+   "powerPlayPoints": 16,
+   "shootingPctg": 0.1073,
+   "shorthandedGoals": 0,
+   "shorthandedPoints": 0,
+   "shots": 177
+  }
+ },
+ "shopLink": "#TODO",
+ "twitterLink": "#TODO",
+ "watchLink": "#TODO",
+ "last5Games": [],
+ "seasonTotals": [],
+ "currentTeamRoster": []
+}

@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { resolveAppContext } from "@/server/appContext";
 import { roleHasCapability } from "@/lib/auth/roles";
-import { runConnectorAction } from "@/server/actions/connectorActions";
+import { runConnectorAction, stageXgBundleAction } from "@/server/actions/connectorActions";
 import { connectorStatus } from "@/server/services/connectorService";
 import { listDataSources, referenceSummary } from "@/server/services/referenceDataService";
 import { ConnectorForm, type ConnectorField } from "@/components/ConnectorForms";
@@ -10,6 +10,7 @@ import { Card, StatTile, Td, Th } from "@/components/ui";
 import { RANKING_CATEGORIES } from "@/lib/connectors/nhl";
 import { MONEYPUCK_SITUATIONS } from "@/lib/connectors/moneypuck";
 import { formatDate } from "@/lib/format";
+import { PROSPECT_MODEL_VERSION, XG_MODEL_VERSION, readModelCard } from "@/lib/connectors/rosteriqModels";
 
 export const metadata: Metadata = { title: "Real data connectors" };
 
@@ -57,6 +58,21 @@ export default async function RealDataPage() {
     defaultValues: ["all"],
   };
   const common = { action: runConnectorAction, organizationId: ctx.org.id, disabled: !canImport };
+
+  // Model imports offer exactly the seasons / drafts the model card covers.
+  const xgCard = readModelCard(XG_MODEL_VERSION);
+  const prospectCard = readModelCard(PROSPECT_MODEL_VERSION);
+  const inSeason = (xgCard?.in_season as Record<string, { through?: string; games?: number }> | undefined) ?? {};
+  const xgSeasons = ((xgCard?.scored_seasons as number[] | undefined) ?? (xgCard?.seasons as number[] | undefined) ?? [])
+    .slice()
+    .sort((a, b) => b - a)
+    .map((id) => {
+      const start = Math.floor(id / 10000);
+      const label = `${start}-${String(start + 1).slice(2)}`;
+      return { value: label, label };
+    });
+  const draftYears = ((prospectCard?.drafts as { all?: number[] } | undefined)?.all ?? []).slice().sort((a, b) => b - a);
+  const files = status.rosteriq_models.files;
 
   return (
     <div className="space-y-6">
@@ -202,6 +218,69 @@ export default async function RealDataPage() {
             fields={[{ name: "query", label: "Player name", type: "text", placeholder: "Player name" }]}
           />
         </Card>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-base font-semibold">
+          RosterIQ models <span className="text-xs font-normal text-ink-muted">built here from NHL API data</span>{" "}
+          <Link href="/real-data/models" className="ml-2 text-xs font-normal text-accent-text hover:underline">Model cards →</Link>
+        </h2>
+        <p className="text-xs text-ink-muted">{status.rosteriq_models.credit}. {status.rosteriq_models.terms}</p>
+        <div className="grid gap-4 xl:grid-cols-2">
+          <Card title={`Expected goals — ${XG_MODEL_VERSION}`}>
+            {xgSeasons.length === 0 || !files.xg_skaters.present ? (
+              <p className="text-sm text-ink-muted">No xG model output in models/{XG_MODEL_VERSION}/ yet.</p>
+            ) : (
+              <>
+                <p className="mb-3 text-xs text-ink-muted">
+                  Season totals only. Every season is scored by a model that never saw it (completed seasons:
+                  leave-one-season-out; the current season: the production model, updated nightly after the games).
+                  Descriptive: ixG measures the chances a player got, not what he will get.
+                </p>
+                {Object.entries(inSeason).map(([sid, v]) => (
+                  <p key={sid} className="mb-3 rounded-md border border-line bg-navy-850 px-3 py-2 text-xs text-ink-secondary">
+                    {`${sid.slice(0, 4)}-${sid.slice(6)}`} in progress: data through {v.through ?? "—"} ({v.games ?? 0} games). Stage and approve to refresh the app.
+                  </p>
+                ))}
+                <ConnectorForm
+                  {...common}
+                  action={stageXgBundleAction}
+                  cacheable={false}
+                  dataset="rosteriq_xg_bundle"
+                  submitLabel="Stage all xG totals (skaters, goalies, teams) → preview"
+                  fields={[{ ...season, options: xgSeasons }, gameType]}
+                />
+                <div className="my-4 border-t border-line" />
+                <ConnectorForm {...common} cacheable={false} dataset="rosteriq_xg_skaters" submitLabel="Stage skater xG → preview" fields={[{ ...season, options: xgSeasons }, gameType]} />
+                <div className="my-4 border-t border-line" />
+                <ConnectorForm {...common} cacheable={false} dataset="rosteriq_xg_goalies" submitLabel="Stage goalie xGA / GSAx → preview" fields={[{ ...season, options: xgSeasons }, gameType]} />
+                <div className="my-4 border-t border-line" />
+                <ConnectorForm {...common} cacheable={false} dataset="rosteriq_xg_teams" submitLabel="Stage team xGF / xGA → preview" fields={[{ ...season, options: xgSeasons }, gameType]} />
+              </>
+            )}
+          </Card>
+          <Card title={`Prospects — ${PROSPECT_MODEL_VERSION}`}>
+            {draftYears.length === 0 || !files.prospects.present ? (
+              <p className="text-sm text-ink-muted">No prospect model output in models/{PROSPECT_MODEL_VERSION}/ yet.</p>
+            ) : (
+              <>
+                <p className="mb-3 text-xs text-ink-muted">
+                  P(200+ NHL games in seven seasons) from draft-time information only. Past drafts are scored
+                  out-of-sample; recent drafts have no outcome yet.
+                </p>
+                <ConnectorForm
+                  {...common}
+                  cacheable={false}
+                  dataset="rosteriq_prospects"
+                  submitLabel="Stage prospect projections → preview"
+                  fields={[{ name: "draftYear", label: "Draft", type: "select", options: [{ value: "all", label: "All drafts" }, ...draftYears.map((y) => ({ value: String(y), label: String(y) }))] }]}
+                />
+                <div className="my-4 border-t border-line" />
+                <ConnectorForm {...common} cacheable={false} dataset="rosteriq_nhle" submitLabel="Stage league equivalencies (NHLe) → preview" fields={[]} />
+              </>
+            )}
+          </Card>
+        </div>
       </section>
 
       <Card title="Provenance log (approved connector imports)">

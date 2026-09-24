@@ -1,0 +1,99 @@
+"""Prospect pipeline maths on controlled inputs (the real-data run is
+checked by the train step's report and the model card)."""
+import numpy as np
+import pandas as pd
+
+from rosteriq_models.prospects import dataset, nhle
+from rosteriq_models.prospects.careers import clean_lines, season_id
+
+
+def _simulated_careers(rng, true_f, growth=0.15, players=600):
+    """Players move up a ladder of leagues at varied ages; PPG in a league =
+    talent * exp(f_league) * exp(growth * years played). Birth years and the
+    season of each move vary, so development and league difficulty can be
+    told apart (as in real careers, where same-league seasons occur at
+    every age)."""
+    ladder = list(true_f)
+    lines, bios = [], []
+    for pid in range(players):
+        talent = rng.lognormal(-0.6, 0.3)
+        birth = int(rng.integers(1993, 1998))
+        first = int(rng.integers(2012, 2016))
+        level = int(rng.integers(0, len(ladder) - 1))
+        switch = int(rng.integers(1, 4))
+        bios.append({"player_id": pid, "birth_date": f"{birth}-06-01"})
+        for k in range(5):
+            lg = ladder[min(level + (k >= switch), len(ladder) - 1)]
+            gp = int(rng.integers(40, 70))
+            ppg = talent * np.exp(true_f[lg] + growth * k) * rng.lognormal(0, 0.1)
+            lines.append({"player_id": pid, "season": season_id(first + k), "league": lg, "gp": gp, "goals": 0, "assists": 0, "points": int(round(ppg * gp))})
+    return pd.DataFrame(bios), pd.DataFrame(lines)
+
+
+def test_nhle_recovers_known_league_factors():
+    rng = np.random.default_rng(7)
+    true_f = {"JR": 2.0, "MID": 1.0, "NHL": 0.0}
+    bio, lines = _simulated_careers(rng, true_f)
+    table, report = nhle.estimate(nhle.build_pairs(lines, bio))
+    got = dict(zip(table["league"], table["f"]))
+    assert abs(got["JR"] - 2.0) < 0.1
+    assert abs(got["MID"] - 1.0) < 0.1
+    assert got["NHL"] == 0.0
+    assert report["leagues_without_factor"] == []
+
+
+def test_league_with_no_path_to_the_nhl_gets_no_factor():
+    rng = np.random.default_rng(3)
+    bio, lines = _simulated_careers(rng, {"JR": 2.0, "MID": 1.0, "NHL": 0.0})
+    island = pd.DataFrame(
+        [{"player_id": 10_000 + i, "season": season_id(2013 + k), "league": "ISLAND", "gp": 30, "goals": 0, "assists": 0, "points": 10}
+         for i in range(40) for k in range(2)]
+    )
+    bio2 = pd.concat([bio, pd.DataFrame({"player_id": range(10_000, 10_040), "birth_date": "1995-06-01"})])
+    table, report = nhle.estimate(nhle.build_pairs(pd.concat([lines, island]), bio2))
+    assert "ISLAND" not in set(table["league"])
+    assert "ISLAND" in report["leagues_without_factor"]
+
+
+def test_clean_lines_merges_aliases_and_drops_tournaments():
+    ln = pd.DataFrame([
+        {"player_id": 1, "season": 20102011, "league": "Sweden", "gp": 20, "goals": 2, "assists": 3, "points": 5},
+        {"player_id": 1, "season": 20102011, "league": "SHL", "gp": 10, "goals": 1, "assists": 1, "points": 2},
+        {"player_id": 1, "season": 20102011, "league": "WJC-A", "gp": 6, "goals": 4, "assists": 2, "points": 6},
+    ])
+    out = clean_lines(ln)
+    assert out.to_dict(orient="records") == [
+        {"player_id": 1, "season": 20102011, "league": "SHL", "gp": 30, "goals": 3, "assists": 4, "points": 7}
+    ]
+
+
+def test_outcome_window_is_the_seven_seasons_after_the_draft():
+    picks = pd.DataFrame([{
+        "draft_year": 2010, "overall_pick": 50, "round": 2, "name": "Test Player", "draft_position": "C",
+        "amateur_league": "OHL", "amateur_club": "X", "country": "CAN", "draft_height_in": 72, "draft_weight_lb": 190,
+        "drafted_by": "CHI", "player_id": 1, "link_status": "linked",
+    }])
+    bio = pd.DataFrame([{"player_id": 1, "birth_date": "1992-05-01", "landing_position": "C", "shoots": "L"}])
+    lines = pd.DataFrame(
+        [{"player_id": 1, "season": season_id(2009), "league": "OHL", "gp": 60, "goals": 20, "assists": 30, "points": 50}]
+        + [{"player_id": 1, "season": season_id(2010 + k), "league": "NHL", "gp": 30, "goals": 0, "assists": 0, "points": 0} for k in range(8)]
+    )
+    d = dataset.build(picks, bio, lines, {"OHL": 0.14, "NHL": 1.0}, last_complete_season=20252026)
+    row = d.iloc[0]
+    # 2010-11 .. 2016-17 count (7 x 30); 2017-18 does not.
+    assert row["nhl_gp_7"] == 210 and row["nhl_regular"] == 1 and row["label_mature"]
+    assert row["nhl_gp_to_date"] == 240
+    assert abs(row["d0_nhle_ppg"] - 50 / 60 * 0.14) < 1e-9
+    assert row["pos"] == "F"
+
+
+def test_recent_drafts_have_no_label():
+    picks = pd.DataFrame([{
+        "draft_year": 2021, "overall_pick": 1, "round": 1, "name": "Recent", "draft_position": "D", "amateur_league": "WHL",
+        "amateur_club": "X", "country": "CAN", "draft_height_in": 74, "draft_weight_lb": 200, "drafted_by": "BUF",
+        "player_id": 2, "link_status": "linked",
+    }])
+    bio = pd.DataFrame([{"player_id": 2, "birth_date": "2003-01-01", "landing_position": "D", "shoots": "L"}])
+    lines = pd.DataFrame([{"player_id": 2, "season": season_id(2020), "league": "WHL", "gp": 20, "goals": 5, "assists": 10, "points": 15}])
+    d = dataset.build(picks, bio, lines, {"WHL": 0.14}, last_complete_season=20252026)
+    assert not d.iloc[0]["label_mature"]

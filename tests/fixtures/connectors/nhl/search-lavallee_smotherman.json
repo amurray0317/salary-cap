@@ -1,0 +1,22 @@
+[
+ {
+  "playerId": "8471778",
+  "name": "Jordan Lavallee-Smotherman",
+  "positionCode": "L",
+  "teamId": null,
+  "teamAbbrev": null,
+  "lastTeamId": "29",
+  "lastTeamAbbrev": "CBJ",
+  "lastSeasonId": "20082009",
+  "sweaterNumber": 50,
+  "active": false,
+  "height": "6'3\"",
+  "heightInInches": 75,
+  "heightInCentimeters": 191,
+  "weightInPounds": 225,
+  "weightInKilograms": 101,
+  "birthCity": "Corvallis",
+  "birthStateProvince": "OR",
+  "birthCountry": "USA"
+ }
+]

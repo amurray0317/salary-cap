@@ -20,6 +20,7 @@ export function ConnectorForm({
   fields,
   submitLabel,
   disabled = false,
+  cacheable = true,
 }: {
   action: (prev: ConnectorFormState, fd: FormData) => Promise<ConnectorFormState>;
   organizationId: string;
@@ -27,6 +28,8 @@ export function ConnectorForm({
   fields: ConnectorField[];
   submitLabel: string;
   disabled?: boolean;
+  /** False for sources that are not fetched over the network (model outputs). */
+  cacheable?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   const idp = `cf-${dataset}`;
@@ -71,9 +74,11 @@ export function ConnectorForm({
           );
         })}
       </div>
-      <label className="flex items-center gap-1.5 text-xs text-ink-muted">
-        <input type="checkbox" name="bypassCache" disabled={disabled} /> Bypass cache (refetch from the source; still rate-limited)
-      </label>
+      {cacheable && (
+        <label className="flex items-center gap-1.5 text-xs text-ink-muted">
+          <input type="checkbox" name="bypassCache" disabled={disabled} /> Bypass cache (refetch from the source; still rate-limited)
+        </label>
+      )}
       {state.error && (
         <p role="alert" className="rounded-md border border-critical/40 bg-critical/10 px-3 py-2 text-sm text-critical">
           {state.error}
@@ -83,7 +88,7 @@ export function ConnectorForm({
         disabled={pending || disabled}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
       >
-        {pending ? "Fetching…" : submitLabel}
+        {pending ? (cacheable ? "Fetching…" : "Reading…") : submitLabel}
       </button>
     </form>
   );

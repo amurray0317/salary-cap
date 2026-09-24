@@ -134,10 +134,12 @@ No secrets are committed; `.env*` is gitignored.
 | `npm run db:generate` | regenerate SQL migrations from `src/db/schema.ts` |
 | `npm run db:migrate` | apply migrations (PGlite or `DATABASE_URL`) |
 | `npm run db:seed` | load fictional demo data (local DB only; refuses `DATABASE_URL`) |
-| `npm run db:reset` | wipe local DB, re-migrate, re-seed |
+| `npm run db:reset` | wipe the local database only (`.data/pglite`, or `PGLITE_DATA_DIR`), re-migrate, re-seed — cached raw data in `.data/raw` and model work files in `.data/models` are kept |
 | `npm run typecheck` / `npm run lint` / `npm test` | quality gates |
 | `npm run fixtures:record` | re-record real connector fixtures into `tests/fixtures/connectors/` |
 | `npm run test:e2e:real-data` | live browser run of the connectors (needs a running server with network access) |
+| `npm run data:fetch -- --pbp <seasons> --draft <years>` | download raw NHL play-by-play / draft / career data for the models into `.data/raw` (cached, rate-limited) |
+| `.venv/bin/pytest -q analytics/tests` | modelling pipeline tests (see `analytics/README.md` for training and export) |
 
 ## Deployment
 
@@ -278,6 +280,29 @@ Parsers were written against **recorded real responses** in `tests/fixtures/conn
 (`manifest.json` lists URL, status, retrieval time, and trimming for each; re-record with
 `npm run fixtures:record`).
 
+## RosterIQ models (expected goals + prospects)
+
+Two models are built offline in `analytics/` (Python, pinned requirements) from public
+NHL data and imported into the app **as season totals and per-player projections only**:
+
+| Model | Output in the app |
+|---|---|
+| `rosteriq-xg-v1` — probability an unblocked shot attempt becomes a goal | skater ixG with a per-feature breakdown ("why"), goalie xGA / GSAx, team xGF / xGA, per season, game type and situation |
+| `rosteriq-prospects-v1` — probability a drafted skater plays 200+ NHL games in the seven seasons after the draft, from draft-time information only | one projection per drafted skater (2005–2025 drafts) with a per-feature breakdown, and a league equivalency (NHLe) table |
+
+Both are a logistic regression with gradient-boosted trees fitted on top of its output;
+each prediction splits exactly into a baseline plus per-feature contributions. Every
+historical number is out-of-sample (leave-one-season-out / leave-one-draft-out), and each
+model is benchmarked on data no fitting step saw: xG against MoneyPuck's shot-level xG on
+the same shots, prospects against a draft-position-only model. The model cards
+(**Real data → Model cards**, and `docs/MODELS.md`) show the numbers and the limits.
+
+Model outputs are committed under `models/<version>/` and staged from **Real data →
+RosterIQ models** through the same gated import pipeline as every connector (preview →
+approval → commit, with the file path, SHA-256, model version and training time recorded
+as provenance). The app refuses an output file whose columns differ from the import
+definition. Reproduce or retrain: `analytics/README.md`.
+
 ## Data sources
 
 The fictional demo seed stays as-is. Real data enters only through the connectors above
@@ -285,6 +310,8 @@ The fictional demo seed stays as-is. Real data enters only through the connector
 source name / URL / retrieved date / effective season / credit / terms for every connector
 import, and provenance enums (`official / user_entered / estimated / projected /
 model_generated`) are carried on players, contracts, statistics, and valuations. No scraping.
+MoneyPuck's shot-level files are used only offline, as the benchmark for RosterIQ xG (Data:
+MoneyPuck.com); they are never a model input and are not imported.
 
 ## Known limitations
 
@@ -296,7 +323,8 @@ are schema-only, and the valuation model is a v0.1 heuristic.
 
 - `docs/ARCHITECTURE.md` — decisions, assumptions, module boundaries
 - `docs/CALCULATIONS.md` — every cap formula with worked examples
-- `docs/MODELS.md` — model cards for the valuation models
+- `docs/MODELS.md` — model cards for the valuation models and the RosterIQ xG / prospect models
+- `analytics/README.md` — how the xG and prospect models are built, validated, and reproduced
 - `docs/LIMITATIONS.md` — known limitations and simplifications
 - `docs/ROADMAP.md` — post-MVP phases (AHL/ECHL, NCAA/NIL, optimization, AI assistant)
 - `docs/CHECKLIST.md` — implementation checklist and acceptance-test status

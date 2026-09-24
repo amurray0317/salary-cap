@@ -5,11 +5,14 @@ import { resolveAppContext } from "@/server/appContext";
 import { getReferencePlayer } from "@/server/services/referenceDataService";
 import { Card, Td, Th } from "@/components/ui";
 import type { schema } from "@/db/client";
+import { PROSPECT_GROUP_LABELS, XG_GROUP_LABELS, signed, topReasons } from "@/lib/models/labels";
+import { XG_GOALIE_SOURCE, XG_SOURCE } from "@/lib/models/versions";
 
 export const metadata: Metadata = { title: "Real data · player" };
 
 type Season = typeof schema.extPlayerSeasons.$inferSelect;
 type GameLog = typeof schema.extPlayerGameLogs.$inferSelect;
+type Prospect = typeof schema.extProspectProjections.$inferSelect;
 
 const dash = "—";
 const n = (v: number | null | undefined) => (v === null || v === undefined ? dash : String(v));
@@ -181,6 +184,130 @@ function MoneyPuckTable({ rows, goalie }: { rows: Season[]; goalie: boolean }) {
   );
 }
 
+/** RosterIQ xG season totals with the biggest reasons ixG differs from a league-average attempt. */
+function RosterIqXgTable({ rows, goalie }: { rows: Season[]; goalie: boolean }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-line">
+            <Th>Season</Th>
+            <Th>Type</Th>
+            <Th>Situation</Th>
+            <Th>Team</Th>
+            {goalie ? (
+              <>
+                <Th right>Attempts faced</Th>
+                <Th right>GA</Th>
+                <Th right>xGA</Th>
+                <Th right>GSAx</Th>
+              </>
+            ) : (
+              <>
+                <Th right>Attempts</Th>
+                <Th right>G</Th>
+                <Th right>ixG</Th>
+                <Th right>G − ixG</Th>
+                <Th right>Baseline</Th>
+                <Th>Biggest reasons (goals)</Th>
+              </>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const m = r.metrics as Record<string, number>;
+            const reasons = topReasons(
+              Object.fromEntries(Object.keys(XG_GROUP_LABELS).map((g) => [g, m[`xg_from_${g}`]])) as Record<keyof typeof XG_GROUP_LABELS, number>,
+              XG_GROUP_LABELS,
+            );
+            return (
+              <tr key={r.id} className="border-b border-line/50 last:border-0">
+                <Td className="whitespace-nowrap">{r.season}</Td>
+                <Td>{r.gameType === "regular" ? "Reg" : "PO"}</Td>
+                <Td>{r.situation}</Td>
+                <Td>{r.teamName ?? dash}</Td>
+                {goalie ? (
+                  <>
+                    <Td right>{n(m.unblocked_shots_against)}</Td>
+                    <Td right>{n(r.goalsAgainst)}</Td>
+                    <Td right>{f(r.xGoals, 2)}</Td>
+                    <Td right>{f(m.gsax, 2)}</Td>
+                  </>
+                ) : (
+                  <>
+                    <Td right>{n(m.unblocked_attempts)}</Td>
+                    <Td right>{n(m.goals_non_empty_net)}</Td>
+                    <Td right>{f(r.xGoals, 2)}</Td>
+                    <Td right>{f(m.goals_minus_xg, 2)}</Td>
+                    <Td right>{f(m.baseline_xg, 2)}</Td>
+                    <Td className="text-xs text-ink-secondary">
+                      {reasons.map((x) => `${x.label} ${signed(x.value)}`).join(" · ")}
+                    </Td>
+                  </>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <p className="mt-2 text-xs text-ink-muted">
+        {goalie
+          ? "Unblocked attempts faced with the goalie in net; situation is from the goalie's team's side. GSAx = xGA − GA."
+          : "Unblocked attempts with a goalie in net (empty-net attempts are not modelled). Baseline = xG if every attempt were a league-average one; ixG = baseline + the reasons, which add up exactly."}{" "}
+        Each season is scored by a model that never saw it. Descriptive, not a forecast. See the model card for accuracy against MoneyPuck.
+      </p>
+    </div>
+  );
+}
+
+function ProspectCard({ p }: { p: Prospect }) {
+  const contrib = p.contributions as Record<string, number>;
+  const reasons = topReasons(contrib as Record<keyof typeof PROSPECT_GROUP_LABELS, number>, PROSPECT_GROUP_LABELS, 7);
+  return (
+    <div className="space-y-3 text-sm">
+      <p>
+        <span className="text-2xl font-semibold">{(p.pNhlRegular * 100).toFixed(0)}%</span>{" "}
+        <span className="text-ink-secondary">
+          chance of 200+ NHL games in the seven seasons after the {p.draftYear} draft (a typical drafted skater:{" "}
+          {(p.baselineP * 100).toFixed(0)}%). Drafted {p.overallPick} overall by {p.draftedBy ?? dash}.
+        </span>
+      </p>
+      {p.pByPick !== null && (
+        <p className="text-ink-secondary">
+          From draft slot alone: <span className="font-medium">{(p.pByPick * 100).toFixed(0)}%</span>.{" "}
+          {Math.abs(p.pNhlRegular - p.pByPick) < 0.05
+            ? "The production profile and the draft slot roughly agree."
+            : p.pNhlRegular > p.pByPick
+              ? "The production profile looks stronger than where he was picked."
+              : "The production profile looks weaker than where he was picked."}{" "}
+          <span className="text-xs text-ink-muted">(On past drafts, draft slot alone predicted better than this model; the gap is a prompt to look closer, not a verdict.)</span>
+        </p>
+      )}
+      <table className="w-full max-w-lg">
+        <tbody>
+          {reasons.map((r) => (
+            <tr key={r.key} className="border-b border-line/50 last:border-0">
+              <Td>{r.label}</Td>
+              <Td right className={r.value >= 0 ? "text-good" : "text-critical"}>{signed(r.value * 100, 1)} pts</Td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-xs text-ink-muted">
+        Draft year: {p.d0League ?? dash} · {n(p.d0GamesPlayed)} GP · {n(p.d0Points)} P
+        {p.d0NhlePpg !== null ? ` · ${p.d0NhlePpg.toFixed(2)} NHLe P/GP` : " · no NHLe factor for this league"} · age {f(p.ageAtDraft, 1)} at the draft.
+      </p>
+      <p className="text-xs text-ink-muted">
+        {p.labelMature
+          ? `Outcome: ${p.nhlGp7 ?? 0} NHL games in the seven seasons after the draft (${p.nhlRegular ? "became" : "did not become"} a 200-game player). This projection is out-of-sample: the model was trained without the ${p.draftYear} draft.`
+          : `Outcome not known yet (${p.nhlGpToDate ?? 0} NHL games so far).`}{" "}
+        Uses draft-time information only, not where the player was picked. Points are percentage points and add up exactly to the gap from a typical drafted skater.
+      </p>
+    </div>
+  );
+}
+
 const sum = (rows: GameLog[], pick: (g: GameLog) => number | null) => {
   let total = 0;
   let seen = 0;
@@ -295,6 +422,7 @@ export default async function RealDataPlayerPage({ params }: { params: Promise<{
   const career = data.seasons.filter((s) => s.source === "nhl_career");
   const league = data.seasons.filter((s) => s.source === "nhl_stats");
   const mp = data.seasons.filter((s) => s.source === "moneypuck");
+  const rxg = data.seasons.filter((s) => s.source === (goalie ? XG_GOALIE_SOURCE : XG_SOURCE));
 
   return (
     <div className="space-y-4">
@@ -347,6 +475,18 @@ export default async function RealDataPlayerPage({ params }: { params: Promise<{
       {mp.length > 0 && (
         <Card title="MoneyPuck season summaries — Data: MoneyPuck.com">
           <MoneyPuckTable rows={mp} goalie={goalie} />
+        </Card>
+      )}
+
+      {rxg.length > 0 && (
+        <Card title={`RosterIQ expected goals — ${goalie ? "xGA and GSAx" : "ixG and why"} (model output)`}>
+          <RosterIqXgTable rows={rxg} goalie={goalie} />
+        </Card>
+      )}
+
+      {data.prospect && (
+        <Card title="RosterIQ prospect projection (model output)">
+          <ProspectCard p={data.prospect} />
         </Card>
       )}
 

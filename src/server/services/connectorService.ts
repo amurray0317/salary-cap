@@ -13,6 +13,7 @@
  *
  * No "server-only" import so integration tests can run it with a stub fetch.
  */
+import { randomUUID } from "crypto";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db/client";
@@ -55,6 +56,17 @@ import {
   parseMoneyPuckTeams,
 } from "@/lib/connectors/moneypuck";
 import { EP_CREDIT, EP_TERMS, epPlayerSearchUrl, getEpConfig, parseEpError, parseEpPlayers } from "@/lib/connectors/eliteprospects";
+import {
+  MODEL_FILES,
+  ROSTERIQ_MODELS_CREDIT,
+  ROSTERIQ_MODELS_TERMS,
+  modelFilesStatus,
+  parseModelCsv,
+  readModelCard,
+  readModelFile,
+  type ModelFileKey,
+} from "@/lib/connectors/rosteriqModels";
+import { CsvParseError } from "@/lib/import/csvParse";
 import { ConnectorParseError, seasonLabelToNhlId, toRawData, type ParsedDataset } from "@/lib/connectors/util";
 import { CONNECTOR_DEFINITIONS, type ConnectorImportType } from "@/lib/import/connectorDefinitions";
 import { createConnectorImport, ImportError, type ConnectorSourceMeta } from "@/server/services/importService";
@@ -92,6 +104,11 @@ export const connectorRequestSchema = z.discriminatedUnion("dataset", [
   z.object({ dataset: z.literal("moneypuck_goalies"), season: seasonLabel, gameType, situations }),
   z.object({ dataset: z.literal("moneypuck_teams"), season: seasonLabel, gameType, situations }),
   z.object({ dataset: z.literal("ep_players"), query: z.string().trim().min(2).max(80) }),
+  z.object({ dataset: z.literal("rosteriq_xg_skaters"), season: seasonLabel, gameType }),
+  z.object({ dataset: z.literal("rosteriq_xg_goalies"), season: seasonLabel, gameType }),
+  z.object({ dataset: z.literal("rosteriq_xg_teams"), season: seasonLabel, gameType }),
+  z.object({ dataset: z.literal("rosteriq_prospects"), draftYear: z.union([z.literal("all"), z.number().int().min(1963).max(2100)]) }),
+  z.object({ dataset: z.literal("rosteriq_nhle") }),
 ]);
 export type ConnectorRequest = z.infer<typeof connectorRequestSchema>;
 
@@ -104,6 +121,8 @@ export interface ConnectorDeps {
   now?: () => Date;
   limiter?: HostRateLimiter;
   env?: Record<string, string | undefined>;
+  /** Root of the model output folders (defaults to <repo>/models). */
+  modelsDir?: string;
 }
 
 interface FetchedResponse {
@@ -309,6 +328,12 @@ function buildPlan(req: ConnectorRequest, env: Record<string, string | undefined
         parse: ([r]) => parse(r!.body, req.gameType, req.situations),
       };
     }
+    case "rosteriq_xg_skaters":
+    case "rosteriq_xg_goalies":
+    case "rosteriq_xg_teams":
+    case "rosteriq_prospects":
+    case "rosteriq_nhle":
+      throw new ConnectorError("RosterIQ model outputs are read from local files, not fetched");
     case "ep_players": {
       const cfg = getEpConfig(env);
       if (!cfg.enabled || !cfg.apiKey) throw new ConnectorError(cfg.reason);
@@ -334,6 +359,7 @@ export async function runConnectorImport(
 ): Promise<{ importId: string; validCount: number; errorCount: number }> {
   const request = connectorRequestSchema.parse(opts.request);
   const type: ConnectorImportType = request.dataset;
+  if (isModelRequest(request)) return runModelImport({ ...opts, request }, deps);
   let plan: Plan;
   try {
     plan = buildPlan(request, deps.env ?? process.env);
@@ -389,6 +415,121 @@ export async function runConnectorImport(
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* RosterIQ model outputs                                              */
+/* ------------------------------------------------------------------ */
+
+type ModelRequest = Extract<ConnectorRequest, { dataset: `rosteriq_${string}` }>;
+
+const MODEL_DATASET_FILE: Record<ModelRequest["dataset"], ModelFileKey> = {
+  rosteriq_xg_skaters: "xg_skaters",
+  rosteriq_xg_goalies: "xg_goalies",
+  rosteriq_xg_teams: "xg_teams",
+  rosteriq_prospects: "prospects",
+  rosteriq_nhle: "nhle",
+};
+
+function isModelRequest(r: ConnectorRequest): r is ModelRequest {
+  return r.dataset in MODEL_DATASET_FILE;
+}
+
+/**
+ * Stages a gated import from a RosterIQ model output file. Same pipeline as
+ * the network connectors (preview → approval → commit); provenance records
+ * the file path, its SHA-256, the model version and when it was trained.
+ */
+async function runModelImport(
+  opts: { organizationId: string; userId: string; request: ModelRequest; bundle?: string },
+  deps: ConnectorDeps,
+): Promise<{ importId: string; validCount: number; errorCount: number }> {
+  const req = opts.request;
+  const type: ConnectorImportType = req.dataset;
+  const fileKey = MODEL_DATASET_FILE[req.dataset];
+  const { version } = MODEL_FILES[fileKey];
+  const fields = CONNECTOR_DEFINITIONS[type].fields.map((f) => f.key);
+
+  let file, records: Array<Record<string, string>>, card: Record<string, unknown> | null;
+  try {
+    file = readModelFile(fileKey, deps.modelsDir);
+    records = parseModelCsv(file.text, fields);
+    card = readModelCard(version, deps.modelsDir);
+  } catch (err) {
+    if (err instanceof ConnectorParseError || err instanceof CsvParseError) throw new ConnectorError(err.message);
+    throw err;
+  }
+
+  let scope: string;
+  let effectiveSeason: string | null;
+  if ("season" in req) {
+    records = records.filter((r) => r.season === req.season && r.game_type === req.gameType);
+    scope = `${req.season} ${req.gameType === "regular" ? "regular season" : "playoffs"}`;
+    effectiveSeason = req.season;
+  } else if (req.dataset === "rosteriq_prospects") {
+    if (req.draftYear !== "all") records = records.filter((r) => r.draft_year === String(req.draftYear));
+    scope = req.draftYear === "all" ? "all drafts" : `${req.draftYear} draft`;
+    effectiveSeason = req.draftYear === "all" ? null : `${req.draftYear} draft`;
+  } else {
+    scope = "all leagues";
+    effectiveSeason = null;
+  }
+  if (records.length === 0) throw new ConnectorError(`${file.relPath} has no rows for ${scope}`);
+
+  const label = CONNECTOR_DEFINITIONS[type].label;
+  const trainedAt = typeof card?.trained_at === "string" ? card.trained_at : null;
+  const db = getDb();
+  await db.insert(schema.auditLogs).values({
+    organizationId: opts.organizationId,
+    userId: opts.userId,
+    action: "connector.read_model_file",
+    entityType: "connector",
+    newValues: { file: file.relPath, sha256: file.sha256, rows: records.length, version },
+  });
+  const sourceMeta: ConnectorSourceMeta = {
+    connectorKey: "rosteriq_models",
+    sourceName: `${label} (${version}) — ${scope}`,
+    urls: [`${file.relPath} (sha256 ${file.sha256.slice(0, 16)}…)`],
+    retrievedAt: trainedAt ?? new Date().toISOString(),
+    effectiveSeason,
+    credit: ROSTERIQ_MODELS_CREDIT,
+    termsNote: ROSTERIQ_MODELS_TERMS,
+    fromCache: [false],
+    warnings: trainedAt ? [] : ["The model card (metrics.json) is missing, so the training time is unknown."],
+    params: { ...req, modelVersion: version, sha256: file.sha256, trainedAt, ...(opts.bundle ? { bundle: opts.bundle } : {}) },
+  };
+  try {
+    return await createConnectorImport({
+      organizationId: opts.organizationId,
+      userId: opts.userId,
+      importType: type,
+      label: sourceMeta.sourceName,
+      raw: toRawData(fields, records),
+      sourceMeta,
+    });
+  } catch (err) {
+    if (err instanceof ImportError) throw new ConnectorError(err.message);
+    throw err;
+  }
+}
+
+/**
+ * Stages skater, goalie and team xG totals for one season as three imports
+ * linked by a bundle id. Each is still previewed on its own; approving the
+ * bundle commits all three (importActions.approveBundleAction).
+ */
+export async function stageXgBundle(
+  opts: { organizationId: string; userId: string; season: string; gameType: "regular" | "playoffs" },
+  deps: ConnectorDeps = {},
+): Promise<{ bundle: string; importIds: string[] }> {
+  const bundle = randomUUID();
+  const importIds: string[] = [];
+  for (const dataset of ["rosteriq_xg_skaters", "rosteriq_xg_goalies", "rosteriq_xg_teams"] as const) {
+    const request = connectorRequestSchema.parse({ dataset, season: opts.season, gameType: opts.gameType }) as ModelRequest;
+    const res = await runModelImport({ organizationId: opts.organizationId, userId: opts.userId, request, bundle }, deps);
+    importIds.push(res.importId);
+  }
+  return { bundle, importIds };
+}
+
 /** Status of each connector for the Real data page (no secrets). */
 export function connectorStatus(env: Record<string, string | undefined> = process.env) {
   const ep = getEpConfig(env);
@@ -396,5 +537,6 @@ export function connectorStatus(env: Record<string, string | undefined> = proces
     nhl_api: { enabled: true, credit: NHL_CREDIT, terms: NHL_TERMS },
     moneypuck: { enabled: true, credit: MONEYPUCK_CREDIT, terms: MONEYPUCK_TERMS },
     eliteprospects: { enabled: ep.enabled, credit: EP_CREDIT, terms: EP_TERMS, reason: ep.reason },
+    rosteriq_models: { enabled: true, credit: ROSTERIQ_MODELS_CREDIT, terms: ROSTERIQ_MODELS_TERMS, files: modelFilesStatus() },
   };
 }

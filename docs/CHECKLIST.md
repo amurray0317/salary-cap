@@ -298,6 +298,27 @@
 - [x] 4 new tests (177 total) · typecheck · lint · build · live browser run 10/10
       (adds the game-log import and player-page checks)
 
+## RosterIQ models — xG + prospects (2026-09-24)
+- [x] Raw data: `scripts/data/fetch-raw.ts` (allowlist + per-host limiter + gzip cache): NHL
+      play-by-play 2021-22 → 2025-26 (7,000 completed games; unplayed "if necessary" playoff
+      games skipped), skater bios, drafts 2005–2026 linked to NHL ids only when the landing page
+      confirms draft year + pick (4,747 linked, 4 unresolved, 5 forfeited picks reported)
+- [x] Shot parser validated against MoneyPuck's shot file: 2025-26 99.6% of each side matched,
+      goal labels 100%, empty-net 99.99%
+- [x] xG: LR + XGBoost on its logit, exact per-group explanations; recency weighting and rush
+      definition chosen on 2024-25; 2025-26 test beats MoneyPuck shot-level (log loss 0.2141 vs
+      0.2168, game-level bootstrap below zero); every season's totals out-of-sample
+- [x] Prospects: network NHLe (league aliases merged, tournaments excluded), dataset, same model
+      family; test drafts 2016–2019 show draft position predicts better (bootstrap on the card);
+      draft-slot probability shown beside each projection
+- [x] Migration 0010: `ext_prospect_projections`, `ext_league_equivalencies` (+RLS); model-output
+      import types reading `models/<version>/` (header must match; SHA-256 provenance); rows stored
+      under the model version so a new version never overwrites an old one
+- [x] UI: RosterIQ models section (incl. "stage all xG totals" bundle, one approval), player-page
+      ixG reasons / GSAx / prospect card, Prospects page, Model cards page
+- [x] Nightly in-season scoring (`rosteriq_models.xg.score`, `nightly-xg.yml`, drift check)
+- [x] CI: Python tests job; `npm run test:e2e:models` browser run
+
 ## MVP acceptance test status
 1–8 (register→commitments) ✓ · 9–14 (scenarios, violations) ✓ · 15–16 (valuation, surplus) ✓ ·
 17–18 (compare, export) ✓ · 19 (sign out/in persistence) ✓ · 20 (cross-org denial) ✓

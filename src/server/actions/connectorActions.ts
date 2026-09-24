@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireOrgAccess } from "@/server/context";
-import { ConnectorError, connectorRequestSchema, runConnectorImport } from "@/server/services/connectorService";
+import { ConnectorError, connectorRequestSchema, runConnectorImport, stageXgBundle } from "@/server/services/connectorService";
 
 export interface ConnectorFormState {
   error?: string;
@@ -44,6 +44,16 @@ function requestFromForm(fd: FormData): unknown {
       return { dataset, season: str(fd, "season"), gameType: str(fd, "gameType"), situations: fd.getAll("situations").map(String) };
     case "ep_players":
       return { dataset, query: str(fd, "query") };
+    case "rosteriq_xg_skaters":
+    case "rosteriq_xg_goalies":
+    case "rosteriq_xg_teams":
+      return { dataset, season: str(fd, "season"), gameType: str(fd, "gameType") };
+    case "rosteriq_prospects": {
+      const y = str(fd, "draftYear");
+      return { dataset, draftYear: y === "all" ? "all" : Number(y) };
+    }
+    case "rosteriq_nhle":
+      return { dataset };
     default:
       return { dataset };
   }
@@ -78,4 +88,31 @@ export async function runConnectorAction(_prev: ConnectorFormState, formData: Fo
   revalidatePath("/imports");
   revalidatePath("/real-data");
   redirect(`/imports/${importId}`);
+}
+
+const bundleSchema = z.object({
+  organizationId: z.string().uuid(),
+  season: z.string().regex(/^\d{4}-\d{2}$/),
+  gameType: z.enum(["regular", "playoffs"]),
+});
+
+/** Stages skater, goalie and team xG totals for a season as one bundle; nothing is committed. */
+export async function stageXgBundleAction(_prev: ConnectorFormState, formData: FormData): Promise<ConnectorFormState> {
+  const parsed = bundleSchema.safeParse({
+    organizationId: str(formData, "organizationId"),
+    season: str(formData, "season"),
+    gameType: str(formData, "gameType"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues.map((i) => i.message).join("; ") };
+  const ctx = await requireOrgAccess(parsed.data.organizationId, "edit_data");
+  let first: string;
+  try {
+    const res = await stageXgBundle({ organizationId: ctx.organizationId, userId: ctx.user.id, season: parsed.data.season, gameType: parsed.data.gameType });
+    first = res.importIds[0]!;
+  } catch (err) {
+    if (err instanceof ConnectorError) return { error: err.message };
+    throw err;
+  }
+  revalidatePath("/imports");
+  redirect(`/imports/${first}`);
 }

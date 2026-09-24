@@ -6,6 +6,7 @@
 import { and, asc, count, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import * as schema from "@/db/schema";
+import { PROSPECT_SOURCE } from "@/lib/models/versions";
 
 export async function referenceSummary(organizationId: string) {
   const db = getDb();
@@ -161,7 +162,19 @@ export async function getReferencePlayer(organizationId: string, externalId: str
     .from(schema.extPlayerGameLogs)
     .where(and(eq(schema.extPlayerGameLogs.organizationId, organizationId), eq(schema.extPlayerGameLogs.externalPlayerId, externalId)))
     .orderBy(asc(schema.extPlayerGameLogs.gameDate));
-  const sourceIds = [...new Set([...bios, ...seasons, ...roster, ...gameLogs].map((r) => r.sourceId).filter((x): x is string => !!x))];
+  const prospects = await db
+    .select()
+    .from(schema.extProspectProjections)
+    .where(
+      and(
+        eq(schema.extProspectProjections.organizationId, organizationId),
+        eq(schema.extProspectProjections.source, PROSPECT_SOURCE),
+        eq(schema.extProspectProjections.externalPlayerId, externalId),
+      ),
+    );
+  const sourceIds = [
+    ...new Set([...bios, ...seasons, ...roster, ...gameLogs, ...prospects].map((r) => r.sourceId).filter((x): x is string => !!x)),
+  ];
   const sources =
     sourceIds.length > 0
       ? await db
@@ -170,8 +183,8 @@ export async function getReferencePlayer(organizationId: string, externalId: str
           .where(and(eq(schema.dataSources.organizationId, organizationId), inArray(schema.dataSources.id, sourceIds)))
           .orderBy(desc(schema.dataSources.retrievedAt))
       : [];
-  if (bios.length === 0 && seasons.length === 0 && roster.length === 0 && gameLogs.length === 0) return null;
-  return { bios, seasons, roster, gameLogs, sources };
+  if (bios.length === 0 && seasons.length === 0 && roster.length === 0 && gameLogs.length === 0 && prospects.length === 0) return null;
+  return { bios, seasons, roster, gameLogs, prospect: prospects[0] ?? null, sources };
 }
 
 export async function listDraftRankings(organizationId: string, opts: { year?: number; category?: number }) {
@@ -226,4 +239,22 @@ export async function listTeamSeasons(organizationId: string, opts: { season?: s
           .where(and(eq(t.organizationId, organizationId), eq(t.season, season), eq(t.situation, situation)))
           .orderBy(asc(t.teamAbbrev), asc(t.source));
   return { seasons: seasons.map((s) => s.season), season: season ?? null, situation, rows };
+}
+
+/** RosterIQ prospect projections for one draft (default: the latest imported). */
+export async function listProspectProjections(organizationId: string, opts: { year?: number }) {
+  const db = getDb();
+  const t = schema.extProspectProjections;
+  const scope = and(eq(t.organizationId, organizationId), eq(t.source, PROSPECT_SOURCE));
+  const years = await db.selectDistinct({ year: t.draftYear }).from(t).where(scope).orderBy(desc(t.draftYear));
+  const year = opts.year ?? years[0]?.year;
+  const rows =
+    year === undefined
+      ? []
+      : await db
+          .select()
+          .from(t)
+          .where(and(scope, eq(t.draftYear, year)))
+          .orderBy(asc(t.overallPick));
+  return { years: years.map((y) => y.year), year: year ?? null, rows };
 }

@@ -1,0 +1,90 @@
+{
+ "playerId": 8482247,
+ "isActive": false,
+ "firstName": {
+  "default": "Mikko"
+ },
+ "lastName": {
+  "default": "Lehtonen"
+ },
+ "badges": [],
+ "sweaterNumber": 43,
+ "position": "D",
+ "headshot": "https://assets.nhle.com/mugs/nhl/latest/8482247.png",
+ "heroImage": "https://assets.nhle.com/mugs/actionshots/1296x729/8482247.jpg",
+ "heightInInches": 72,
+ "heightInCentimeters": 183,
+ "weightInPounds": 187,
+ "weightInKilograms": 85,
+ "birthDate": "1994-01-16",
+ "birthCity": {
+  "default": "Turku",
+  "sv": "\u00c5bo"
+ },
+ "birthCountry": "FIN",
+ "shootsCatches": "L",
+ "playerSlug": "mikko-lehtonen-8482247",
+ "inTop100AllTime": 0,
+ "inHHOF": 0,
+ "featuredStats": {
+  "season": 20202021,
+  "regularSeason": {
+   "subSeason": {
+    "assists": 6,
+    "gameWinningGoals": 0,
+    "gamesPlayed": 26,
+    "goals": 0,
+    "otGoals": 0,
+    "pim": 8,
+    "plusMinus": -2,
+    "points": 6,
+    "powerPlayGoals": 0,
+    "powerPlayPoints": 1,
+    "shootingPctg": 0,
+    "shorthandedGoals": 0,
+    "shorthandedPoints": 0,
+    "shots": 33
+   },
+   "career": {
+    "assists": 6,
+    "gameWinningGoals": 0,
+    "gamesPlayed": 26,
+    "goals": 0,
+    "otGoals": 0,
+    "pim": 8,
+    "plusMinus": -2,
+    "points": 6,
+    "powerPlayGoals": 0,
+    "powerPlayPoints": 1,
+    "shootingPctg": 0,
+    "shorthandedGoals": 0,
+    "shorthandedPoints": 0,
+    "shots": 33
+   }
+  }
+ },
+ "careerTotals": {
+  "regularSeason": {
+   "assists": 6,
+   "avgToi": "15:53",
+   "gameWinningGoals": 0,
+   "gamesPlayed": 26,
+   "goals": 0,
+   "otGoals": 0,
+   "pim": 8,
+   "plusMinus": -2,
+   "points": 6,
+   "powerPlayGoals": 0,
+   "powerPlayPoints": 1,
+   "shootingPctg": 0,
+   "shorthandedGoals": 0,
+   "shorthandedPoints": 0,
+   "shots": 33
+  }
+ },
+ "shopLink": "#TODO",
+ "twitterLink": "#TODO",
+ "watchLink": "#TODO",
+ "last5Games": [],
+ "seasonTotals": []
+}

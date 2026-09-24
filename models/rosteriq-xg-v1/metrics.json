@@ -1,0 +1,793 @@
+{
+ "version": "rosteriq-xg-v1",
+ "trained_at": "2026-09-24T04:49:06+00:00",
+ "seasons": [
+  20212022,
+  20222023,
+  20232024,
+  20242025,
+  20252026
+ ],
+ "selection": {
+  "train": [
+   20212022,
+   20222023,
+   20232024
+  ],
+  "valid": 20242025,
+  "lr_C": {
+   "0.1": 0.215397,
+   "1.0": 0.215399
+  },
+  "chosen_C": 0.1,
+  "gbm_trees": 1238,
+  "gbm_valid_logloss": 0.209815,
+  "lr_valid_logloss": 0.215397,
+  "valid_scores": {
+   "lr_only": {
+    "shots": 118922,
+    "goals": 7860,
+    "xg": 8045.9,
+    "xg_per_goal": 1.0237,
+    "log_loss": 0.2154,
+    "auc": 0.7613,
+    "brier": 0.058
+   },
+   "lr_plus_gbm": {
+    "shots": 118922,
+    "goals": 7860,
+    "xg": 7906.5,
+    "xg_per_goal": 1.0059,
+    "log_loss": 0.20981,
+    "auc": 0.7776,
+    "brier": 0.05661
+   }
+  },
+  "half_life": 1.0,
+  "half_life_candidates": {
+   "none": {
+    "lr_C": {
+     "0.1": 0.216553,
+     "1.0": 0.216553
+    },
+    "chosen_C": 1.0,
+    "gbm_trees": 945,
+    "gbm_valid_logloss": 0.212093,
+    "lr_valid_logloss": 0.216553,
+    "valid_scores": {
+     "lr_only": {
+      "shots": 118922,
+      "goals": 7860,
+      "xg": 8074.9,
+      "xg_per_goal": 1.0273,
+      "log_loss": 0.21655,
+      "auc": 0.7568,
+      "brier": 0.05824
+     },
+     "lr_plus_gbm": {
+      "shots": 118922,
+      "goals": 7860,
+      "xg": 7920.4,
+      "xg_per_goal": 1.0077,
+      "log_loss": 0.21209,
+      "auc": 0.7698,
+      "brier": 0.05714
+     }
+    }
+   },
+   "2.0": {
+    "lr_C": {
+     "0.1": 0.215878,
+     "1.0": 0.215878
+    },
+    "chosen_C": 1.0,
+    "gbm_trees": 1001,
+    "gbm_valid_logloss": 0.210809,
+    "lr_valid_logloss": 0.215878,
+    "valid_scores": {
+     "lr_only": {
+      "shots": 118922,
+      "goals": 7860,
+      "xg": 8047.5,
+      "xg_per_goal": 1.0239,
+      "log_loss": 0.21588,
+      "auc": 0.7594,
+      "brier": 0.0581
+     },
+     "lr_plus_gbm": {
+      "shots": 118922,
+      "goals": 7860,
+      "xg": 7911.9,
+      "xg_per_goal": 1.0066,
+      "log_loss": 0.21081,
+      "auc": 0.7742,
+      "brier": 0.05683
+     }
+    }
+   },
+   "1.0": {
+    "lr_C": {
+     "0.1": 0.215397,
+     "1.0": 0.215399
+    },
+    "chosen_C": 0.1,
+    "gbm_trees": 1238,
+    "gbm_valid_logloss": 0.209815,
+    "lr_valid_logloss": 0.215397,
+    "valid_scores": {
+     "lr_only": {
+      "shots": 118922,
+      "goals": 7860,
+      "xg": 8045.9,
+      "xg_per_goal": 1.0237,
+      "log_loss": 0.2154,
+      "auc": 0.7613,
+      "brier": 0.058
+     },
+     "lr_plus_gbm": {
+      "shots": 118922,
+      "goals": 7860,
+      "xg": 7906.5,
+      "xg_per_goal": 1.0059,
+      "log_loss": 0.20981,
+      "auc": 0.7776,
+      "brier": 0.05661
+     }
+    }
+   }
+  }
+ },
+ "test_season": 20252026,
+ "source": "NHL play-by-play (api-web.nhle.com)",
+ "benchmark": "Data: MoneyPuck.com",
+ "test": {
+  "join": {
+   "our_shots": 118251,
+   "moneypuck_shots": 119271,
+   "matched": 117784,
+   "matched_share_of_ours": 0.9961,
+   "matched_share_of_moneypuck": 0.9875,
+   "matched_share_of_moneypuck_goalie_in_net": 0.9962,
+   "duplicate_keys": {
+    "moneypuck": 0,
+    "ours": 0
+   },
+   "goal_label_agreement": 1.0,
+   "empty_net_agreement": 0.99988,
+   "off_wing_agreement": 0.9758,
+   "rebound_agreement": 0.9756,
+   "rush_agreement": 0.9853
+  },
+  "all_test_shots": {
+   "shots": 118251,
+   "goals": 8019,
+   "xg": 8436.9,
+   "xg_per_goal": 1.0521,
+   "log_loss": 0.21388,
+   "auc": 0.7772,
+   "brier": 0.05799
+  },
+  "matched_shots": {
+   "constant_rate": {
+    "shots": 117770,
+    "goals": 8005,
+    "xg": 7920.0,
+    "xg_per_goal": 0.9894,
+    "log_loss": 0.24836,
+    "auc": 0.5,
+    "brier": 0.06335
+   },
+   "rosteriq_lr_only": {
+    "shots": 117770,
+    "goals": 8005,
+    "xg": 8446.1,
+    "xg_per_goal": 1.0551,
+    "log_loss": 0.22079,
+    "auc": 0.7566,
+    "brier": 0.05967
+   },
+   "rosteriq": {
+    "shots": 117770,
+    "goals": 8005,
+    "xg": 8396.8,
+    "xg_per_goal": 1.0489,
+    "log_loss": 0.21411,
+    "auc": 0.7775,
+    "brier": 0.05808
+   },
+   "moneypuck": {
+    "shots": 117770,
+    "goals": 8005,
+    "xg": 8073.2,
+    "xg_per_goal": 1.0085,
+    "log_loss": 0.21675,
+    "auc": 0.7691,
+    "brier": 0.05828
+   }
+  },
+  "calibration": {
+   "distance": [
+    {
+     "distance_ft": "[0, 10)",
+     "shots": 17007,
+     "goal_rate": 0.1315,
+     "rosteriq": 0.1462,
+     "moneypuck": 0.1614
+    },
+    {
+     "distance_ft": "[10, 20)",
+     "shots": 19559,
+     "goal_rate": 0.1057,
+     "rosteriq": 0.1135,
+     "moneypuck": 0.108
+    },
+    {
+     "distance_ft": "[20, 30)",
+     "shots": 18164,
+     "goal_rate": 0.0907,
+     "rosteriq": 0.0909,
+     "moneypuck": 0.0726
+    },
+    {
+     "distance_ft": "[30, 40)",
+     "shots": 21081,
+     "goal_rate": 0.0589,
+     "rosteriq": 0.0583,
+     "moneypuck": 0.0469
+    },
+    {
+     "distance_ft": "[40, 50)",
+     "shots": 15475,
+     "goal_rate": 0.0281,
+     "rosteriq": 0.0297,
+     "moneypuck": 0.0278
+    },
+    {
+     "distance_ft": "[50, 60)",
+     "shots": 12672,
+     "goal_rate": 0.0209,
+     "rosteriq": 0.0181,
+     "moneypuck": 0.02
+    },
+    {
+     "distance_ft": "[60, 200)",
+     "shots": 13812,
+     "goal_rate": 0.008,
+     "rosteriq": 0.0088,
+     "moneypuck": 0.0163
+    }
+   ],
+   "shot_type": [
+    {
+     "shot_type": "backhand",
+     "shots": 8504,
+     "goal_rate": 0.0821,
+     "rosteriq": 0.0847,
+     "moneypuck": 0.0903
+    },
+    {
+     "shot_type": "bat",
+     "shots": 595,
+     "goal_rate": 0.0891,
+     "rosteriq": 0.1101,
+     "moneypuck": 0.1683
+    },
+    {
+     "shot_type": "between-legs",
+     "shots": 78,
+     "goal_rate": 0.1282,
+     "rosteriq": 0.2305,
+     "moneypuck": 0.1697
+    },
+    {
+     "shot_type": "cradle",
+     "shots": 10,
+     "goal_rate": 0.1,
+     "rosteriq": 0.206,
+     "moneypuck": 0.0653
+    },
+    {
+     "shot_type": "deflected",
+     "shots": 1934,
+     "goal_rate": 0.1158,
+     "rosteriq": 0.1061,
+     "moneypuck": 0.1187
+    },
+    {
+     "shot_type": "poke",
+     "shots": 388,
+     "goal_rate": 0.1134,
+     "rosteriq": 0.1178,
+     "moneypuck": 0.1907
+    },
+    {
+     "shot_type": "slap",
+     "shots": 14045,
+     "goal_rate": 0.0486,
+     "rosteriq": 0.0507,
+     "moneypuck": 0.0443
+    },
+    {
+     "shot_type": "snap",
+     "shots": 29839,
+     "goal_rate": 0.0801,
+     "rosteriq": 0.0848,
+     "moneypuck": 0.0743
+    },
+    {
+     "shot_type": "tip-in",
+     "shots": 11225,
+     "goal_rate": 0.0675,
+     "rosteriq": 0.0848,
+     "moneypuck": 0.0702
+    },
+    {
+     "shot_type": "unknown",
+     "shots": 25,
+     "goal_rate": 1.0,
+     "rosteriq": 0.2642,
+     "moneypuck": 0.1787
+    },
+    {
+     "shot_type": "wrap-around",
+     "shots": 773,
+     "goal_rate": 0.0427,
+     "rosteriq": 0.056,
+     "moneypuck": 0.0319
+    },
+    {
+     "shot_type": "wrist",
+     "shots": 50354,
+     "goal_rate": 0.0613,
+     "rosteriq": 0.0615,
+     "moneypuck": 0.0642
+    }
+   ],
+   "strength": [
+    {
+     "strength": "3v3",
+     "shots": 1343,
+     "goal_rate": 0.131,
+     "rosteriq": 0.1469,
+     "moneypuck": 0.0946
+    },
+    {
+     "strength": "3v4",
+     "shots": 19,
+     "goal_rate": 0.0526,
+     "rosteriq": 0.0389,
+     "moneypuck": 0.0882
+    },
+    {
+     "strength": "4v3",
+     "shots": 348,
+     "goal_rate": 0.1006,
+     "rosteriq": 0.15,
+     "moneypuck": 0.1384
+    },
+    {
+     "strength": "4v4",
+     "shots": 1346,
+     "goal_rate": 0.0646,
+     "rosteriq": 0.0808,
+     "moneypuck": 0.075
+    },
+    {
+     "strength": "4v5",
+     "shots": 2600,
+     "goal_rate": 0.0712,
+     "rosteriq": 0.08,
+     "moneypuck": 0.0741
+    },
+    {
+     "strength": "5v3",
+     "shots": 548,
+     "goal_rate": 0.1588,
+     "rosteriq": 0.1843,
+     "moneypuck": 0.1363
+    },
+    {
+     "strength": "5v4",
+     "shots": 16095,
+     "goal_rate": 0.0961,
+     "rosteriq": 0.1065,
+     "moneypuck": 0.0969
+    },
+    {
+     "strength": "5v5",
+     "shots": 92700,
+     "goal_rate": 0.0612,
+     "rosteriq": 0.0625,
+     "moneypuck": 0.0612
+    },
+    {
+     "strength": "6v4",
+     "shots": 313,
+     "goal_rate": 0.0863,
+     "rosteriq": 0.095,
+     "moneypuck": 0.0995
+    },
+    {
+     "strength": "6v5",
+     "shots": 2447,
+     "goal_rate": 0.0772,
+     "rosteriq": 0.0783,
+     "moneypuck": 0.1068
+    },
+    {
+     "strength": "other",
+     "shots": 11,
+     "goal_rate": 0.0,
+     "rosteriq": 0.0255,
+     "moneypuck": 0.0536
+    }
+   ],
+   "rebound": [
+    {
+     "rebound": "False",
+     "shots": 105431,
+     "goal_rate": 0.0639,
+     "rosteriq": 0.0661,
+     "moneypuck": 0.0541
+    },
+    {
+     "rebound": "True",
+     "shots": 12339,
+     "goal_rate": 0.1028,
+     "rosteriq": 0.1161,
+     "moneypuck": 0.1922
+    }
+   ],
+   "rush": [
+    {
+     "rush": "False",
+     "shots": 115992,
+     "goal_rate": 0.0686,
+     "rosteriq": 0.0716,
+     "moneypuck": 0.0684
+    },
+    {
+     "rush": "True",
+     "shots": 1778,
+     "goal_rate": 0.027,
+     "rosteriq": 0.049,
+     "moneypuck": 0.0798
+    }
+   ]
+  },
+  "bootstrap_vs_moneypuck": {
+   "method": "paired bootstrap over games (RosterIQ \u2212 MoneyPuck), same shots",
+   "resamples": 1000,
+   "games": 1394,
+   "shots": 117770,
+   "log_loss_diff_ci95": [
+    -0.00387,
+    -0.00262,
+    -0.00146
+   ],
+   "auc_diff_ci95": [
+    0.00521,
+    0.00839,
+    0.01193
+   ],
+   "rosteriq_log_loss_check": 0.21411
+  }
+ },
+ "reconciliation": {
+  "20212022": {
+   "join_matched_share_of_ours": 0.9973,
+   "season_xg": {
+    "rosteriq": 8090.7,
+    "moneypuck": 8080.6,
+    "goals": 8166
+   },
+   "team_xgf_correlation": 0.9744,
+   "player_ixg_correlation_min5": 0.9826,
+   "players_min5": 493,
+   "largest_player_gaps": [
+    {
+     "player_id": 8475184,
+     "rosteriq": 35.63,
+     "moneypuck": 43.9
+    },
+    {
+     "player_id": 8479337,
+     "rosteriq": 33.5,
+     "moneypuck": 28.01
+    },
+    {
+     "player_id": 8474037,
+     "rosteriq": 22.42,
+     "moneypuck": 27.88
+    },
+    {
+     "player_id": 8478398,
+     "rosteriq": 34.8,
+     "moneypuck": 29.68
+    },
+    {
+     "player_id": 8475786,
+     "rosteriq": 38.97,
+     "moneypuck": 43.7
+    },
+    {
+     "player_id": 8474141,
+     "rosteriq": 24.8,
+     "moneypuck": 20.36
+    },
+    {
+     "player_id": 8481540,
+     "rosteriq": 20.2,
+     "moneypuck": 15.76
+    },
+    {
+     "player_id": 8474564,
+     "rosteriq": 35.78,
+     "moneypuck": 31.47
+    },
+    {
+     "player_id": 8477501,
+     "rosteriq": 26.31,
+     "moneypuck": 30.35
+    },
+    {
+     "player_id": 8477496,
+     "rosteriq": 33.55,
+     "moneypuck": 29.58
+    }
+   ]
+  },
+  "20222023": {
+   "join_matched_share_of_ours": 0.9992,
+   "season_xg": {
+    "rosteriq": 8500.0,
+    "moneypuck": 8529.7,
+    "goals": 8313
+   },
+   "team_xgf_correlation": 0.9786,
+   "player_ixg_correlation_min5": 0.9858,
+   "players_min5": 509,
+   "largest_player_gaps": [
+    {
+     "player_id": 8475314,
+     "rosteriq": 30.58,
+     "moneypuck": 37.83
+    },
+    {
+     "player_id": 8481559,
+     "rosteriq": 42.63,
+     "moneypuck": 36.29
+    },
+    {
+     "player_id": 8478550,
+     "rosteriq": 24.17,
+     "moneypuck": 17.98
+    },
+    {
+     "player_id": 8471675,
+     "rosteriq": 26.61,
+     "moneypuck": 32.19
+    },
+    {
+     "player_id": 8477492,
+     "rosteriq": 39.23,
+     "moneypuck": 33.82
+    },
+    {
+     "player_id": 8479314,
+     "rosteriq": 47.07,
+     "moneypuck": 52.38
+    },
+    {
+     "player_id": 8475786,
+     "rosteriq": 48.89,
+     "moneypuck": 53.35
+    },
+    {
+     "player_id": 8478402,
+     "rosteriq": 52.69,
+     "moneypuck": 48.24
+    },
+    {
+     "player_id": 8476392,
+     "rosteriq": 16.8,
+     "moneypuck": 21.16
+    },
+    {
+     "player_id": 8481557,
+     "rosteriq": 34.02,
+     "moneypuck": 29.73
+    }
+   ]
+  },
+  "20232024": {
+   "join_matched_share_of_ours": 0.9988,
+   "season_xg": {
+    "rosteriq": 7830.3,
+    "moneypuck": 8253.7,
+    "goals": 8083
+   },
+   "team_xgf_correlation": 0.9878,
+   "player_ixg_correlation_min5": 0.9817,
+   "players_min5": 472,
+   "largest_player_gaps": [
+    {
+     "player_id": 8475314,
+     "rosteriq": 25.05,
+     "moneypuck": 36.3
+    },
+    {
+     "player_id": 8475786,
+     "rosteriq": 58.54,
+     "moneypuck": 67.27
+    },
+    {
+     "player_id": 8475166,
+     "rosteriq": 38.12,
+     "moneypuck": 46.06
+    },
+    {
+     "player_id": 8477933,
+     "rosteriq": 43.24,
+     "moneypuck": 50.04
+    },
+    {
+     "player_id": 8482093,
+     "rosteriq": 29.14,
+     "moneypuck": 35.76
+    },
+    {
+     "player_id": 8475169,
+     "rosteriq": 26.41,
+     "moneypuck": 32.97
+    },
+    {
+     "player_id": 8475184,
+     "rosteriq": 37.71,
+     "moneypuck": 44.26
+    },
+    {
+     "player_id": 8480801,
+     "rosteriq": 34.66,
+     "moneypuck": 40.32
+    },
+    {
+     "player_id": 8478493,
+     "rosteriq": 32.1,
+     "moneypuck": 37.76
+    },
+    {
+     "player_id": 8477479,
+     "rosteriq": 23.23,
+     "moneypuck": 28.77
+    }
+   ]
+  },
+  "20242025": {
+   "join_matched_share_of_ours": 0.9969,
+   "season_xg": {
+    "rosteriq": 7672.3,
+    "moneypuck": 8047.7,
+    "goals": 7839
+   },
+   "team_xgf_correlation": 0.9746,
+   "player_ixg_correlation_min5": 0.975,
+   "players_min5": 465,
+   "largest_player_gaps": [
+    {
+     "player_id": 8479314,
+     "rosteriq": 21.15,
+     "moneypuck": 28.69
+    },
+    {
+     "player_id": 8480002,
+     "rosteriq": 26.54,
+     "moneypuck": 34.06
+    },
+    {
+     "player_id": 8476454,
+     "rosteriq": 24.45,
+     "moneypuck": 31.6
+    },
+    {
+     "player_id": 8477934,
+     "rosteriq": 40.94,
+     "moneypuck": 34.08
+    },
+    {
+     "player_id": 8476474,
+     "rosteriq": 21.67,
+     "moneypuck": 28.19
+    },
+    {
+     "player_id": 8475768,
+     "rosteriq": 21.01,
+     "moneypuck": 27.34
+    },
+    {
+     "player_id": 8475722,
+     "rosteriq": 16.28,
+     "moneypuck": 22.39
+    },
+    {
+     "player_id": 8478498,
+     "rosteriq": 22.43,
+     "moneypuck": 28.53
+    },
+    {
+     "player_id": 8480849,
+     "rosteriq": 23.77,
+     "moneypuck": 29.84
+    },
+    {
+     "player_id": 8477949,
+     "rosteriq": 22.82,
+     "moneypuck": 28.36
+    }
+   ]
+  },
+  "20252026": {
+   "join_matched_share_of_ours": 0.9961,
+   "season_xg": {
+    "rosteriq": 8396.8,
+    "moneypuck": 8073.2,
+    "goals": 8005
+   },
+   "team_xgf_correlation": 0.9882,
+   "player_ixg_correlation_min5": 0.9859,
+   "players_min5": 494,
+   "largest_player_gaps": [
+    {
+     "player_id": 8481540,
+     "rosteriq": 46.75,
+     "moneypuck": 39.7
+    },
+    {
+     "player_id": 8482093,
+     "rosteriq": 36.37,
+     "moneypuck": 30.38
+    },
+    {
+     "player_id": 8479987,
+     "rosteriq": 26.95,
+     "moneypuck": 21.76
+    },
+    {
+     "player_id": 8481559,
+     "rosteriq": 25.21,
+     "moneypuck": 20.03
+    },
+    {
+     "player_id": 8477500,
+     "rosteriq": 28.33,
+     "moneypuck": 23.34
+    },
+    {
+     "player_id": 8479542,
+     "rosteriq": 31.3,
+     "moneypuck": 26.62
+    },
+    {
+     "player_id": 8478498,
+     "rosteriq": 29.91,
+     "moneypuck": 34.44
+    },
+    {
+     "player_id": 8477492,
+     "rosteriq": 43.45,
+     "moneypuck": 38.94
+    },
+    {
+     "player_id": 8479337,
+     "rosteriq": 37.96,
+     "moneypuck": 33.5
+    },
+    {
+     "player_id": 8478403,
+     "rosteriq": 32.63,
+     "moneypuck": 28.33
+    }
+   ]
+  }
+ }
+}

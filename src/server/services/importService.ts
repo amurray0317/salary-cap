@@ -14,7 +14,7 @@
  * No "server-only" import (same convention as applyService/reportService):
  * integration tests run this against in-memory PGlite via setDbForTesting.
  */
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import * as schema from "@/db/schema";
 import { parseCsv, CsvParseError } from "@/lib/import/csvParse";
@@ -991,4 +991,16 @@ export async function getImportDetail(importId: string, organizationId: string) 
     .where(and(eq(schema.dataSources.importId, row.id), eq(schema.dataSources.organizationId, organizationId)))
     .limit(1);
   return { row, raw, errors, preview, existingCount, sourceMeta, dataSource: dataSource ?? null };
+}
+
+
+/** Imports staged together as one bundle (sourceMeta.params.bundle), oldest first. */
+export async function listBundleImports(organizationId: string, bundle: string) {
+  const db = getDb();
+  const t = schema.imports;
+  return db
+    .select({ id: t.id, importType: t.importType, status: t.status, rowCount: t.rowCount, fileName: t.fileName })
+    .from(t)
+    .where(and(eq(t.organizationId, organizationId), sql`${t.sourceMeta}->'params'->>'bundle' = ${bundle}`))
+    .orderBy(asc(t.createdAt));
 }

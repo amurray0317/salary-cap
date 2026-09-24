@@ -145,3 +145,31 @@ export function ApproveImportForm({
     </form>
   );
 }
+
+export function ApproveBundleForm({
+  action,
+  organizationId,
+  bundle,
+  pendingCount,
+}: {
+  action: (prev: FormState, fd: FormData) => Promise<FormState>;
+  organizationId: string;
+  bundle: string;
+  pendingCount: number;
+}) {
+  const [state, formAction, pending] = useActionState(action, {});
+  return (
+    <form action={formAction} className="space-y-2">
+      <input type="hidden" name="organizationId" value={organizationId} />
+      <input type="hidden" name="bundle" value={bundle} />
+      <input type="hidden" name="confirm" value="yes" />
+      <ErrorNote error={state.error} />
+      <button
+        disabled={pending || pendingCount === 0}
+        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40"
+      >
+        {pending ? "Committing…" : `Approve all ${pendingCount} staged import${pendingCount === 1 ? "" : "s"} in this bundle`}
+      </button>
+    </form>
+  );
+}

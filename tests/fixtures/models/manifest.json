@@ -1,0 +1,31 @@
+{
+ "source": "models",
+ "trimming": "whole rows kept for the listed players / teams / drafts / leagues; values unedited",
+ "files": [
+  {
+   "file": "rosteriq-prospects-v1/import_league_factors.csv",
+   "rows_kept": 6,
+   "rows_in_source": 204
+  },
+  {
+   "file": "rosteriq-prospects-v1/import_prospects.csv",
+   "rows_kept": 12,
+   "rows_in_source": 4248
+  },
+  {
+   "file": "rosteriq-xg-v1/import_xg_goalies.csv",
+   "rows_kept": 32,
+   "rows_in_source": 2575
+  },
+  {
+   "file": "rosteriq-xg-v1/import_xg_skaters.csv",
+   "rows_kept": 36,
+   "rows_in_source": 19214
+  },
+  {
+   "file": "rosteriq-xg-v1/import_xg_teams.csv",
+   "rows_kept": 72,
+   "rows_in_source": 960
+  }
+ ]
+}

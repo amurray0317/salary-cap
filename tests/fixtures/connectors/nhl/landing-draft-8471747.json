@@ -1,0 +1,97 @@
+{
+ "playerId": 8471747,
+ "isActive": false,
+ "firstName": {
+  "default": "Mikko"
+ },
+ "lastName": {
+  "default": "Lehtonen"
+ },
+ "badges": [],
+ "sweaterNumber": 68,
+ "position": "R",
+ "headshot": "https://assets.nhle.com/mugs/nhl/latest/8471747.png",
+ "heroImage": "https://assets.nhle.com/mugs/actionshots/1296x729/8471747.jpg",
+ "heightInInches": 75,
+ "heightInCentimeters": 191,
+ "weightInPounds": 196,
+ "weightInKilograms": 89,
+ "birthDate": "1987-04-01",
+ "birthCity": {
+  "default": "Espoo",
+  "sv": "Esbo"
+ },
+ "birthCountry": "FIN",
+ "shootsCatches": "R",
+ "draftDetails": {
+  "year": 2005,
+  "teamAbbrev": "BOS",
+  "round": 3,
+  "pickInRound": 22,
+  "overallPick": 83
+ },
+ "playerSlug": "mikko-lehtonen-8471747",
+ "inTop100AllTime": 0,
+ "inHHOF": 0,
+ "featuredStats": {
+  "season": 20092010,
+  "regularSeason": {
+   "subSeason": {
+    "assists": 0,
+    "gameWinningGoals": 0,
+    "gamesPlayed": 1,
+    "goals": 0,
+    "otGoals": 0,
+    "pim": 0,
+    "plusMinus": -1,
+    "points": 0,
+    "powerPlayGoals": 0,
+    "powerPlayPoints": 0,
+    "shootingPctg": 0,
+    "shorthandedGoals": 0,
+    "shorthandedPoints": 0,
+    "shots": 1
+   },
+   "career": {
+    "assists": 0,
+    "gameWinningGoals": 0,
+    "gamesPlayed": 2,
+    "goals": 0,
+    "otGoals": 0,
+    "pim": 0,
+    "plusMinus": -1,
+    "points": 0,
+    "powerPlayGoals": 0,
+    "powerPlayPoints": 0,
+    "shootingPctg": 0,
+    "shorthandedGoals": 0,
+    "shorthandedPoints": 0,
+    "shots": 2
+   }
+  }
+ },
+ "careerTotals": {
+  "regularSeason": {
+   "assists": 0,
+   "avgToi": "11:41",
+   "gameWinningGoals": 0,
+   "gamesPlayed": 2,
+   "goals": 0,
+   "otGoals": 0,
+   "pim": 0,
+   "plusMinus": -1,
+   "points": 0,
+   "powerPlayGoals": 0,
+   "powerPlayPoints": 0,
+   "shootingPctg": 0,
+   "shorthandedGoals": 0,
+   "shorthandedPoints": 0,
+   "shots": 2
+  }
+ },
+ "shopLink": "#TODO",
+ "twitterLink": "#TODO",
+ "watchLink": "#TODO",
+ "last5Games": [],
+ "seasonTotals": []
+}

@@ -1,0 +1,186 @@
+{
+ "n_trees": 1238,
+ "design": {
+  "shot_types": [
+   "backhand",
+   "bat",
+   "between-legs",
+   "deflected",
+   "poke",
+   "slap",
+   "snap",
+   "tip-in",
+   "wrap-around",
+   "wrist"
+  ],
+  "prev_events": [
+   "blocked-shot_opp",
+   "blocked-shot_own",
+   "delayed-penalty",
+   "faceoff_opp",
+   "faceoff_own",
+   "giveaway_opp",
+   "giveaway_own",
+   "hit_opp",
+   "hit_own",
+   "missed-shot_opp",
+   "missed-shot_own",
+   "shot-on-goal_opp",
+   "shot-on-goal_own",
+   "takeaway_opp",
+   "takeaway_own"
+  ],
+  "strengths": [
+   "3v3",
+   "4v3",
+   "4v4",
+   "4v5",
+   "5v3",
+   "5v4",
+   "5v5",
+   "6v4",
+   "6v5"
+  ]
+ },
+ "version": "rosteriq-xg-v1",
+ "trained_at": "2026-09-24T04:49:06+00:00",
+ "seasons": [
+  20212022,
+  20222023,
+  20232024,
+  20242025,
+  20252026
+ ],
+ "selection": {
+  "train": [
+   20212022,
+   20222023,
+   20232024
+  ],
+  "valid": 20242025,
+  "lr_C": {
+   "0.1": 0.215397,
+   "1.0": 0.215399
+  },
+  "chosen_C": 0.1,
+  "gbm_trees": 1238,
+  "gbm_valid_logloss": 0.209815,
+  "lr_valid_logloss": 0.215397,
+  "valid_scores": {
+   "lr_only": {
+    "shots": 118922,
+    "goals": 7860,
+    "xg": 8045.9,
+    "xg_per_goal": 1.0237,
+    "log_loss": 0.2154,
+    "auc": 0.7613,
+    "brier": 0.058
+   },
+   "lr_plus_gbm": {
+    "shots": 118922,
+    "goals": 7860,
+    "xg": 7906.5,
+    "xg_per_goal": 1.0059,
+    "log_loss": 0.20981,
+    "auc": 0.7776,
+    "brier": 0.05661
+   }
+  },
+  "half_life": 1.0,
+  "half_life_candidates": {
+   "none": {
+    "lr_C": {
+     "0.1": 0.216553,
+     "1.0": 0.216553
+    },
+    "chosen_C": 1.0,
+    "gbm_trees": 945,
+    "gbm_valid_logloss": 0.212093,
+    "lr_valid_logloss": 0.216553,
+    "valid_scores": {
+     "lr_only": {
+      "shots": 118922,
+      "goals": 7860,
+      "xg": 8074.9,
+      "xg_per_goal": 1.0273,
+      "log_loss": 0.21655,
+      "auc": 0.7568,
+      "brier": 0.05824
+     },
+     "lr_plus_gbm": {
+      "shots": 118922,
+      "goals": 7860,
+      "xg": 7920.4,
+      "xg_per_goal": 1.0077,
+      "log_loss": 0.21209,
+      "auc": 0.7698,
+      "brier": 0.05714
+     }
+    }
+   },
+   "2.0": {
+    "lr_C": {
+     "0.1": 0.215878,
+     "1.0": 0.215878
+    },
+    "chosen_C": 1.0,
+    "gbm_trees": 1001,
+    "gbm_valid_logloss": 0.210809,
+    "lr_valid_logloss": 0.215878,
+    "valid_scores": {
+     "lr_only": {
+      "shots": 118922,
+      "goals": 7860,
+      "xg": 8047.5,
+      "xg_per_goal": 1.0239,
+      "log_loss": 0.21588,
+      "auc": 0.7594,
+      "brier": 0.0581
+     },
+     "lr_plus_gbm": {
+      "shots": 118922,
+      "goals": 7860,
+      "xg": 7911.9,
+      "xg_per_goal": 1.0066,
+      "log_loss": 0.21081,
+      "auc": 0.7742,
+      "brier": 0.05683
+     }
+    }
+   },
+   "1.0": {
+    "lr_C": {
+     "0.1": 0.215397,
+     "1.0": 0.215399
+    },
+    "chosen_C": 0.1,
+    "gbm_trees": 1238,
+    "gbm_valid_logloss": 0.209815,
+    "lr_valid_logloss": 0.215397,
+    "valid_scores": {
+     "lr_only": {
+      "shots": 118922,
+      "goals": 7860,
+      "xg": 8045.9,
+      "xg_per_goal": 1.0237,
+      "log_loss": 0.2154,
+      "auc": 0.7613,
+      "brier": 0.058
+     },
+     "lr_plus_gbm": {
+      "shots": 118922,
+      "goals": 7860,
+      "xg": 7906.5,
+      "xg_per_goal": 1.0059,
+      "log_loss": 0.20981,
+      "auc": 0.7776,
+      "brier": 0.05661
+     }
+    }
+   }
+  }
+ },
+ "test_season": 20252026,
+ "source": "NHL play-by-play (api-web.nhle.com)",
+ "benchmark": "Data: MoneyPuck.com"
+}

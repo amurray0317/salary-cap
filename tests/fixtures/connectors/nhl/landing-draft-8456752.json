@@ -1,0 +1,41 @@
+{
+ "playerId": 8456752,
+ "isActive": false,
+ "firstName": {
+  "default": "Richard"
+ },
+ "lastName": {
+  "default": "Jordan"
+ },
+ "badges": [],
+ "position": "L",
+ "headshot": "https://assets.nhle.com/mugs/nhl/latest/8456752.png",
+ "heroImage": "https://assets.nhle.com/mugs/actionshots/1296x729/8456752.jpg",
+ "heightInInches": 75,
+ "heightInCentimeters": 191,
+ "weightInPounds": 196,
+ "weightInKilograms": 89,
+ "birthDate": "1950-03-31",
+ "birthCity": {
+  "default": "Toronto"
+ },
+ "birthStateProvince": {
+  "default": "Ontario"
+ },
+ "birthCountry": "CAN",
+ "shootsCatches": "L",
+ "draftDetails": {
+  "year": 1970,
+  "teamAbbrev": "MTL",
+  "round": 8,
+  "pickInRound": 10,
+  "overallPick": 106
+ },
+ "playerSlug": "richard-jordan-8456752",
+ "inTop100AllTime": 0,
+ "inHHOF": 0,
+ "shopLink": "#TODO",
+ "twitterLink": "#TODO",
+ "watchLink": "#TODO",
+ "seasonTotals": []
+}

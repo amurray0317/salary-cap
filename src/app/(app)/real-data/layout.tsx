@@ -5,6 +5,8 @@ const TABS = [
   { href: "/real-data/players", label: "Players & stats" },
   { href: "/real-data/draft", label: "Draft" },
   { href: "/real-data/teams", label: "Teams" },
+  { href: "/real-data/prospects", label: "Prospects" },
+  { href: "/real-data/models", label: "Model cards" },
 ];
 
 export default function RealDataLayout({ children }: { children: React.ReactNode }) {
@@ -26,7 +28,8 @@ export default function RealDataLayout({ children }: { children: React.ReactNode
         Real-world reference data is imported on demand through the gated import pipeline and is kept
         separate from your organization&rsquo;s official roster and cap records. Sources: NHL.com public
         API (incl. NHL Central Scouting rankings) · Data: MoneyPuck.com · EliteProspects official API
-        (when configured). Blank cells mean the source did not report a value — nothing is estimated.
+        (when configured) · RosterIQ models (built from NHL API data; labelled as model output wherever
+        shown). Blank cells mean the source did not report a value — nothing is estimated.
       </footer>
     </div>
   );

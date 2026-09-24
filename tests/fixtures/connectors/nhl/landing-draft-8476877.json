@@ -1,0 +1,115 @@
+{
+ "playerId": 8476877,
+ "isActive": false,
+ "firstName": {
+  "default": "Jordan"
+ },
+ "lastName": {
+  "default": "Schmaltz"
+ },
+ "badges": [],
+ "sweaterNumber": 2,
+ "position": "D",
+ "headshot": "https://assets.nhle.com/mugs/nhl/latest/8476877.png",
+ "heroImage": "https://assets.nhle.com/mugs/actionshots/1296x729/8476877.jpg",
+ "heightInInches": 74,
+ "heightInCentimeters": 188,
+ "weightInPounds": 196,
+ "weightInKilograms": 89,
+ "birthDate": "1993-10-08",
+ "birthCity": {
+  "default": "Madison"
+ },
+ "birthStateProvince": {
+  "default": "Wisconsin"
+ },
+ "birthCountry": "USA",
+ "shootsCatches": "R",
+ "draftDetails": {
+  "year": 2012,
+  "teamAbbrev": "STL",
+  "round": 1,
+  "pickInRound": 25,
+  "overallPick": 25
+ },
+ "playerSlug": "jordan-schmaltz-8476877",
+ "inTop100AllTime": 0,
+ "inHHOF": 0,
+ "featuredStats": {
+  "season": 20182019,
+  "regularSeason": {
+   "subSeason": {
+    "assists": 2,
+    "gameWinningGoals": 0,
+    "gamesPlayed": 20,
+    "goals": 0,
+    "otGoals": 0,
+    "pim": 2,
+    "plusMinus": -7,
+    "points": 2,
+    "powerPlayGoals": 0,
+    "powerPlayPoints": 0,
+    "shootingPctg": 0,
+    "shorthandedGoals": 0,
+    "shorthandedPoints": 0,
+    "shots": 11
+   },
+   "career": {
+    "assists": 5,
+    "gameWinningGoals": 0,
+    "gamesPlayed": 42,
+    "goals": 0,
+    "otGoals": 0,
+    "pim": 12,
+    "plusMinus": -7,
+    "points": 5,
+    "powerPlayGoals": 0,
+    "powerPlayPoints": 1,
+    "shootingPctg": 0,
+    "shorthandedGoals": 0,
+    "shorthandedPoints": 0,
+    "shots": 21
+   }
+  }
+ },
+ "careerTotals": {
+  "regularSeason": {
+   "assists": 5,
+   "avgToi": "11:56",
+   "gameWinningGoals": 0,
+   "gamesPlayed": 42,
+   "goals": 0,
+   "otGoals": 0,
+   "pim": 12,
+   "plusMinus": -7,
+   "points": 5,
+   "powerPlayGoals": 0,
+   "powerPlayPoints": 1,
+   "shootingPctg": 0,
+   "shorthandedGoals": 0,
+   "shorthandedPoints": 0,
+   "shots": 21
+  },
+  "playoffs": {
+   "assists": 0,
+   "avgToi": "9:18",
+   "gameWinningGoals": 0,
+   "gamesPlayed": 1,
+   "goals": 0,
+   "otGoals": 0,
+   "pim": 0,
+   "plusMinus": 0,
+   "points": 0,
+   "powerPlayGoals": 0,
+   "powerPlayPoints": 0,
+   "shorthandedGoals": 0,
+   "shorthandedPoints": 0,
+   "shots": 0
+  }
+ },
+ "shopLink": "#TODO",
+ "twitterLink": "#TODO",
+ "watchLink": "#TODO",
+ "last5Games": [],
+ "seasonTotals": []
+}

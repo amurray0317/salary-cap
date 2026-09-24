@@ -1,0 +1,118 @@
+{
+ "playerId": 8475150,
+ "isActive": false,
+ "firstName": {
+  "default": "Jordan"
+ },
+ "lastName": {
+  "default": "Caron"
+ },
+ "badges": [],
+ "sweaterNumber": 33,
+ "position": "R",
+ "headshot": "https://assets.nhle.com/mugs/nhl/latest/8475150.png",
+ "heroImage": "https://assets.nhle.com/mugs/actionshots/1296x729/8475150.jpg",
+ "heightInInches": 75,
+ "heightInCentimeters": 191,
+ "weightInPounds": 204,
+ "weightInKilograms": 93,
+ "birthDate": "1990-11-02",
+ "birthCity": {
+  "default": "Sayabec"
+ },
+ "birthStateProvince": {
+  "default": "Quebec",
+  "fr": "Qu\u00e9bec"
+ },
+ "birthCountry": "CAN",
+ "shootsCatches": "L",
+ "draftDetails": {
+  "year": 2009,
+  "teamAbbrev": "BOS",
+  "round": 1,
+  "pickInRound": 25,
+  "overallPick": 25
+ },
+ "playerSlug": "jordan-caron-8475150",
+ "inTop100AllTime": 0,
+ "inHHOF": 0,
+ "featuredStats": {
+  "season": 20152016,
+  "regularSeason": {
+   "subSeason": {
+    "assists": 0,
+    "gameWinningGoals": 0,
+    "gamesPlayed": 4,
+    "goals": 0,
+    "otGoals": 0,
+    "pim": 0,
+    "plusMinus": -3,
+    "points": 0,
+    "powerPlayGoals": 0,
+    "powerPlayPoints": 0,
+    "shootingPctg": 0,
+    "shorthandedGoals": 0,
+    "shorthandedPoints": 0,
+    "shots": 1
+   },
+   "career": {
+    "assists": 16,
+    "gameWinningGoals": 1,
+    "gamesPlayed": 157,
+    "goals": 12,
+    "otGoals": 0,
+    "pim": 78,
+    "plusMinus": -9,
+    "points": 28,
+    "powerPlayGoals": 0,
+    "powerPlayPoints": 0,
+    "shootingPctg": 0.071,
+    "shorthandedGoals": 0,
+    "shorthandedPoints": 0,
+    "shots": 169
+   }
+  }
+ },
+ "careerTotals": {
+  "regularSeason": {
+   "assists": 16,
+   "avgToi": "10:35",
+   "faceoffWinningPctg": 0.21420000000000003,
+   "gameWinningGoals": 1,
+   "gamesPlayed": 157,
+   "goals": 12,
+   "otGoals": 0,
+   "pim": 78,
+   "plusMinus": -9,
+   "points": 28,
+   "powerPlayGoals": 0,
+   "powerPlayPoints": 0,
+   "shootingPctg": 0.071,
+   "shorthandedGoals": 0,
+   "shorthandedPoints": 0,
+   "shots": 169
+  },
+  "playoffs": {
+   "assists": 0,
+   "avgToi": "7:38",
+   "gameWinningGoals": 0,
+   "gamesPlayed": 9,
+   "goals": 1,
+   "otGoals": 0,
+   "pim": 4,
+   "plusMinus": -1,
+   "points": 1,
+   "powerPlayGoals": 0,
+   "powerPlayPoints": 0,
+   "shootingPctg": 0.0909,
+   "shorthandedGoals": 0,
+   "shorthandedPoints": 0,
+   "shots": 11
+  }
+ },
+ "shopLink": "#TODO",
+ "twitterLink": "#TODO",
+ "watchLink": "#TODO",
+ "last5Games": [],
+ "seasonTotals": []
+}
