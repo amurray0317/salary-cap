@@ -1,0 +1,9 @@
+external_player_id,player_name,season,game_type,league,team_name,position,situation,goals,x_goals,m_unblocked_attempts,m_goals_non_empty_net,m_goals_minus_xg,m_baseline_xg,m_xg_from_distance,m_xg_from_angle,m_xg_from_shot_type,m_xg_from_rebound,m_xg_from_rush,m_xg_from_prev_event,m_xg_from_strength,m_xg_from_score,m_xg_from_off_wing,m_xg_from_position,m_xg_from_period,m_xg_from_venue,m_empty_net_attempts,m_empty_net_goals
+8478402,Connor McDavid,2025-26,regular,NHL,EDM,C,all,47,40.4658,416,41,0.5342,17.423,18.3162,4.1808,-0.6614,-0.0714,0.11,1.2284,1.0003,0.0885,0.087,-0.9467,-0.2654,-0.0234,7,6
+8478402,Connor McDavid,2025-26,regular,NHL,EDM,C,5on5,24,23.0505,266,24,0.9495,11.1407,10.5076,2.5505,-0.5773,-0.2521,0.0519,0.5215,-0.5556,0.0782,0.0342,-0.5716,0.1337,-0.011,0,0
+8478402,Connor McDavid,2025-26,regular,NHL,EDM,C,5on4,12,11.0094,98,12,0.9906,4.1045,5.3284,0.6076,0.0505,0.2415,0.0373,0.0535,0.7518,0.021,0.0149,-0.2408,0.0388,0.0003,0,0
+8478402,Connor McDavid,2025-26,regular,NHL,EDM,C,4on5,1,1.2747,13,1,-0.2747,0.5445,0.5839,0.1298,-0.1782,-0.0198,0.0046,0.1926,0.0407,0.0163,-0.0071,-0.0297,0.0024,-0.0052,0,0
+8478402,Connor McDavid,2025-26,playoffs,NHL,EDM,C,all,1,2.2948,27,1,-1.2948,1.1308,0.7771,0.2307,0.0962,-0.0525,0.0006,0.1159,0.0194,0.0228,-0.0002,-0.0577,0.0101,0.0016,0,0
+8478402,Connor McDavid,2025-26,playoffs,NHL,EDM,C,5on5,0,1.5146,17,0,-1.5146,0.712,0.4791,0.2279,0.0668,-0.0309,-0.0027,0.1042,-0.0354,0.0115,0.0034,-0.0368,0.0094,0.0059,0,0
+8478402,Connor McDavid,2025-26,playoffs,NHL,EDM,C,5on4,1,0.6679,8,1,0.3321,0.3351,0.2651,0.0005,0.022,-0.0186,0.0027,0.024,0.0531,0.0102,-0.0039,-0.0175,-0.0013,-0.0036,0,0
+8478402,Connor McDavid,2025-26,playoffs,NHL,EDM,C,4on5,0,0.0947,1,0,-0.0947,0.0419,0.0297,0.0333,-0.0004,-0.002,0.0004,-0.0116,0.0032,0.001,0.001,-0.0024,0.0017,-0.0011,0,0

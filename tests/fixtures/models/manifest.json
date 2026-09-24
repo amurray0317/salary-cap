@@ -1,0 +1,21 @@
+{
+ "source": "INTERIM: a contract smoke model (logistic regression + 100 trees fitted on half of 2025-26), used only to test the export -> import contract. To be regenerated from the committed models/<version>/ outputs with analytics/make_test_fixtures.py; values are not model results.",
+ "trimming": "whole rows kept for the listed players / teams / drafts / leagues; values unedited",
+ "files": [
+  {
+   "file": "rosteriq-xg-v1/import_xg_goalies.csv",
+   "rows_kept": 4,
+   "rows_in_source": 479
+  },
+  {
+   "file": "rosteriq-xg-v1/import_xg_skaters.csv",
+   "rows_kept": 8,
+   "rows_in_source": 3803
+  },
+  {
+   "file": "rosteriq-xg-v1/import_xg_teams.csv",
+   "rows_kept": 12,
+   "rows_in_source": 192
+  }
+ ]
+}
