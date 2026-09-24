@@ -1013,5 +1013,158 @@
    }
   }
  },
- "source": "NHL draft picks, player search and player landing pages (api-web.nhle.com, search.d3.nhle.com)"
+ "source": "NHL draft picks, player search and player landing pages (api-web.nhle.com, search.d3.nhle.com)",
+ "benchmark_css": {
+  "question": "Before the draft, does the RosterIQ stats model add information beyond NHL Central Scouting's final rank?",
+  "population": "drafted skaters with a known outcome",
+  "train_drafts": [
+   2008,
+   2009,
+   2010,
+   2011,
+   2012,
+   2013,
+   2014,
+   2015
+  ],
+  "test_drafts": [
+   2016,
+   2017,
+   2018,
+   2019
+  ],
+  "linking": {
+   "linked_full_name": 1831,
+   "linked_last_name": 100,
+   "ambiguous": 2,
+   "linked_similar_name": 18,
+   "css_final_rows": 4020,
+   "css_rows_linked_share": 0.4848
+  },
+  "test_players": 771,
+  "test_share_with_final_rank": 0.8703,
+  "test": {
+   "central_scouting_only": {
+    "players": 771,
+    "regulars": 121,
+    "expected": 147.0,
+    "log_loss": 0.31439,
+    "auc": 0.8555,
+    "brier": 0.09059
+   },
+   "stats_only": {
+    "players": 771,
+    "regulars": 121,
+    "expected": 152.7,
+    "log_loss": 0.33346,
+    "auc": 0.8436,
+    "brier": 0.10026
+   },
+   "stats_plus_central_scouting": {
+    "players": 771,
+    "regulars": 121,
+    "expected": 154.2,
+    "log_loss": 0.30309,
+    "auc": 0.8697,
+    "brier": 0.0874
+   },
+   "draft_position_only_reference": {
+    "players": 771,
+    "regulars": 121,
+    "expected": 146.5,
+    "log_loss": 0.28692,
+    "auc": 0.8876,
+    "brier": 0.08492
+   }
+  },
+  "test_rounds_2_plus": {
+   "central_scouting_only": {
+    "players": 650,
+    "regulars": 49,
+    "expected": 86.7,
+    "log_loss": 0.25989,
+    "auc": 0.732,
+    "brier": 0.06822
+   },
+   "stats_only": {
+    "players": 650,
+    "regulars": 49,
+    "expected": 101.7,
+    "log_loss": 0.26766,
+    "auc": 0.7571,
+    "brier": 0.07265
+   },
+   "stats_plus_central_scouting": {
+    "players": 650,
+    "regulars": 49,
+    "expected": 88.4,
+    "log_loss": 0.25174,
+    "auc": 0.767,
+    "brier": 0.06662
+   }
+  },
+  "bootstrap_vs_central_scouting": {
+   "all:stats": {
+    "auc_diff_ci95": [
+     -0.043,
+     -0.0119,
+     0.0217
+    ],
+    "log_loss_diff_ci95": [
+     -0.0003,
+     0.0189,
+     0.037
+    ],
+    "resamples": 2000
+   },
+   "all:stats_plus_css": {
+    "auc_diff_ci95": [
+     0.0021,
+     0.0139,
+     0.0277
+    ],
+    "log_loss_diff_ci95": [
+     -0.02,
+     -0.0112,
+     -0.0029
+    ],
+    "resamples": 2000
+   },
+   "rounds_2_plus:stats": {
+    "auc_diff_ci95": [
+     -0.0411,
+     0.0262,
+     0.0986
+    ],
+    "log_loss_diff_ci95": [
+     -0.0087,
+     0.0075,
+     0.022
+    ],
+    "resamples": 2000
+   },
+   "rounds_2_plus:stats_plus_css": {
+    "auc_diff_ci95": [
+     0.0035,
+     0.0352,
+     0.0676
+    ],
+    "log_loss_diff_ci95": [
+     -0.016,
+     -0.0082,
+     -0.0006
+    ],
+    "resamples": 2000
+   }
+  },
+  "stack_coefficients": {
+   "stats_logit": 0.5402,
+   "css": [
+    3.2332,
+    2.4431,
+    -0.7888,
+    -0.8133
+   ]
+  }
+ }
 }

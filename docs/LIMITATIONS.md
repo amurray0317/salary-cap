@@ -109,9 +109,11 @@ it is implemented" rule.
   forecast; small samples (a few weeks of a season) are noisy.
 - **Prospects: draft position predicts better.** On the 2016–2019 test drafts the stats-only
   model was clearly worse than draft position alone, and adding the stats to draft position gave
-  no detectable improvement (paired bootstrap, 95% intervals on the model card). The model's
-  value is explaining a production profile and flagging disagreement with the draft slot, not
-  ranking players.
+  no detectable improvement (paired bootstrap, 95% intervals on the model card). Before the
+  draft, combined with NHL Central Scouting's final rank, the stats did add information
+  (AUC +0.014 [+0.002, +0.028]) — tested on drafted players only, one four-draft window. The
+  model's value is explaining a production profile, flagging disagreement with the draft slot,
+  and adding to the pre-draft consensus — not ranking players on its own.
 - **Prospect inputs are thin.** Points, goals, games, age, draft-time size, position and league
   only — no ice time, role, quality of competition, or anything scouts see. Outcome (200 NHL
   games in seven seasons) also depends on opportunity, and the shortened 2019-20 / 2020-21

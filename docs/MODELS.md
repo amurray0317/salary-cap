@@ -115,13 +115,22 @@ exercise the workflow, not to describe real athletes.
   Paired bootstrap vs draft position (95%): stats only AUC −0.043 [−0.077, −0.009], log loss
   +0.049 [+0.025, +0.070] — worse; stats + draft position AUC +0.004 [−0.013, +0.022] — no
   detectable gain. After round 1: +0.012 [−0.030, +0.060], also inconclusive.
+- **Before the draft (vs NHL Central Scouting final rank, 2016–2019 drafts, same players, trained on
+  2008–2015)**: Central Scouting only — log loss 0.314, AUC 0.856; stats only — 0.333, 0.844;
+  stats + Central Scouting (stats logit out-of-fold) — **0.303, 0.870**. Paired bootstrap vs
+  Central Scouting only: AUC +0.014 [+0.002, +0.028], log loss −0.011 [−0.020, −0.003]; after
+  round 1 AUC +0.035 [+0.004, +0.068], log loss −0.008 [−0.016, −0.001]. So the stats add
+  information to the pre-draft consensus (not to where teams actually pick). Rankings linked by
+  name + exact birth date (1,831 full name, 100 last name, 18 reviewed transliterations, 2
+  ambiguous left unlinked). Caveats: drafted players only (ranked players who went undrafted
+  have no outcome here); one four-draft window. Reproduce: `rosteriq_models.prospects.css`.
 - **Use**: explain a production profile and flag disagreement with the draft slot (a 10-point
   gap is marked), not rank players. Historical projections are leave-one-draft-out; drafts
   2020–2026 have no outcome yet.
 - **Known limitations**: thin inputs (no ice time, role, competition, or scouting); outcome
   depends on opportunity (shortened 2019-20 / 2020-21, 84-game schedule from 2026-27); NHLe
   from non-random movers and league-level only; goalies not modelled.
-- **Status**: active. Next: benchmark pre-draft against NHL Central Scouting final ranks.
+- **Status**: active. Next: 2027 pre-draft scoring (Central Scouting list + season-to-date rates).
 
 ## Surplus value
 

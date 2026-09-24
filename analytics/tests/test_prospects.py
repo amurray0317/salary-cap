@@ -97,3 +97,25 @@ def test_recent_drafts_have_no_label():
     lines = pd.DataFrame([{"player_id": 2, "season": season_id(2020), "league": "WHL", "gp": 20, "goals": 5, "assists": 10, "points": 15}])
     d = dataset.build(picks, bio, lines, {"WHL": 0.14}, last_complete_season=20252026)
     assert not d.iloc[0]["label_mature"]
+
+
+def test_central_scouting_linking_handles_transliterations_and_refuses_guesses():
+    from rosteriq_models.prospects import css
+
+    players = pd.DataFrame([
+        {"draft_year": 2008, "name": "Slava Voynov", "birth_date": "1990-01-15"},     # transliteration
+        {"draft_year": 2011, "name": "T.J. Tynan", "birth_date": "1992-02-25"},       # nickname, same last name
+        {"draft_year": 2012, "name": "Some Player", "birth_date": "1994-03-03"},      # birthday twin, different name
+    ])
+    ranks = pd.DataFrame([
+        {"draft_year": 2008, "css_list": "international", "css_name": "Vyacheslav Voinov", "css_last": "Voinov",
+         "birth_date": "1990-01-15", "css_final": 8, "css_midterm": None},
+        {"draft_year": 2011, "css_list": "north_american", "css_name": "Thomas Tynan", "css_last": "Tynan",
+         "birth_date": "1992-02-25", "css_final": 210, "css_midterm": 150},
+        {"draft_year": 2012, "css_list": "north_american", "css_name": "Other Person", "css_last": "Person",
+         "birth_date": "1994-03-03", "css_final": 50, "css_midterm": 60},
+    ])
+    out, counts = css.link(players, ranks)
+    assert out["css_final"].tolist()[:2] == [8.0, 210.0]
+    assert pd.isna(out["css_final"].iloc[2])  # same birthday, dissimilar name: never linked
+    assert counts["linked_last_name"] == 1 and counts["linked_similar_name"] == 1
