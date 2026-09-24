@@ -153,3 +153,43 @@ create policy seasons_read on league_seasons for select using (auth.uid() is not
 create policy rules_read on league_rules for select using (auth.uid() is not null);
 create policy comparables_read on comparable_contracts
   for select using (organization_id is null or is_org_member(organization_id));
+
+-- Real-data connectors (migration 0008): the response cache and every
+-- external reference table are organization-scoped. Rows are written only
+-- by the app server when a member approves a connector import.
+alter table connector_cache    enable row level security;
+alter table ext_players        enable row level security;
+alter table ext_roster_entries enable row level security;
+alter table ext_player_seasons enable row level security;
+alter table ext_team_seasons   enable row level security;
+alter table ext_draft_picks    enable row level security;
+alter table ext_draft_rankings enable row level security;
+alter table data_sources       enable row level security;
+create policy connector_cache_rw on connector_cache
+  for all using (is_org_member(organization_id))
+  with check (is_org_member(organization_id));
+create policy ext_players_rw on ext_players
+  for all using (is_org_member(organization_id))
+  with check (is_org_member(organization_id));
+create policy ext_roster_rw on ext_roster_entries
+  for all using (is_org_member(organization_id))
+  with check (is_org_member(organization_id));
+create policy ext_player_seasons_rw on ext_player_seasons
+  for all using (is_org_member(organization_id))
+  with check (is_org_member(organization_id));
+create policy ext_team_seasons_rw on ext_team_seasons
+  for all using (is_org_member(organization_id))
+  with check (is_org_member(organization_id));
+create policy ext_draft_picks_rw on ext_draft_picks
+  for all using (is_org_member(organization_id))
+  with check (is_org_member(organization_id));
+create policy ext_draft_rankings_rw on ext_draft_rankings
+  for all using (is_org_member(organization_id))
+  with check (is_org_member(organization_id));
+create policy data_sources_rw on data_sources
+  for all using (organization_id is null or is_org_member(organization_id))
+  with check (organization_id is not null and is_org_member(organization_id));
+alter table ext_player_game_logs enable row level security;
+create policy ext_game_logs_rw on ext_player_game_logs
+  for all using (is_org_member(organization_id))
+  with check (is_org_member(organization_id));

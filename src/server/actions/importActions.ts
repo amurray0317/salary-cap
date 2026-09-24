@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireOrgAccess } from "@/server/context";
-import { IMPORT_DEFINITIONS, isImportType } from "@/lib/import/definitions";
+import { IMPORT_DEFINITIONS, isCsvImportType, isImportType } from "@/lib/import/definitions";
 import {
   commitImport,
   createImport,
@@ -22,7 +22,8 @@ export async function uploadImportAction(_prev: FormState, formData: FormData): 
   const importType = String(formData.get("importType") ?? "");
   const file = formData.get("file");
   if (!z.string().uuid().safeParse(organizationId).success) return { error: "Invalid organization" };
-  if (!isImportType(importType)) return { error: "Unknown import type" };
+  // Connector datasets are produced server-side with provenance; never uploadable.
+  if (!isCsvImportType(importType)) return { error: "Unknown import type" };
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a CSV file to upload" };
   if (file.size > 1_000_000) return { error: "File is larger than 1 MB" };
 

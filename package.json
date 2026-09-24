@@ -2,7 +2,7 @@
   "name": "rosteriq",
   "version": "0.1.0",
   "private": true,
-  "description": "RosterIQ — Front-Office Roster Intelligence Platform",
+  "description": "RosterIQ \u2014 Front-Office Roster Intelligence Platform",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -15,7 +15,9 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "db:reset": "rm -rf .data && npm run db:migrate && npm run db:seed",
-    "test:e2e": "node tests/e2e/vertical-slice.mjs"
+    "test:e2e": "node tests/e2e/vertical-slice.mjs",
+    "test:e2e:real-data": "node tests/e2e/real-data.mjs",
+    "fixtures:record": "NODE_USE_ENV_PROXY=1 tsx scripts/record-connector-fixtures.ts"
   },
   "repository": {
     "type": "git",

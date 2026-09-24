@@ -25,7 +25,8 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
     if (err instanceof ImportError) notFound();
     throw err;
   }
-  const { row, raw, errors, preview } = detail;
+  const { row, raw, errors, preview, existingCount, sourceMeta, dataSource } = detail;
+  const isConnector = row.sourceKind === "connector" && sourceMeta !== null;
   const importType = row.importType as ImportType;
   const def = IMPORT_DEFINITIONS[importType];
   const storedMapping = row.mapping as Record<string, string>;
@@ -63,7 +64,15 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
           ✓ Committed {row.committedCount} of {row.rowCount} rows.{" "}
           {row.rowCount - row.committedCount > 0 &&
             `${row.rowCount - row.committedCount} row(s) were skipped due to validation errors (listed below).`}{" "}
-          Records are now live under {importType === "players" ? "Players" : "Contracts"}.
+          {isConnector ? (
+            <>
+              Reference data is now available under{" "}
+              <Link href="/real-data/players" className="underline">Real data</Link>
+              {dataSource ? ` (data source recorded: ${dataSource.name}).` : "."}
+            </>
+          ) : (
+            <>Records are now live under {importType === "players" ? "Players" : "Contracts"}.</>
+          )}
         </p>
       )}
       {row.status === "rejected" && (
@@ -72,7 +81,44 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
         </p>
       )}
 
-      {(row.status === "pending" || row.status === "awaiting_approval") && (
+      {isConnector && sourceMeta && (
+        <Card title="Source & provenance">
+          <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
+            <dt className="text-ink-muted">Source</dt>
+            <dd className="font-medium">{sourceMeta.sourceName}</dd>
+            <dt className="text-ink-muted">Request URL{sourceMeta.urls.length > 1 ? "s" : ""}</dt>
+            <dd className="space-y-0.5">
+              {sourceMeta.urls.map((u, i) => (
+                <div key={u} className="break-all font-mono text-xs">
+                  {u}{" "}
+                  <span className="text-ink-muted">({sourceMeta.fromCache[i] ? "served from this organization's cache" : "fetched live"})</span>
+                </div>
+              ))}
+            </dd>
+            <dt className="text-ink-muted">Retrieved</dt>
+            <dd>{sourceMeta.retrievedAt.replace("T", " ").slice(0, 19)} UTC</dd>
+            <dt className="text-ink-muted">Effective season</dt>
+            <dd>{sourceMeta.effectiveSeason ?? "—"}</dd>
+            <dt className="text-ink-muted">Credit</dt>
+            <dd>{sourceMeta.credit}</dd>
+            <dt className="text-ink-muted">Terms</dt>
+            <dd className="text-ink-secondary">{sourceMeta.termsNote}</dd>
+          </dl>
+          {sourceMeta.warnings.length > 0 && (
+            <ul className="mt-3 space-y-1 rounded-md border border-warn/40 bg-warn/10 px-3 py-2 text-sm text-warn">
+              {sourceMeta.warnings.map((w) => (
+                <li key={w}>⚠ {w}</li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 text-xs text-ink-muted">
+            Columns were produced by the connector, so there is no field-mapping step. Blank cells are values the
+            source did not report; they are stored as empty, never estimated.
+          </p>
+        </Card>
+      )}
+
+      {!isConnector && (row.status === "pending" || row.status === "awaiting_approval") && (
         <Card title={row.status === "pending" ? "Step 1 · Map CSV columns to fields" : "Field mapping (edit to re-validate)"}>
           <MappingForm
             action={applyMappingAction}
@@ -93,7 +139,7 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
 
       {row.status === "awaiting_approval" && preview && (
         <>
-          <div className="grid grid-cols-3 gap-3">
+          <div className={`grid gap-3 ${existingCount !== null ? "grid-cols-2 md:grid-cols-4" : "grid-cols-3"}`}>
             <div className="rounded-lg border border-line bg-navy-900 px-4 py-3">
               <div className="text-xs uppercase tracking-wide text-ink-muted">Total rows</div>
               <div className="mt-1 text-2xl font-semibold tabular-nums">{row.rowCount}</div>
@@ -108,6 +154,14 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
                 {new Set(errors.map((e) => e.rowNumber)).size}
               </div>
             </div>
+            {existingCount !== null && (
+              <div className="rounded-lg border border-line bg-navy-900 px-4 py-3">
+                <div className="text-xs uppercase tracking-wide text-ink-muted">New / update existing</div>
+                <div className="mt-1 text-2xl font-semibold tabular-nums">
+                  {preview.validRecords.length - existingCount} / {existingCount}
+                </div>
+              </div>
+            )}
           </div>
 
           <Card title={`Step 2 · Preview (first ${previewValid.length} valid rows)`}>
@@ -143,10 +197,23 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
 
           <Card title="Step 3 · Approve">
             <p className="mb-2 text-sm text-ink-muted">
-              Approving writes the {preview.validRecords.length} valid row
-              {preview.validRecords.length === 1 ? "" : "s"} to your organization&rsquo;s official
-              records in one transaction. Rows with errors are never committed. This step is
-              audit-logged.
+              {isConnector ? (
+                <>
+                  Approving writes the {preview.validRecords.length} valid row
+                  {preview.validRecords.length === 1 ? "" : "s"} to your organization&rsquo;s real-data
+                  reference tables in one transaction (existing rows with the same natural key are
+                  updated, not duplicated) and records a data-source entry with the provenance above.
+                  Official roster and cap records are not touched. Rows with errors are never committed.
+                  This step is audit-logged.
+                </>
+              ) : (
+                <>
+                  Approving writes the {preview.validRecords.length} valid row
+                  {preview.validRecords.length === 1 ? "" : "s"} to your organization&rsquo;s official
+                  records in one transaction. Rows with errors are never committed. This step is
+                  audit-logged.
+                </>
+              )}
             </p>
             <ApproveImportForm
               action={approveImportAction}

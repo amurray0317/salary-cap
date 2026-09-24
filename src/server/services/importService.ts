@@ -24,6 +24,12 @@ import {
   parseMoney,
   type ImportType,
 } from "@/lib/import/definitions";
+import {
+  CONNECTOR_DEFINITIONS,
+  isConnectorImportType,
+  type ConnectorImportType,
+} from "@/lib/import/connectorDefinitions";
+import { commitConnectorRecords, countExistingRows } from "@/server/services/connectorCommit";
 
 export class ImportError extends Error {
   constructor(message: string) {
@@ -34,6 +40,27 @@ export class ImportError extends Error {
 
 const MAX_ROWS = 2000;
 const MAX_BYTES = 1_000_000;
+/** Connector datasets are built server-side (e.g. MoneyPuck: ~920 skaters × situations). */
+const MAX_CONNECTOR_ROWS = 10_000;
+
+/**
+ * Provenance captured when a connector fetched the data. Stored on the
+ * import (imports.source_meta) and copied into a data_sources row at commit.
+ */
+export interface ConnectorSourceMeta {
+  connectorKey: string;
+  sourceName: string;
+  /** Request URLs with secrets redacted. */
+  urls: string[];
+  /** When the underlying responses were retrieved from the source (ISO); cached responses keep their original time. */
+  retrievedAt: string;
+  effectiveSeason: string | null;
+  credit: string;
+  termsNote: string;
+  fromCache: boolean[];
+  warnings: string[];
+  params: Record<string, unknown>;
+}
 
 interface RawData {
   headers: string[];
@@ -106,6 +133,67 @@ export async function createImport(opts: {
     headers: parsed.headers,
     autoMapping: autoMapHeaders(opts.importType, parsed.headers),
   };
+}
+
+/**
+ * Connector entry point: stores rows a connector produced from a real source
+ * as a pending import (identity mapping), then validates them. Nothing is
+ * written to target tables until the same explicit approval step as CSV.
+ */
+export async function createConnectorImport(opts: {
+  organizationId: string;
+  userId: string;
+  importType: ConnectorImportType;
+  label: string;
+  raw: RawData;
+  sourceMeta: ConnectorSourceMeta;
+}): Promise<{ importId: string; validCount: number; errorCount: number }> {
+  if (opts.raw.rows.length === 0) throw new ImportError("The source returned no rows for this request");
+  if (opts.raw.rows.length > MAX_CONNECTOR_ROWS) {
+    throw new ImportError(`The source returned ${opts.raw.rows.length} rows; the limit per import is ${MAX_CONNECTOR_ROWS}`);
+  }
+  const expected = CONNECTOR_DEFINITIONS[opts.importType].fields.map((f) => f.key);
+  if (expected.join("|") !== opts.raw.headers.join("|")) {
+    throw new ImportError("Connector produced columns that do not match the dataset definition");
+  }
+  const db = getDb();
+  const [row] = await db
+    .insert(schema.imports)
+    .values({
+      organizationId: opts.organizationId,
+      importType: opts.importType,
+      fileName: opts.label.slice(0, 200),
+      status: "pending",
+      rowCount: opts.raw.rows.length,
+      rawData: opts.raw,
+      sourceKind: "connector",
+      connectorKey: opts.sourceMeta.connectorKey,
+      sourceMeta: opts.sourceMeta,
+      createdBy: opts.userId,
+    })
+    .returning();
+  if (!row) throw new ImportError("Could not create import record");
+  await db.insert(schema.auditLogs).values({
+    organizationId: opts.organizationId,
+    userId: opts.userId,
+    action: "import.create",
+    entityType: "import",
+    entityId: row.id,
+    newValues: {
+      importType: opts.importType,
+      source: opts.sourceMeta.sourceName,
+      urls: opts.sourceMeta.urls,
+      rows: opts.raw.rows.length,
+    },
+  });
+  const identity = Object.fromEntries(expected.map((k) => [k, k]));
+  const { validCount, errorCount } = await validateImport({
+    importId: row.id,
+    organizationId: opts.organizationId,
+    userId: opts.userId,
+    mapping: identity,
+  });
+  return { importId: row.id, validCount, errorCount };
 }
 
 /* ------------------------------------------------------------------ */
@@ -416,6 +504,18 @@ export function validateRows(
       }
     }
 
+    if (isConnectorImportType(importType) && !rowsWithIssues.has(rowNumber)) {
+      // Natural-key duplicate guard: one row per key per import.
+      const key = `rowkey:${CONNECTOR_DEFINITIONS[importType].rowKey(values)}`;
+      const firstSeen = seenPlayerNames.get(key);
+      if (firstSeen !== undefined) {
+        issues.push({ rowNumber, columnName: null, message: `Duplicate of row ${firstSeen} (same natural key)`, rawRow });
+        rowsWithIssues.add(rowNumber);
+      } else {
+        seenPlayerNames.set(key, rowNumber);
+      }
+    }
+
     if (!rowsWithIssues.has(rowNumber)) {
       validRecords.push({ rowNumber, values });
     }
@@ -522,8 +622,12 @@ export async function validateImport(opts: {
     throw new ImportError(`Import is already ${row.status}`);
   }
   const raw = row.rawData as RawData;
+  // Connector imports always use the identity mapping: their columns were
+  // produced by the connector, so re-mapping could only mislabel real data.
+  const mapping =
+    row.sourceKind === "connector" ? Object.fromEntries(raw.headers.map((h) => [h, h])) : opts.mapping;
   const lookups = await loadOrgLookups(db, opts.organizationId);
-  const outcome = validateRows(row.importType as ImportType, raw, opts.mapping, lookups);
+  const outcome = validateRows(row.importType as ImportType, raw, mapping, lookups);
 
   await db.transaction(async (tx) => {
     await tx.delete(schema.importErrors).where(eq(schema.importErrors.importId, row.id));
@@ -540,7 +644,7 @@ export async function validateImport(opts: {
     }
     await tx
       .update(schema.imports)
-      .set({ mapping: opts.mapping, status: "awaiting_approval" })
+      .set({ mapping, status: "awaiting_approval" })
       .where(eq(schema.imports.id, row.id));
   });
   await db.insert(schema.auditLogs).values({
@@ -580,6 +684,32 @@ export async function commitImport(opts: {
 
   const committedCount = await db.transaction(async (tx) => {
     let committed = 0;
+
+    if (isConnectorImportType(row.importType)) {
+      // Provenance first: one data_sources row per approved connector import.
+      const meta = row.sourceMeta as ConnectorSourceMeta;
+      const [source] = await tx
+        .insert(schema.dataSources)
+        .values({
+          organizationId: opts.organizationId,
+          name: meta.sourceName,
+          url: meta.urls.join("\n"),
+          retrievedAt: new Date(meta.retrievedAt),
+          effectiveSeason: meta.effectiveSeason,
+          sourceKey: meta.connectorKey,
+          credit: meta.credit,
+          termsNote: meta.termsNote,
+          importId: row.id,
+          notes: meta.warnings.length > 0 ? meta.warnings.join("\n") : null,
+        })
+        .returning();
+      if (!source) throw new ImportError("Could not record data source");
+      committed = await commitConnectorRecords(tx, row.importType, outcome.validRecords, {
+        organizationId: opts.organizationId,
+        sourceId: source.id,
+        importId: row.id,
+      });
+    }
 
     if (row.importType === "players") {
       for (const rec of outcome.validRecords) {
@@ -845,9 +975,20 @@ export async function getImportDetail(importId: string, organizationId: string) 
     .where(eq(schema.importErrors.importId, row.id))
     .orderBy(asc(schema.importErrors.rowNumber));
   let preview: ValidationOutcome | null = null;
+  /** Connector imports: how many valid rows already exist (will be updated, not duplicated). */
+  let existingCount: number | null = null;
   if (row.status === "awaiting_approval") {
     const lookups = await loadOrgLookups(db, organizationId);
     preview = validateRows(row.importType as ImportType, raw, row.mapping as Record<string, string>, lookups);
+    if (isConnectorImportType(row.importType)) {
+      existingCount = await countExistingRows(db, organizationId, row.importType, preview.validRecords);
+    }
   }
-  return { row, raw, errors, preview };
+  const sourceMeta = row.sourceKind === "connector" ? (row.sourceMeta as ConnectorSourceMeta) : null;
+  const [dataSource] = await db
+    .select()
+    .from(schema.dataSources)
+    .where(and(eq(schema.dataSources.importId, row.id), eq(schema.dataSources.organizationId, organizationId)))
+    .limit(1);
+  return { row, raw, errors, preview, existingCount, sourceMeta, dataSource: dataSource ?? null };
 }

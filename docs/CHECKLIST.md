@@ -231,6 +231,73 @@
 - [ ] Deferred: real data connectors (NHL APIs, NHL Central Scouting, MoneyPuck,
       EliteProspects), viewing-entry UI, assignment scheduling, per-change DB transactions
 
+## Real data connectors (final run 2026-09-22)
+> Built after Phase 2; merged with Phase 3 (draft + CFA boards) — the connector migration
+> is 0008, after Phase 3's 0006/0007.
+- [x] Network check: api-web.nhle.com, api.nhle.com, moneypuck.com, peter-tanner.com
+      reachable; api.eliteprospects.com reachable but returns 401 without a key (no
+      `EP_API_KEY` in this environment → EP built disabled-until-configured)
+- [x] Real responses inspected first and recorded as fixtures (15 files + manifest:
+      player landings skater/goalie, roster, CS rankings NA skaters/NA goalies, draft
+      picks, stats REST skater/goalie/team summaries + team index, MoneyPuck
+      skaters/goalies/teams CSVs, EP 401 bodies); recorder script is deterministic and
+      drop-only
+- [x] Schema (migration 0008, renumbered after Phase 3): connector_cache; ext_players, ext_roster_entries,
+      ext_player_seasons, ext_team_seasons, ext_draft_picks, ext_draft_rankings (all
+      org-scoped, all stats nullable); provenance columns on imports and data_sources;
+      RLS policies
+- [x] NHL API connector: player bios, career seasons (all leagues, TOI only when
+      reported), rosters, league skater/goalie/team summaries (tri-codes via team
+      index), draft history, NHL Central Scouting rankings (midterm/final kept separate)
+- [x] MoneyPuck connector: skaters / goalies / teams season-summary CSVs by situation,
+      credited as "Data: MoneyPuck.com", terms shown before fetching and stored with
+      every import
+- [x] EliteProspects connector: official API only, `apiKey` parameter, key redacted
+      everywhere, disabled until `EP_API_KEY` is set, strict envelope check
+- [x] HTTP policy: host allowlist, per-host rate limits (NHL 500 ms, MoneyPuck 2 s,
+      EP 1 s), per-org cache with TTLs + bypass, 30 s timeout, 10 MB cap, audit log of
+      fetches and failures
+- [x] Every connector import goes through the existing gated pipeline: pending →
+      validation (identity mapping, in-file natural-key duplicates) → preview with
+      provenance + new/update counts → explicit approval → upsert + data_sources row;
+      connector types can never be uploaded as CSV
+- [x] UI: Real data section (connectors, players & stats, draft, teams, provenance log),
+      import preview provenance panel, sidebar entry, import-history connector badge
+- [x] Demo seed unchanged; real data imported on demand only
+- [x] 34 new tests (173 total): 21 parser tests on recorded fixtures (+ validators agree
+      with parsers, rate limiter, EP config/redaction/401s), 13 pipeline tests on PGlite
+      (gating, provenance, upsert, cache per org, isolation, reject, TOI NULLs, roster
+      fill-only, MoneyPuck credit, two-request team stats, EP disabled + real 401)
+- [x] `db:migrate` + `db:seed` clean · `tsc --noEmit` clean · eslint clean · 173/173
+      vitest · production build succeeds (53 routes)
+- [x] Live browser run against the real sources (`npm run test:e2e:real-data`, 9 checks):
+      EP disabled notice → Central Scouting 2025 NA skaters fetched live → preview shows
+      URL/effective season/"fetched live" and no mapping step → nothing in reference
+      tables before approval → approve → draft page → MoneyPuck 2024-25 skaters (all +
+      5on5) → approve → McDavid career via NHL API (no-TOI warning) → approve → player
+      page merges NHL career + MoneyPuck with credit and "—" for unreported TOI → repeat
+      fetch served from cache with new/update counts → discard → Ironport sees nothing
+      and gets 404 on Aurora's import
+- [ ] Deferred: linking ext players to RosterIQ players / NCAA prospects / draft board,
+      EP data mapping beyond identity (needs a recorded real response), scheduled
+      refreshes, shared multi-instance rate limiter, MoneyPuck lines/shots datasets
+
+## Real data — NHL game logs
+- [x] Real responses recorded first: McDavid 2024-25 regular + playoffs, Hellebuyck
+      2024-25 (goalie with a relief appearance that has no `decision`, and "O" OT/SO
+      losses), plus Hellebuyck's landing for the name the game log omits
+- [x] Migration 0009: `ext_player_game_logs` (org-scoped, unique per player + game,
+      skater and goalie columns nullable) + RLS policy
+- [x] `nhl_game_logs` connector dataset (≤10 players per request, 2 rate-limited
+      requests each), gated preview → approval → upsert, provenance as for all
+      connectors
+- [x] Player page: game log per season/type with season and last-10 summaries derived
+      from the per-game rows (per-60 uses only games with reported TOI)
+- [x] Reconciliation test: summed game-log rows equal the career season line (67 GP,
+      26 G, 100 P, 22:02 average TOI); goalie totals 47-12-3, 1,664 SA, 125 GA
+- [x] 4 new tests (177 total) · typecheck · lint · build · live browser run 10/10
+      (adds the game-log import and player-page checks)
+
 ## MVP acceptance test status
 1–8 (register→commitments) ✓ · 9–14 (scenarios, violations) ✓ · 15–16 (valuation, surplus) ✓ ·
 17–18 (compare, export) ✓ · 19 (sign out/in persistence) ✓ · 20 (cross-org denial) ✓

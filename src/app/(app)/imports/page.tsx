@@ -6,7 +6,7 @@ import { resolveAppContext } from "@/server/appContext";
 import { uploadImportAction } from "@/server/actions/importActions";
 import { UploadImportForm } from "@/components/ImportForms";
 import { Card, Td, Th } from "@/components/ui";
-import { IMPORT_DEFINITIONS, IMPORT_TYPES } from "@/lib/import/definitions";
+import { IMPORT_DEFINITIONS, CSV_IMPORT_TYPES } from "@/lib/import/definitions";
 import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Data imports" };
@@ -36,7 +36,9 @@ export default async function ImportsPage() {
         <h1 className="text-xl font-semibold">Data imports</h1>
         <p className="text-sm text-ink-muted">
           Upload CSV files, map columns, review row-level validation, and explicitly approve
-          before anything is written. Invalid rows are never committed.
+          before anything is written. Invalid rows are never committed. Real NHL / MoneyPuck /
+          EliteProspects data is fetched from <Link href="/real-data" className="text-accent-text hover:underline">Real data</Link>{" "}
+          and goes through this same approval step.
         </p>
       </div>
 
@@ -45,7 +47,7 @@ export default async function ImportsPage() {
           <UploadImportForm
             action={uploadImportAction}
             organizationId={ctx.org.id}
-            types={IMPORT_TYPES.map((t) => ({ value: t, label: IMPORT_DEFINITIONS[t].label }))}
+            types={CSV_IMPORT_TYPES.map((t) => ({ value: t, label: IMPORT_DEFINITIONS[t].label }))}
           />
         </Card>
         <Card title="Templates">
@@ -53,7 +55,7 @@ export default async function ImportsPage() {
             Download a template with the expected columns and example rows:
           </p>
           <ul className="space-y-2 text-sm">
-            {IMPORT_TYPES.map((t) => (
+            {CSV_IMPORT_TYPES.map((t) => (
               <li key={t}>
                 <a href={`/api/import-templates/${t}`} className="text-accent-text hover:underline">
                   {IMPORT_DEFINITIONS[t].label} template →
@@ -88,7 +90,12 @@ export default async function ImportsPage() {
                       {r.fileName}
                     </Link>
                   </Td>
-                  <Td className="text-ink-secondary">{r.importType}</Td>
+                  <Td className="text-ink-secondary">
+                    {r.importType}
+                    {r.sourceKind === "connector" && (
+                      <span className="ml-1.5 rounded bg-accent-soft px-1.5 py-0.5 text-xs text-accent-text">connector</span>
+                    )}
+                  </Td>
                   <Td>
                     <span
                       className={`rounded px-1.5 py-0.5 text-xs ${

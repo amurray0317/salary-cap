@@ -43,10 +43,54 @@ it is implemented" rule.
   (schools, conferences); ambiguous names are rejected rather than guessed. Files are
   capped at 1 MB / 2000 rows.
 - Schools and conferences are global reference data (not org-scoped); duplicate detection
-  is by name. Import-level source URL / retrieved-date metadata lives in the
-  `data_sources` table and is not yet captured in the upload form.
+  is by name. Connector imports record source URL / retrieved date / effective season in
+  `data_sources` automatically; the CSV upload form still does not capture them.
 - No file storage (player documents) yet despite the schema field.
 - Free agents are tracked per organization (scouting records), not as a shared league pool.
+
+## Real-data connectors
+
+- **Licensing is the operator's responsibility.** MoneyPuck's data page (checked
+  2026-09-22) allows free use for non-commercial purposes and ad-hoc journalism with clear
+  credit, and asks other uses to contact MoneyPuck. A commercial front-office deployment
+  needs MoneyPuck's approval before importing its data. The NHL endpoints are public but
+  undocumented and subject to NHL.com terms; NHL data is © NHL. The app credits sources
+  everywhere the data is shown but cannot grant rights.
+- **NHL API formats can change without notice.** Parsers fail loudly on a missing envelope,
+  but a silently renamed field would import as blank (NULL) rather than error. Re-record
+  fixtures (`npm run fixtures:record`) and re-run the parser tests when behavior looks off.
+- **EliteProspects is unverified against real data.** No API key was available while it was
+  built, so only the real 401 responses were recorded. The parser accepts only the minimal
+  `{ data: [{ id, … }] }` envelope, maps id / name / position / shoots / date of birth, and
+  rejects anything else. Record a real response with a key before relying on it; height,
+  weight, birthplace, and stats are intentionally not mapped yet.
+- **Reference data is not linked to official records.** Imported NHL players live in
+  `ext_*` tables and are not matched to RosterIQ `players`, NCAA `amateur_prospects`, or the
+  Phase 3 draft or CFA boards. Draft picks and Central Scouting
+  rankings carry no NHL player id in the source, so they are not linked to player pages.
+- **No cross-source reconciliation.** NHL and MoneyPuck rows are shown per source, never
+  blended; they can differ (e.g. MoneyPuck assigns a traded player's season to one team
+  while the NHL stats summary lists "BOS,FLA"). Rows are merged only on the shared NHL
+  player id.
+- **Derived rates are display-only** (ixG/60, P/60, G − ixG, GSAx, GSAx/60): computed from the
+  source's reported values and labeled; never stored and never computed without reported
+  ice time. MoneyPuck reports its on-ice percentages rounded to two decimals.
+- **A reported save % of 0 with no shots against** (seen in minor-league goalie lines of the
+  NHL landing feed) is treated as missing and flagged in the import warnings.
+- **Rate limiting and caching are per server process.** The per-host limiter is in memory
+  and the cache is per organization (the same public response fetched by two orgs is
+  fetched twice by design). A multi-instance deployment needs a shared limiter.
+- **Game logs** come from the per-player endpoint, one player at a time (two requests
+  each, because the game log carries no player name). Team-wide game logs and
+  play-by-play / shift data are not imported yet.
+- **Scale limits:** 25 player ids per request (10 for game logs); 10,000 rows per connector import; 10 MB per
+  response. Imports run synchronously in the request (a full MoneyPuck skater file with all
+  five situations is ~4,600 rows).
+- **No scheduled refresh.** Data is imported on demand only; re-running a connector and
+  approving updates rows in place (natural-key upsert). Removed/renamed upstream rows are
+  not deleted automatically.
+- Behind an outbound HTTPS proxy, the server must run with `NODE_USE_ENV_PROXY=1` (Node's
+  built-in fetch ignores `HTTPS_PROXY` otherwise).
 
 ## College / NIL
 
@@ -122,7 +166,8 @@ it is implemented" rule.
 - PDF export is browser-print based; server-side PDF rendering is roadmap.
 - Shareable links currently cover the roster/cap report; scenario-comparison and valuation
   share links are roadmap. Shared snapshots are frozen by design and never update.
-- Rate limiting is not implemented (abstraction point noted in middleware roadmap).
+- Inbound request rate limiting is not implemented (abstraction point noted in middleware
+  roadmap); outbound connector requests are rate-limited per host.
 - PGlite local mode is single-process: run one server per `.data` directory. `db:seed` refuses
   to run against `DATABASE_URL` as a guard.
 - The embedded demo database ships unencrypted fictional data only.
