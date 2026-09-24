@@ -193,3 +193,14 @@ alter table ext_player_game_logs enable row level security;
 create policy ext_game_logs_rw on ext_player_game_logs
   for all using (is_org_member(organization_id))
   with check (is_org_member(organization_id));
+
+-- RosterIQ model outputs (migration 0010): prospect projections and league
+-- equivalency factors, organization-scoped like every other ext_* table.
+alter table ext_prospect_projections enable row level security;
+create policy ext_prospect_projections_rw on ext_prospect_projections
+  for all using (is_org_member(organization_id))
+  with check (is_org_member(organization_id));
+alter table ext_league_equivalencies enable row level security;
+create policy ext_league_equivalencies_rw on ext_league_equivalencies
+  for all using (is_org_member(organization_id))
+  with check (is_org_member(organization_id));

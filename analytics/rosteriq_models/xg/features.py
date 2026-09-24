@@ -122,7 +122,7 @@ def design(df: pd.DataFrame, spec: FeatureSpec) -> tuple[pd.DataFrame, dict[str,
 
     add("score_diff", df["score_diff"].clip(-3, 3), "score")
 
-    for lvl in ["on", "off", "unknown"]:
+    for lvl in ["on", "off", "centre", "unknown"]:
         add(f"wing_{lvl}", df["off_wing"] == lvl, "off_wing")
 
     pos = df["shooter_position"].map({"D": "D", "C": "F", "L": "F", "R": "F"}).fillna("unknown")

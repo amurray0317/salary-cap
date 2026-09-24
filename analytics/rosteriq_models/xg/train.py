@@ -80,7 +80,7 @@ def join_moneypuck(df: pd.DataFrame, season: int) -> tuple[pd.DataFrame, dict]:
         "goal_label_agreement": round(float((j.loc[matched, "goal"].astype(int) == j.loc[matched, "goal_mp"].astype(int)).mean()), 5),
         "empty_net_agreement": round(float((j.loc[matched, "empty_net"].astype(int) == j.loc[matched, "shotOnEmptyNet"].astype(int)).mean()), 5),
     }
-    known = matched & (j["off_wing"] != "unknown")
+    known = matched & j["off_wing"].isin(["on", "off"])
     report["off_wing_agreement"] = round(float(((j.loc[known, "off_wing"] == "off").astype(int) == j.loc[known, "offWing"].astype(int)).mean()), 4)
     report["rebound_agreement"] = round(float((j.loc[matched, "rebound"].astype(int) == j.loc[matched, "shotRebound"].astype(int)).mean()), 4)
     report["rush_agreement"] = round(float((j.loc[matched, "rush"].astype(int) == j.loc[matched, "shotRush"].astype(int)).mean()), 4)

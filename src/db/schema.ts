@@ -2126,3 +2126,82 @@ export const extPlayerGameLogs = pgTable(
     index("ext_game_logs_player_idx").on(t.organizationId, t.externalPlayerId, t.gameDate),
   ],
 );
+
+/**
+ * RosterIQ prospect model output (analytics/rosteriq_models/prospects): one
+ * row per drafted skater. `pNhlRegular` is the model's probability of 200+
+ * NHL regular-season games in the seven seasons after the draft, from
+ * draft-time information only. Historical drafts are scored out-of-sample
+ * (leave-one-draft-out); `projectionKind` says which. Per-group
+ * contributions (probability units, summing to p − baselineP) live in
+ * `contributions`.
+ */
+export const extProspectProjections = pgTable(
+  "ext_prospect_projections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    source: text("source").notNull(), // rosteriq_prospects
+    modelVersion: text("model_version").notNull(),
+    externalPlayerId: text("external_player_id").notNull(),
+    playerName: text("player_name").notNull(),
+    draftYear: integer("draft_year").notNull(),
+    overallPick: integer("overall_pick").notNull(),
+    round: integer("round"),
+    position: text("position"), // F | D
+    draftedBy: text("drafted_by"),
+    birthDate: date("birth_date"),
+    ageAtDraft: real("age_at_draft"),
+    heightInches: integer("height_inches"),
+    weightPounds: integer("weight_pounds"),
+    d0League: text("d0_league"),
+    d0LeagueGroup: text("d0_league_group"),
+    d0GamesPlayed: integer("d0_games_played"),
+    d0Points: integer("d0_points"),
+    d0Ppg: real("d0_ppg"),
+    d0NhlePpg: real("d0_nhle_ppg"),
+    dm1League: text("dm1_league"),
+    dm1GamesPlayed: integer("dm1_games_played"),
+    dm1Points: integer("dm1_points"),
+    dm1NhlePpg: real("dm1_nhle_ppg"),
+    pNhlRegular: real("p_nhl_regular").notNull(),
+    baselineP: real("baseline_p").notNull(),
+    contributions: jsonb("contributions").notNull().default({}),
+    projectionKind: text("projection_kind").notNull(),
+    labelMature: boolean("label_mature").notNull(),
+    nhlRegular: boolean("nhl_regular"), // NULL until seven seasons have been played
+    nhlGp7: integer("nhl_gp_7"),
+    nhlGpToDate: integer("nhl_gp_to_date"),
+    sourceId: uuid("source_id").references(() => dataSources.id),
+    importId: uuid("import_id").references(() => imports.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("ext_prospect_projections_unique").on(t.organizationId, t.source, t.externalPlayerId),
+    index("ext_prospect_projections_draft_idx").on(t.organizationId, t.draftYear, t.overallPick),
+  ],
+);
+
+/** RosterIQ league equivalency (NHLe) factors: NHL-equivalent points per point scored in `league`. */
+export const extLeagueEquivalencies = pgTable(
+  "ext_league_equivalencies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    source: text("source").notNull(), // rosteriq_prospects
+    modelVersion: text("model_version").notNull(),
+    league: text("league").notNull(),
+    multiplier: real("multiplier").notNull(),
+    logFactor: real("log_factor").notNull(),
+    standardError: real("standard_error"),
+    pairs: integer("pairs").notNull(),
+    sourceId: uuid("source_id").references(() => dataSources.id),
+    importId: uuid("import_id").references(() => imports.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("ext_league_equivalencies_unique").on(t.organizationId, t.source, t.league)],
+);

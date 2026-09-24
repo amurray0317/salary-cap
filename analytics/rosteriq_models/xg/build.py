@@ -42,10 +42,13 @@ def build_season(season: int) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
         raise ValueError(f"no shots parsed for {season}")
     # Off-wing: in the normalised frame a positive signed angle is the
     # shooter's left side (checked against MoneyPuck's shotAngle sign).
+    # Dead-centre shots (y == 0; the feed's coordinates are whole feet) have
+    # no wing, so they are "centre" rather than forced onto a side.
     side = df["angle_signed"].apply(lambda a: "L" if a > 0 else "R")
     df["off_wing"] = "unknown"
     known = df["shooter_hand"].isin(["L", "R"])
     df.loc[known, "off_wing"] = (side[known] != df.loc[known, "shooter_hand"]).map({True: "off", False: "on"})
+    df.loc[known & (df["y"] == 0), "off_wing"] = "centre"
     report = {
         "season": season,
         "games": games,

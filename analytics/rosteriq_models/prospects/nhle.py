@@ -130,7 +130,8 @@ def estimate(pairs: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         "leagues_seen": int(counts.size),
         "leagues_estimated": int(len(leagues)) + 1,
         "leagues_without_factor": sorted(set(counts.index) - set(leagues) - {REF}),
-        "residual_sd": round(float(np.sqrt(sigma2)), 4),
+        # Typical size of one pair's miss, in log points-per-game (unweighted).
+        "residual_rms_log_ppg": round(float(np.sqrt(np.mean(resid**2))), 4),
         "growth_by_age": growth.round(4).to_dict(orient="records"),
     }
     return table.sort_values("nhle_multiplier", ascending=False).reset_index(drop=True), report

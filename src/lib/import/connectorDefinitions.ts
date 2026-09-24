@@ -27,6 +27,11 @@ export const CONNECTOR_IMPORT_TYPES = [
   "moneypuck_goalies",
   "moneypuck_teams",
   "ep_players",
+  "rosteriq_xg_skaters",
+  "rosteriq_xg_goalies",
+  "rosteriq_xg_teams",
+  "rosteriq_prospects",
+  "rosteriq_nhle",
 ] as const;
 export type ConnectorImportType = (typeof CONNECTOR_IMPORT_TYPES)[number];
 
@@ -37,7 +42,9 @@ export type ExtTable =
   | "ext_game_logs"
   | "ext_team_seasons"
   | "ext_draft_picks"
-  | "ext_draft_rankings";
+  | "ext_draft_rankings"
+  | "ext_prospect_projections"
+  | "ext_league_equivalencies";
 
 /* ------------------------------------------------------------------ */
 /* Field builders                                                      */
@@ -130,9 +137,16 @@ const playerIdField = (source: string) => text("external_player_id", "NHL player
 /* Definitions                                                         */
 /* ------------------------------------------------------------------ */
 
+/** xG explanation groups (analytics/rosteriq_models/xg/features.py GROUPS). */
+export const XG_GROUPS = [
+  "distance", "angle", "shot_type", "rebound", "rush", "prev_event", "strength", "score", "off_wing", "position", "period", "venue",
+] as const;
+/** Prospect explanation groups (analytics/rosteriq_models/prospects/model.py GROUPS_STATS). */
+export const PROSPECT_GROUPS = ["d0_scoring", "dm1_scoring", "age", "size", "position", "league", "games"] as const;
+
 export interface ConnectorDatasetDef {
   type: ConnectorImportType;
-  connectorKey: "nhl_api" | "moneypuck" | "eliteprospects";
+  connectorKey: "nhl_api" | "moneypuck" | "eliteprospects" | "rosteriq_models";
   table: ExtTable;
   /** Value of the `source` column written on committed rows. */
   sourceTag: string;
@@ -574,6 +588,150 @@ export const CONNECTOR_DEFINITIONS: Record<ConnectorImportType, ConnectorDataset
       ...bioFields("EliteProspects"),
     ],
     rowKey: (v) => v.external_id ?? "",
+  },
+
+  /* ---------------------------------------------------------------- */
+  /* RosterIQ model outputs (analytics/, files under models/<version>) */
+  /* ---------------------------------------------------------------- */
+
+  rosteriq_xg_skaters: {
+    type: "rosteriq_xg_skaters",
+    connectorKey: "rosteriq_models",
+    table: "ext_player_seasons",
+    sourceTag: "rosteriq_xg",
+    label: "RosterIQ xG · skater season totals",
+    description:
+      "Individual expected goals from the RosterIQ xG model (NHL play-by-play; logistic regression + boosted trees). Every season is scored out-of-sample (leave-one-season-out). ixG covers unblocked attempts on a goalie; empty-net attempts are counted separately. The m_xg_from_* columns split ixG − baseline into reasons and sum exactly.",
+    fields: [
+      playerIdField("NHL play-by-play shooter id"),
+      text("player_name", "Player", "NHL play-by-play roster"),
+      seasonField("the season scored"),
+      gameTypeField("NHL game type"),
+      text("league", "League", "Always NHL"),
+      text("team_name", "Team", "Last team the player appeared for that season"),
+      positionField("NHL play-by-play roster"),
+      situationField,
+      count("goals", "G", "All goals on unblocked attempts, empty-net included"),
+      numField("x_goals", "ixG", "Sum of model xG over unblocked attempts on a goalie", { min: 0 }),
+      count("m_unblocked_attempts", "Unblocked attempts", "Shots on goal + misses + goals, goalie in net"),
+      count("m_goals_non_empty_net", "G (goalie in net)", "Goals the model covers"),
+      numField("m_goals_minus_xg", "G − ixG", "Goals (goalie in net) minus ixG"),
+      numField("m_baseline_xg", "Baseline xG", "xG those attempts would get as league-average attempts", { min: 0 }),
+      ...XG_GROUPS.map((g) => numField(`m_xg_from_${g}`, `ixG from ${g.replace(/_/g, " ")}`, "Contribution of this feature group (goals)")),
+      count("m_empty_net_attempts", "EN attempts", "Unblocked attempts on an empty net (not modelled)"),
+      count("m_empty_net_goals", "EN goals", "Empty-net goals (not modelled)"),
+    ],
+    rowKey: (v) => `${v.external_player_id}|${v.season}|${v.game_type}|${v.situation}`,
+  },
+
+  rosteriq_xg_goalies: {
+    type: "rosteriq_xg_goalies",
+    connectorKey: "rosteriq_models",
+    table: "ext_player_seasons",
+    sourceTag: "rosteriq_xg_goalies",
+    label: "RosterIQ xG · goalie season totals",
+    description:
+      "Expected goals against and goals saved above expected (GSAx = xGA − GA) on unblocked attempts faced, from the RosterIQ xG model. Out-of-sample per season.",
+    fields: [
+      playerIdField("NHL play-by-play goalie in net"),
+      text("player_name", "Player", "NHL play-by-play roster"),
+      seasonField("the season scored"),
+      gameTypeField("NHL game type"),
+      text("league", "League", "Always NHL"),
+      text("team_name", "Team", "Last team the goalie appeared for that season"),
+      text("position", "Position", "G"),
+      situationField,
+      count("goals_against", "GA", "Goals on unblocked attempts faced"),
+      numField("x_goals", "xGA", "Sum of model xG on unblocked attempts faced", { min: 0 }),
+      count("m_unblocked_shots_against", "Unblocked attempts faced", "Shots on goal + misses + goals"),
+      numField("m_gsax", "GSAx", "xGA − GA"),
+    ],
+    rowKey: (v) => `${v.external_player_id}|${v.season}|${v.game_type}|${v.situation}`,
+  },
+
+  rosteriq_xg_teams: {
+    type: "rosteriq_xg_teams",
+    connectorKey: "rosteriq_models",
+    table: "ext_team_seasons",
+    sourceTag: "rosteriq_xg",
+    label: "RosterIQ xG · team season totals",
+    description: "Team expected goals for and against on unblocked attempts with a goalie in net, from the RosterIQ xG model. Out-of-sample per season.",
+    fields: [
+      text("team_abbrev", "Team", "NHL tri-code", true),
+      seasonField("the season scored"),
+      gameTypeField("NHL game type"),
+      situationField,
+      count("goals_for", "GF", "Goals for (goalie in net)"),
+      count("goals_against", "GA", "Goals against (goalie in net)"),
+      numField("x_goals_for", "xGF", "Model xG for", { min: 0 }),
+      numField("x_goals_against", "xGA", "Model xG against", { min: 0 }),
+      fraction("x_goals_pct", "xGF%", "xGF / (xGF + xGA)"),
+      count("m_unblocked_for", "Unblocked attempts for", "Shots on goal + misses + goals"),
+      count("m_unblocked_against", "Unblocked attempts against", "Shots on goal + misses + goals"),
+    ],
+    rowKey: (v) => `${v.team_abbrev}|${v.season}|${v.game_type}|${v.situation}`,
+  },
+
+  rosteriq_prospects: {
+    type: "rosteriq_prospects",
+    connectorKey: "rosteriq_models",
+    table: "ext_prospect_projections",
+    sourceTag: "rosteriq_prospects",
+    label: "RosterIQ prospects · draft projections",
+    description:
+      "Probability each drafted skater plays 200+ NHL regular-season games in the seven seasons after the draft, from draft-time information only (production translated with RosterIQ NHLe, age, size, position, league; not draft position). Historical drafts are scored out-of-sample (leave-one-draft-out). Contributions (m_contrib_*) sum exactly to p − baseline.",
+    fields: [
+      playerIdField("NHL player id, linked from the draft pick and verified against the player's draft details"),
+      text("player_name", "Player", "NHL draft picks feed", true),
+      intField("draft_year", "Draft year", "NHL draft picks feed", { min: 1963, max: 2100, required: true }),
+      intField("overall_pick", "Overall pick", "NHL draft picks feed", { min: 1, required: true }),
+      intField("round", "Round", "NHL draft picks feed", { min: 1, max: 30 }),
+      enumField("position", "Position", ["F", "D"], "Draft position (C/LW/RW → F)"),
+      text("drafted_by", "Drafted by", "NHL draft picks feed"),
+      dateField("birth_date", "Birth date", "NHL player landing"),
+      numField("age_at_draft", "Age at draft", "Years on September 15 of the draft year", { min: 15, max: 30 }),
+      intField("height_inches", "Height (in)", "NHL draft picks feed (at the draft)", { min: 55, max: 90 }),
+      intField("weight_pounds", "Weight (lb)", "NHL draft picks feed (at the draft)", { min: 100, max: 300 }),
+      text("d0_league", "Draft-year league", "League with the most games in the draft-year season"),
+      text("d0_league_group", "League group", "RosterIQ league grouping"),
+      count("d0_games_played", "D0 GP", "Draft-year games (all leagues)"),
+      count("d0_points", "D0 P", "Draft-year points (all leagues)"),
+      numField("d0_ppg", "D0 P/GP", "Draft-year points per game", { min: 0 }),
+      numField("d0_nhle_ppg", "D0 NHLe P/GP", "Draft-year points per game translated with RosterIQ NHLe; blank when no league has a factor", { min: 0 }),
+      text("dm1_league", "D-1 league", "League with the most games the season before"),
+      count("dm1_games_played", "D-1 GP", "Games the season before the draft year"),
+      count("dm1_points", "D-1 P", "Points the season before the draft year"),
+      numField("dm1_nhle_ppg", "D-1 NHLe P/GP", "Season-before points per game translated with RosterIQ NHLe", { min: 0 }),
+      fraction("p_nhl_regular", "P(NHL regular)", "Model probability of 200+ NHL games in seven seasons"),
+      fraction("baseline_p", "Baseline P", "Probability for a league-average drafted skater"),
+      ...PROSPECT_GROUPS.map((g) => numField(`m_contrib_${g}`, `From ${g.replace(/_/g, " ")}`, "Contribution of this feature group (probability)")),
+      enumField("projection_kind", "Projection", ["out_of_sample_leave_one_draft_out", "final_model_unlabelled_draft"], "How the player was scored", true),
+      enumField("label_mature", "Outcome known", ["true", "false"], "Seven post-draft seasons completed", true),
+      enumField("nhl_regular", "NHL regular", ["true", "false"], "200+ NHL games in seven seasons (blank until known)"),
+      count("nhl_gp_7", "NHL GP (7 seasons)", "NHL regular-season games in the seven seasons after the draft"),
+      count("nhl_gp_to_date", "NHL GP to date", "All NHL regular-season games so far"),
+      text("model_version", "Model version", "RosterIQ model version", true),
+    ],
+    rowKey: (v) => v.external_player_id ?? "",
+  },
+
+  rosteriq_nhle: {
+    type: "rosteriq_nhle",
+    connectorKey: "rosteriq_models",
+    table: "ext_league_equivalencies",
+    sourceTag: "rosteriq_prospects",
+    label: "RosterIQ prospects · league equivalencies (NHLe)",
+    description:
+      "NHL-equivalent points per point in each league, estimated as a network from players who scored in two leagues in the same or consecutive seasons (with a development-by-age term). Leagues without enough connected data have no factor.",
+    fields: [
+      text("league", "League", "League abbreviation as the NHL feed reports it", true),
+      numField("multiplier", "NHLe multiplier", "NHL-equivalent points per point", { min: 0 }),
+      numField("log_factor", "log factor", "log(PPG in league) − log(PPG in NHL) for the same player"),
+      numField("standard_error", "SE (log)", "Standard error of the log factor", { min: 0 }),
+      count("pairs", "Pairs", "Player-season pairs involving this league"),
+      text("model_version", "Model version", "RosterIQ model version", true),
+    ],
+    rowKey: (v) => v.league ?? "",
   },
 };
 

@@ -44,6 +44,16 @@ function requestFromForm(fd: FormData): unknown {
       return { dataset, season: str(fd, "season"), gameType: str(fd, "gameType"), situations: fd.getAll("situations").map(String) };
     case "ep_players":
       return { dataset, query: str(fd, "query") };
+    case "rosteriq_xg_skaters":
+    case "rosteriq_xg_goalies":
+    case "rosteriq_xg_teams":
+      return { dataset, season: str(fd, "season"), gameType: str(fd, "gameType") };
+    case "rosteriq_prospects": {
+      const y = str(fd, "draftYear");
+      return { dataset, draftYear: y === "all" ? "all" : Number(y) };
+    }
+    case "rosteriq_nhle":
+      return { dataset };
     default:
       return { dataset };
   }

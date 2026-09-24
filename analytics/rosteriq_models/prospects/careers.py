@@ -15,6 +15,36 @@ import pandas as pd
 from rosteriq_models.raw import RAW, read_gz
 
 
+# The NHL feed labels some leagues differently over time (sometimes both
+# labels in the same seasons). Each alias maps to one current name.
+LEAGUE_ALIASES = {
+    "Sweden": "SHL",
+    "Finland": "Liiga",
+    "CzRep": "Czechia",
+    "Swiss": "NL",
+    "NLA": "NL",
+    "Germany": "DEL",
+    "EBEL": "ICEHL",
+    "Rus-KHL": "KHL",
+    "Sweden-2": "HockeyAllsvenskan",
+    "Allsvenskan": "HockeyAllsvenskan",
+    "Russia3": "Russia-3",
+    "Czech": "Czechia",
+    "Czech2": "Czechia2",
+    "CzRep-2": "Czechia2",
+    "German-2": "DEL2",
+}
+
+# Tournaments and cups are not leagues: excluded from careers used for
+# NHLe and draft-year production (the run reports how many lines).
+TOURNAMENTS = {
+    "WC", "WC-A", "WC-B", "WJC", "WJC-A", "WJC-B", "WJ18", "WJ18-A", "WJ18-B", "WJAC-19", "WHC-17", "U17-Dev",
+    "OG", "Olympics", "WCup", "World Cup", "Champions HL", "Spengler Cup", "EHT", "Continental Cup",
+    "Hlinka Gretzky Cup", "Hlinka-Gretzky Cup", "Ivan Hlinka", "5 Nations", "4 Nations", "YOG", "EYOF",
+    "Sweden-Q",  # top-flight qualification series
+}
+
+
 def season_id(start_year: int) -> int:
     return start_year * 10000 + start_year + 1
 
@@ -73,8 +103,19 @@ def load_careers(player_ids: list[int]) -> tuple[pd.DataFrame, pd.DataFrame]:
             })
     bio = pd.DataFrame(bios)
     ln = pd.DataFrame(lines)
+    ln["league"] = ln["league"].replace(LEAGUE_ALIASES)
+    ln = ln[~ln["league"].isin(TOURNAMENTS)]
     ln = ln.groupby(["player_id", "season", "league"], as_index=False)[["gp", "goals", "assists", "points"]].sum()
     return bio, ln
+
+
+def tournament_lines(player_ids: list[int]) -> int:
+    """How many regular-season lines are tournaments (for the run report)."""
+    n = 0
+    for pid in player_ids:
+        for s in read_gz(RAW / "nhl" / "landing" / f"{pid}.json.gz").get("seasonTotals", []):
+            n += s.get("gameTypeId") == 2 and s.get("leagueAbbrev") in TOURNAMENTS
+    return n
 
 
 def age_on(birth_date: str | None, when: dt.date) -> float | None:

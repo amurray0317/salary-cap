@@ -344,6 +344,78 @@ export async function commitConnectorRecords(
       );
       return rows.length;
     }
+
+    case "ext_prospect_projections": {
+      const t = schema.extProspectProjections;
+      const rows = records.map(({ values: v }) => {
+        const contributions: Record<string, number> = {};
+        for (const [k, val] of Object.entries(metricsOf(v))) {
+          if (k.startsWith("contrib_")) contributions[k.slice("contrib_".length)] = val;
+        }
+        return {
+          ...stamp,
+          source: def.sourceTag,
+          modelVersion: v.model_version!,
+          externalPlayerId: v.external_player_id!,
+          playerName: v.player_name!,
+          draftYear: intOrNull(v.draft_year)!,
+          overallPick: intOrNull(v.overall_pick)!,
+          round: intOrNull(v.round),
+          position: textOrNull(v.position),
+          draftedBy: textOrNull(v.drafted_by),
+          birthDate: textOrNull(v.birth_date),
+          ageAtDraft: realOrNull(v.age_at_draft),
+          heightInches: intOrNull(v.height_inches),
+          weightPounds: intOrNull(v.weight_pounds),
+          d0League: textOrNull(v.d0_league),
+          d0LeagueGroup: textOrNull(v.d0_league_group),
+          d0GamesPlayed: intOrNull(v.d0_games_played),
+          d0Points: intOrNull(v.d0_points),
+          d0Ppg: realOrNull(v.d0_ppg),
+          d0NhlePpg: realOrNull(v.d0_nhle_ppg),
+          dm1League: textOrNull(v.dm1_league),
+          dm1GamesPlayed: intOrNull(v.dm1_games_played),
+          dm1Points: intOrNull(v.dm1_points),
+          dm1NhlePpg: realOrNull(v.dm1_nhle_ppg),
+          pNhlRegular: realOrNull(v.p_nhl_regular)!,
+          baselineP: realOrNull(v.baseline_p)!,
+          contributions,
+          projectionKind: v.projection_kind!,
+          labelMature: v.label_mature === "true",
+          nhlRegular: boolOrNull(v.nhl_regular),
+          nhlGp7: intOrNull(v.nhl_gp_7),
+          nhlGpToDate: intOrNull(v.nhl_gp_to_date),
+        };
+      });
+      await insertChunks(rows, (chunk) =>
+        tx
+          .insert(t)
+          .values(chunk)
+          .onConflictDoUpdate({ target: [t.organizationId, t.source, t.externalPlayerId], set: upsertSet(t, "overwrite", []) }),
+      );
+      return rows.length;
+    }
+
+    case "ext_league_equivalencies": {
+      const t = schema.extLeagueEquivalencies;
+      const rows = records.map(({ values: v }) => ({
+        ...stamp,
+        source: def.sourceTag,
+        modelVersion: v.model_version!,
+        league: v.league!,
+        multiplier: realOrNull(v.multiplier)!,
+        logFactor: realOrNull(v.log_factor)!,
+        standardError: realOrNull(v.standard_error),
+        pairs: intOrNull(v.pairs) ?? 0,
+      }));
+      await insertChunks(rows, (chunk) =>
+        tx
+          .insert(t)
+          .values(chunk)
+          .onConflictDoUpdate({ target: [t.organizationId, t.source, t.league], set: upsertSet(t, "overwrite", []) }),
+      );
+      return rows.length;
+    }
   }
 }
 
@@ -430,6 +502,22 @@ async function countChunk(
         .where(and(eq(t.organizationId, organizationId), eq(t.source, def.sourceTag), inArray(t.draftYear, years)));
       const byKey = new Set(keys);
       return rows.filter((x) => byKey.has(`${x.y}|${x.o}`)).length;
+    }
+    case "ext_prospect_projections": {
+      const t = schema.extProspectProjections;
+      const [row] = await db
+        .select({ n: count })
+        .from(t)
+        .where(and(eq(t.organizationId, organizationId), eq(t.source, def.sourceTag), inArray(t.externalPlayerId, keys)));
+      return row?.n ?? 0;
+    }
+    case "ext_league_equivalencies": {
+      const t = schema.extLeagueEquivalencies;
+      const [row] = await db
+        .select({ n: count })
+        .from(t)
+        .where(and(eq(t.organizationId, organizationId), eq(t.source, def.sourceTag), inArray(t.league, keys)));
+      return row?.n ?? 0;
     }
   }
 }

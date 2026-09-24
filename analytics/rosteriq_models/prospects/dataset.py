@@ -27,8 +27,8 @@ LEAGUE_GROUPS = {
     "CHL": {"OHL", "WHL", "QMJHL"},
     "NCAA": {"NCAA", "WCHA", "CCHA", "H-East", "ECAC", "Big Ten", "NCHC", "Atlantic Hockey", "CHA", "Hockey East", "Big-10"},
     "USHL/USNTDP": {"USHL", "USDP", "USNTDP", "NTDP", "U-18", "U-17", "USHL-D"},
-    "Europe pro": {"KHL", "Rus-KHL", "Russia", "SHL", "Sweden", "Liiga", "Finland", "Czechia", "CzRep", "Swiss", "Swiss-A", "NL", "DEL", "Germany", "Slovakia", "EBEL", "ICEHL"},
-    "Europe second tier": {"VHL", "Russia-2", "Allsvenskan", "Sweden-2", "Mestis", "Finland-2", "Czechia2", "CzRep-2", "Swiss-B", "DEL2"},
+    "Europe pro": {"KHL", "Russia", "SHL", "Liiga", "Czechia", "NL", "DEL", "Slovakia", "ICEHL"},
+    "Europe second tier": {"VHL", "Russia-2", "HockeyAllsvenskan", "Mestis", "Finland-2", "Czechia2", "CzRep-2", "Swiss-B", "DEL2"},
     "Europe junior": {"MHL", "Russia-Jr.", "J20 Nationell", "Swe-Jr.", "U20 SM-sarja", "Fin-Jr.", "CzRep-Jr.", "Czech-Jr.", "Swe-U18", "Fin-U18", "Svk-U18", "Swiss-Jr.", "Russia-3"},
 }
 

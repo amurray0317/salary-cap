@@ -71,6 +71,13 @@
       "when": 1790126109259,
       "tag": "0009_nhl_game_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790218659374,
+      "tag": "0010_model_outputs",
+      "breakpoints": true
     }
   ]
 }
