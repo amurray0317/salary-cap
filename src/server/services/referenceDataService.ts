@@ -6,6 +6,7 @@
 import { and, asc, count, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import * as schema from "@/db/schema";
+import { PROSPECT_SOURCE } from "@/lib/models/versions";
 
 export async function referenceSummary(organizationId: string) {
   const db = getDb();
@@ -164,7 +165,13 @@ export async function getReferencePlayer(organizationId: string, externalId: str
   const prospects = await db
     .select()
     .from(schema.extProspectProjections)
-    .where(and(eq(schema.extProspectProjections.organizationId, organizationId), eq(schema.extProspectProjections.externalPlayerId, externalId)));
+    .where(
+      and(
+        eq(schema.extProspectProjections.organizationId, organizationId),
+        eq(schema.extProspectProjections.source, PROSPECT_SOURCE),
+        eq(schema.extProspectProjections.externalPlayerId, externalId),
+      ),
+    );
   const sourceIds = [
     ...new Set([...bios, ...seasons, ...roster, ...gameLogs, ...prospects].map((r) => r.sourceId).filter((x): x is string => !!x)),
   ];
@@ -238,7 +245,8 @@ export async function listTeamSeasons(organizationId: string, opts: { season?: s
 export async function listProspectProjections(organizationId: string, opts: { year?: number }) {
   const db = getDb();
   const t = schema.extProspectProjections;
-  const years = await db.selectDistinct({ year: t.draftYear }).from(t).where(eq(t.organizationId, organizationId)).orderBy(desc(t.draftYear));
+  const scope = and(eq(t.organizationId, organizationId), eq(t.source, PROSPECT_SOURCE));
+  const years = await db.selectDistinct({ year: t.draftYear }).from(t).where(scope).orderBy(desc(t.draftYear));
   const year = opts.year ?? years[0]?.year;
   const rows =
     year === undefined
@@ -246,7 +254,7 @@ export async function listProspectProjections(organizationId: string, opts: { ye
       : await db
           .select()
           .from(t)
-          .where(and(eq(t.organizationId, organizationId), eq(t.draftYear, year)))
+          .where(and(scope, eq(t.draftYear, year)))
           .orderBy(asc(t.overallPick));
   return { years: years.map((y) => y.year), year: year ?? null, rows };
 }

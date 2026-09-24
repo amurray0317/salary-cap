@@ -118,6 +118,9 @@ function XgCard({ card }: { card: Record<string, unknown> }) {
   const sel = get<Record<string, unknown>>(card, "selection");
   const test = String(get<number>(card, "test_season") ?? "");
   const trees = Number(get<number>(sel, "gbm_trees") ?? 0);
+  const halfLife = get<number | null>(sel, "half_life");
+  const boot = get<Record<string, number[] | number | string>>(card, "test", "bootstrap_vs_moneypuck");
+  const inSeason = get<Record<string, { through?: string; games?: number; drift?: { rows: Array<{ bin: string; shots: number; goals: number; xg: number; z: number }>; threshold_abs_z: number } }>>(card, "in_season") ?? {};
   return (
     <div className="space-y-5 text-sm">
       <p className="max-w-4xl text-ink-secondary">
@@ -125,8 +128,14 @@ function XgCard({ card }: { card: Record<string, unknown> }) {
         distance, angle, shot type, rebound, rush, the play before the shot, strength, score, off-wing, shooter
         position, period and venue. Logistic regression (C = {String(get(sel, "chosen_C") ?? dash)}) with{" "}
         {trees > 0 ? `${trees} boosted trees fitted on top of it` : "no boosted trees (they did not beat the logistic regression on validation)"}.
-        Selected on {seasonLabel(String(get<number>(sel, "valid") ?? ""))}; tested on {seasonLabel(test)}, which no fitting or
-        selection step saw. Trained {String(card.trained_at ?? dash).slice(0, 10)}.
+        {halfLife ? ` Training seasons are weighted toward the season being scored (half-life ${halfLife} season${halfLife === 1 ? "" : "s"}), because the NHL's event recording changes from year to year.` : ""}{" "}
+        Selected on {seasonLabel(String(get<number>(sel, "valid") ?? ""))}; tested on {seasonLabel(test)}. Trained {String(card.trained_at ?? dash).slice(0, 10)}.
+      </p>
+      <p className="max-w-4xl text-xs text-ink-muted">
+        Honesty note: {seasonLabel(test)} was looked at once with an earlier version (which showed the rush flag drifting and a
+        5% over-prediction). The two changes that followed — a tighter rush definition and recency weighting — are justified
+        on every season and the weighting was chosen on {seasonLabel(String(get<number>(sel, "valid") ?? ""))}, but {seasonLabel(test)} is
+        no longer strictly untouched. The first clean test is the 2026-27 season, scored as it is played.
       </p>
 
       <div>
@@ -140,6 +149,14 @@ function XgCard({ card }: { card: Record<string, unknown> }) {
             ["MoneyPuck xGoal (Data: MoneyPuck.com)", matched?.moneypuck],
           ]}
         />
+        {boot && Array.isArray(boot.log_loss_diff_ci95) && Array.isArray(boot.auc_diff_ci95) && (
+          <p className="mt-1 text-xs text-ink-secondary">
+            RosterIQ − MoneyPuck, paired bootstrap over {String(boot.games)} games (95% interval): log loss{" "}
+            {fx((boot.log_loss_diff_ci95 as number[])[1], 4)} [{fx((boot.log_loss_diff_ci95 as number[])[0], 4)}, {fx((boot.log_loss_diff_ci95 as number[])[2], 4)}],
+            AUC {fx((boot.auc_diff_ci95 as number[])[1], 4)} [{fx((boot.auc_diff_ci95 as number[])[0], 4)}, {fx((boot.auc_diff_ci95 as number[])[2], 4)}].
+            {(boot.log_loss_diff_ci95 as number[])[2]! < 0 ? " RosterIQ's shot-level accuracy is better beyond noise on this season." : " The difference is within noise on this season."}
+          </p>
+        )}
         <p className="mt-1 text-xs text-ink-muted">
           Shots matched to MoneyPuck&rsquo;s shot file: {pc(join?.matched_share_of_ours, 2)} of ours, {pc(join?.matched_share_of_moneypuck, 2)} of
           theirs; goal labels agree on {pc(join?.goal_label_agreement, 2)}. MoneyPuck&rsquo;s published values may have been fitted with this
@@ -181,11 +198,42 @@ function XgCard({ card }: { card: Record<string, unknown> }) {
         </table>
       </div>
 
+      {Object.entries(inSeason).map(([sid, v]) => (
+        <div key={sid}>
+          <h3 className="mb-1 text-sm font-medium">
+            {seasonLabel(sid)} in progress — production model, data through {v.through ?? dash} ({v.games ?? 0} games)
+          </h3>
+          <table className="w-full max-w-2xl">
+            <thead>
+              <tr className="border-b border-line">
+                <Th>Distance</Th>
+                <Th right>Attempts</Th>
+                <Th right>Goals</Th>
+                <Th right>xG</Th>
+                <Th right>z = (G − xG) / √xG</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {(v.drift?.rows ?? []).map((r) => (
+                <tr key={r.bin} className="border-b border-line/50 last:border-0">
+                  <Td>{r.bin}</Td>
+                  <Td right>{r.shots}</Td>
+                  <Td right>{r.goals}</Td>
+                  <Td right>{fx(r.xg, 1)}</Td>
+                  <Td right className={Math.abs(r.z) > (v.drift?.threshold_abs_z ?? 4) ? "font-medium text-critical" : ""}>{fx(r.z, 2)}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-1 text-xs text-ink-muted">Drift is flagged when |z| exceeds {v.drift?.threshold_abs_z ?? 4}; the nightly run then fails and GitHub emails the owner.</p>
+        </div>
+      ))}
+
       <div>
         <h3 className="mb-1 text-sm font-medium">What it cannot see</h3>
         <ul className="list-disc space-y-1 pl-5 text-ink-secondary">
           <li>Passes before the shot (the NHL feed does not record them) — the biggest gap for any public xG model.</li>
-          <li>Arena differences in how shot locations are recorded (not corrected).</li>
+          <li>Arena differences in how shot locations are recorded (not corrected), and season-to-season changes in what the NHL logs (weighted for, not removed).</li>
           <li>Blocked shots (not modelled, same as MoneyPuck). Empty-net attempts are counted, not modelled.</li>
           <li>Who is shooting: xG is shot quality, not finishing talent. It describes the chances a player got — it is not a forecast.</li>
         </ul>

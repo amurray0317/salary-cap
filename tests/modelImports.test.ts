@@ -17,6 +17,7 @@ import { setDbForTesting, type Db } from "@/db/client";
 import { ConnectorError, runConnectorImport, stageXgBundle } from "@/server/services/connectorService";
 import { commitImport, getImportDetail, listBundleImports } from "@/server/services/importService";
 import { XG_GROUPS } from "@/lib/import/connectorDefinitions";
+import { XG_GOALIE_SOURCE, XG_SOURCE } from "@/lib/models/versions";
 
 const MODELS = path.join(process.cwd(), "tests", "fixtures", "models");
 const hasProspects = fs.existsSync(path.join(MODELS, "rosteriq-prospects-v1", "import_prospects.csv"));
@@ -65,7 +66,7 @@ describe("RosterIQ xG season totals", () => {
     const rows = await db
       .select()
       .from(schema.extPlayerSeasons)
-      .where(and(eq(schema.extPlayerSeasons.organizationId, fx.orgId), eq(schema.extPlayerSeasons.source, "rosteriq_xg")));
+      .where(and(eq(schema.extPlayerSeasons.organizationId, fx.orgId), eq(schema.extPlayerSeasons.source, XG_SOURCE)));
     const all = rows.find((r) => r.situation === "all" && r.externalPlayerId === "8478402")!;
     expect(all.playerName).toBe("Connor McDavid");
     expect(all.sourceId).not.toBeNull();
@@ -83,21 +84,21 @@ describe("RosterIQ xG season totals", () => {
     const detail = await getImportDetail(res.importId, fx.orgId);
     expect(detail.existingCount).toBe(4);
     await commitImport({ importId: res.importId, organizationId: fx.orgId, userId: fx.userId });
-    const rows = await db.select().from(schema.extPlayerSeasons).where(eq(schema.extPlayerSeasons.source, "rosteriq_xg"));
+    const rows = await db.select().from(schema.extPlayerSeasons).where(eq(schema.extPlayerSeasons.source, XG_SOURCE));
     expect(rows).toHaveLength(4);
   });
 
   it("goalie and team totals commit to their tables", async () => {
     const g = await run({ dataset: "rosteriq_xg_goalies", season: "2025-26", gameType: "regular" });
     await commitImport({ importId: g.importId, organizationId: fx.orgId, userId: fx.userId });
-    const goalie = await db.select().from(schema.extPlayerSeasons).where(eq(schema.extPlayerSeasons.source, "rosteriq_xg_goalies"));
+    const goalie = await db.select().from(schema.extPlayerSeasons).where(eq(schema.extPlayerSeasons.source, XG_GOALIE_SOURCE));
     expect(goalie.length).toBeGreaterThan(0);
     const a = goalie.find((r) => r.situation === "all")!;
     expect(Math.abs((a.xGoals! - a.goalsAgainst!) - (a.metrics as Record<string, number>).gsax!)).toBeLessThan(0.01);
 
     const t = await run({ dataset: "rosteriq_xg_teams", season: "2025-26", gameType: "regular" });
     await commitImport({ importId: t.importId, organizationId: fx.orgId, userId: fx.userId });
-    const teams = await db.select().from(schema.extTeamSeasons).where(eq(schema.extTeamSeasons.source, "rosteriq_xg"));
+    const teams = await db.select().from(schema.extTeamSeasons).where(eq(schema.extTeamSeasons.source, XG_SOURCE));
     expect(new Set(teams.map((r) => r.teamAbbrev))).toEqual(new Set(["EDM", "WPG"]));
   });
 

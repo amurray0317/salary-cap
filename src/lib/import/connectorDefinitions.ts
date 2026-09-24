@@ -12,6 +12,7 @@
  * under the remaining name (e.g. m_ev_goals → metrics.ev_goals).
  */
 import type { FieldDef } from "@/lib/import/definitions";
+import { PROSPECT_SOURCE, XG_GOALIE_SOURCE, XG_SOURCE } from "@/lib/models/versions";
 
 export const CONNECTOR_IMPORT_TYPES = [
   "nhl_players",
@@ -598,7 +599,7 @@ export const CONNECTOR_DEFINITIONS: Record<ConnectorImportType, ConnectorDataset
     type: "rosteriq_xg_skaters",
     connectorKey: "rosteriq_models",
     table: "ext_player_seasons",
-    sourceTag: "rosteriq_xg",
+    sourceTag: XG_SOURCE,
     label: "RosterIQ xG · skater season totals",
     description:
       "Individual expected goals from the RosterIQ xG model (NHL play-by-play; logistic regression + boosted trees). Every season is scored out-of-sample (leave-one-season-out). ixG covers unblocked attempts on a goalie; empty-net attempts are counted separately. The m_xg_from_* columns split ixG − baseline into reasons and sum exactly.",
@@ -628,7 +629,7 @@ export const CONNECTOR_DEFINITIONS: Record<ConnectorImportType, ConnectorDataset
     type: "rosteriq_xg_goalies",
     connectorKey: "rosteriq_models",
     table: "ext_player_seasons",
-    sourceTag: "rosteriq_xg_goalies",
+    sourceTag: XG_GOALIE_SOURCE,
     label: "RosterIQ xG · goalie season totals",
     description:
       "Expected goals against and goals saved above expected (GSAx = xGA − GA) on unblocked attempts faced, from the RosterIQ xG model. Out-of-sample per season.",
@@ -653,7 +654,7 @@ export const CONNECTOR_DEFINITIONS: Record<ConnectorImportType, ConnectorDataset
     type: "rosteriq_xg_teams",
     connectorKey: "rosteriq_models",
     table: "ext_team_seasons",
-    sourceTag: "rosteriq_xg",
+    sourceTag: XG_SOURCE,
     label: "RosterIQ xG · team season totals",
     description: "Team expected goals for and against on unblocked attempts with a goalie in net, from the RosterIQ xG model. Out-of-sample per season.",
     fields: [
@@ -676,7 +677,7 @@ export const CONNECTOR_DEFINITIONS: Record<ConnectorImportType, ConnectorDataset
     type: "rosteriq_prospects",
     connectorKey: "rosteriq_models",
     table: "ext_prospect_projections",
-    sourceTag: "rosteriq_prospects",
+    sourceTag: PROSPECT_SOURCE,
     label: "RosterIQ prospects · draft projections",
     description:
       "Probability each drafted skater plays 200+ NHL regular-season games in the seven seasons after the draft, from draft-time information only (production translated with RosterIQ NHLe, age, size, position, league; not draft position). Historical drafts are scored out-of-sample (leave-one-draft-out). Contributions (m_contrib_*) sum exactly to p − baseline.",
@@ -720,7 +721,7 @@ export const CONNECTOR_DEFINITIONS: Record<ConnectorImportType, ConnectorDataset
     type: "rosteriq_nhle",
     connectorKey: "rosteriq_models",
     table: "ext_league_equivalencies",
-    sourceTag: "rosteriq_prospects",
+    sourceTag: PROSPECT_SOURCE,
     label: "RosterIQ prospects · league equivalencies (NHLe)",
     description:
       "NHL-equivalent points per point in each league, estimated as a network from players who scored in two leagues in the same or consecutive seasons (with a development-by-age term). Leagues without enough connected data have no factor.",

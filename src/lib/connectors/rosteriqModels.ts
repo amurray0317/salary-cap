@@ -14,9 +14,10 @@ import path from "path";
 import { parseCsv } from "@/lib/import/csvParse";
 import { ConnectorParseError } from "@/lib/connectors/util";
 
+import { PROSPECT_MODEL_VERSION, XG_MODEL_VERSION } from "@/lib/models/versions";
+
+export { PROSPECT_MODEL_VERSION, XG_MODEL_VERSION };
 export const MODELS_DIR = path.join(process.cwd(), "models");
-export const XG_MODEL_VERSION = "rosteriq-xg-v1";
-export const PROSPECT_MODEL_VERSION = "rosteriq-prospects-v1";
 
 export const MODEL_FILES = {
   xg_skaters: { version: XG_MODEL_VERSION, file: "import_xg_skaters.csv" },

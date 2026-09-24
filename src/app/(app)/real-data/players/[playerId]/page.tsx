@@ -6,6 +6,7 @@ import { getReferencePlayer } from "@/server/services/referenceDataService";
 import { Card, Td, Th } from "@/components/ui";
 import type { schema } from "@/db/client";
 import { PROSPECT_GROUP_LABELS, XG_GROUP_LABELS, signed, topReasons } from "@/lib/models/labels";
+import { XG_GOALIE_SOURCE, XG_SOURCE } from "@/lib/models/versions";
 
 export const metadata: Metadata = { title: "Real data · player" };
 
@@ -421,7 +422,7 @@ export default async function RealDataPlayerPage({ params }: { params: Promise<{
   const career = data.seasons.filter((s) => s.source === "nhl_career");
   const league = data.seasons.filter((s) => s.source === "nhl_stats");
   const mp = data.seasons.filter((s) => s.source === "moneypuck");
-  const rxg = data.seasons.filter((s) => s.source === (goalie ? "rosteriq_xg_goalies" : "rosteriq_xg"));
+  const rxg = data.seasons.filter((s) => s.source === (goalie ? XG_GOALIE_SOURCE : XG_SOURCE));
 
   return (
     <div className="space-y-4">
