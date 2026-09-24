@@ -254,8 +254,18 @@ export default async function RealDataPage() {
                   action={stageXgBundleAction}
                   cacheable={false}
                   dataset="rosteriq_xg_bundle"
-                  submitLabel="Stage all xG totals (skaters, goalies, teams) → preview"
-                  fields={[{ ...season, options: xgSeasons }, gameType]}
+                  submitLabel="Stage today's updates → preview"
+                  fields={[
+                    { ...season, options: xgSeasons },
+                    gameType,
+                    {
+                      name: "extras",
+                      label: "Include",
+                      type: "checkboxes",
+                      options: [{ value: "standings", label: "Today's NHL standings" }],
+                      defaultValues: ["standings"],
+                    },
+                  ]}
                 />
                 <div className="my-4 border-t border-line" />
                 <ConnectorForm {...common} cacheable={false} dataset="rosteriq_xg_skaters" submitLabel="Stage skater xG → preview" fields={[{ ...season, options: xgSeasons }, gameType]} />

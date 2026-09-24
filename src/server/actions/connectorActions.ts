@@ -98,7 +98,7 @@ const bundleSchema = z.object({
   gameType: z.enum(["regular", "playoffs"]),
 });
 
-/** Stages skater, goalie and team xG totals for a season as one bundle; nothing is committed. */
+/** Stages skater, goalie and team xG totals for a season (optionally with today's NHL standings) as one bundle; nothing is committed. */
 export async function stageXgBundleAction(_prev: ConnectorFormState, formData: FormData): Promise<ConnectorFormState> {
   const parsed = bundleSchema.safeParse({
     organizationId: str(formData, "organizationId"),
@@ -109,7 +109,13 @@ export async function stageXgBundleAction(_prev: ConnectorFormState, formData: F
   const ctx = await requireOrgAccess(parsed.data.organizationId, "edit_data");
   let first: string;
   try {
-    const res = await stageXgBundle({ organizationId: ctx.organizationId, userId: ctx.user.id, season: parsed.data.season, gameType: parsed.data.gameType });
+    const res = await stageXgBundle({
+      organizationId: ctx.organizationId,
+      userId: ctx.user.id,
+      season: parsed.data.season,
+      gameType: parsed.data.gameType,
+      withStandings: formData.getAll("extras").includes("standings"),
+    });
     first = res.importIds[0]!;
   } catch (err) {
     if (err instanceof ConnectorError) return { error: err.message };

@@ -18,6 +18,8 @@ import { ConnectorError, runConnectorImport, stageXgBundle } from "@/server/serv
 import { commitImport, getImportDetail, listBundleImports } from "@/server/services/importService";
 import { XG_GROUPS } from "@/lib/import/connectorDefinitions";
 import { XG_GOALIE_SOURCE, XG_SOURCE } from "@/lib/models/versions";
+import type { FetchImpl } from "@/lib/connectors/http";
+import { HostRateLimiter } from "@/lib/connectors/rateLimiter";
 
 const MODELS = path.join(process.cwd(), "tests", "fixtures", "models");
 const hasProspects = fs.existsSync(path.join(MODELS, "rosteriq-prospects-v1", "import_prospects.csv"));
@@ -125,6 +127,40 @@ describe("staging a season's xG totals as one bundle", () => {
     expect(members.every((m) => m.status === "awaiting_approval")).toBe(true);
     expect(await listBundleImports(fx.otherOrgId, bundle)).toHaveLength(0);
     expect((await db.select().from(schema.extPlayerSeasons)).length).toBe(countBefore);
+  });
+});
+
+describe("one-click daily updates bundle", () => {
+  const standings = fs.readFileSync(path.join(process.cwd(), "tests", "fixtures", "connectors", "nhl", "standings-2026-04-17.json"), "utf8");
+  const noWait = () => new HostRateLimiter({}, 0, { now: () => 0, sleep: async () => undefined });
+  const fetchWith = (status: number, calls: string[]): FetchImpl => async (url) => {
+    calls.push(url);
+    return { status, headers: { get: () => "application/json" }, text: async () => (status === 200 ? standings : "down") };
+  };
+
+  it("stages today's NHL standings fresh with the xG totals, and commits them together on approval", async () => {
+    const calls: string[] = [];
+    const { bundle } = await stageXgBundle(
+      { organizationId: fx.orgId, userId: fx.userId, season: "2025-26", gameType: "regular", withStandings: true },
+      { modelsDir: MODELS, fetchImpl: fetchWith(200, calls), limiter: noWait() },
+    );
+    expect(calls).toEqual(["https://api-web.nhle.com/v1/standings/now"]);
+    const members = await listBundleImports(fx.orgId, bundle);
+    expect(members.map((m) => m.importType)).toEqual(["nhl_standings", "rosteriq_xg_skaters", "rosteriq_xg_goalies", "rosteriq_xg_teams"]);
+    for (const m of members) await commitImport({ importId: m.id, organizationId: fx.orgId, userId: fx.userId });
+    const rows = await db.select().from(schema.extTeamStandings).where(eq(schema.extTeamStandings.organizationId, fx.orgId));
+    expect(rows).toHaveLength(32);
+  });
+
+  it("stages nothing when the NHL API is down, instead of a half bundle", async () => {
+    const before = (await db.select().from(schema.imports)).length;
+    await expect(
+      stageXgBundle(
+        { organizationId: fx.orgId, userId: fx.userId, season: "2025-26", gameType: "regular", withStandings: true },
+        { modelsDir: MODELS, fetchImpl: fetchWith(503, []), limiter: noWait() },
+      ),
+    ).rejects.toThrow();
+    expect((await db.select().from(schema.imports)).length).toBe(before);
   });
 });
 

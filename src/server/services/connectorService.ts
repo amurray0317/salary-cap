@@ -362,7 +362,7 @@ function buildPlan(req: ConnectorRequest, env: Record<string, string | undefined
  * Returns the import id; the user reviews and approves it on /imports/[id].
  */
 export async function runConnectorImport(
-  opts: { organizationId: string; userId: string; request: ConnectorRequest; bypassCache?: boolean },
+  opts: { organizationId: string; userId: string; request: ConnectorRequest; bypassCache?: boolean; bundle?: string },
   deps: ConnectorDeps = {},
 ): Promise<{ importId: string; validCount: number; errorCount: number }> {
   const request = connectorRequestSchema.parse(opts.request);
@@ -406,7 +406,7 @@ export async function runConnectorImport(
     termsNote: plan.terms,
     fromCache: responses.map((r) => r.fromCache),
     warnings: parsed.warnings,
-    params: { ...request },
+    params: { ...request, ...(opts.bundle ? { bundle: opts.bundle } : {}) },
   };
   try {
     return await createConnectorImport({
@@ -525,11 +525,20 @@ async function runModelImport(
  * bundle commits all three (importActions.approveBundleAction).
  */
 export async function stageXgBundle(
-  opts: { organizationId: string; userId: string; season: string; gameType: "regular" | "playoffs" },
+  opts: { organizationId: string; userId: string; season: string; gameType: "regular" | "playoffs"; withStandings?: boolean },
   deps: ConnectorDeps = {},
 ): Promise<{ bundle: string; importIds: string[] }> {
   const bundle = randomUUID();
   const importIds: string[] = [];
+  if (opts.withStandings) {
+    // Staged first (fresh, not from cache): if the NHL API is unreachable,
+    // nothing is staged and the error is shown, instead of a half bundle.
+    const res = await runConnectorImport(
+      { organizationId: opts.organizationId, userId: opts.userId, request: { dataset: "nhl_standings", date: "now" }, bypassCache: true, bundle },
+      deps,
+    );
+    importIds.push(res.importId);
+  }
   for (const dataset of ["rosteriq_xg_skaters", "rosteriq_xg_goalies", "rosteriq_xg_teams"] as const) {
     const request = connectorRequestSchema.parse({ dataset, season: opts.season, gameType: opts.gameType }) as ModelRequest;
     const res = await runModelImport({ organizationId: opts.organizationId, userId: opts.userId, request, bundle }, deps);
