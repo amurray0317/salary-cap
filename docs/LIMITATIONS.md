@@ -92,6 +92,38 @@ it is implemented" rule.
 - Behind an outbound HTTPS proxy, the server must run with `NODE_USE_ENV_PROXY=1` (Node's
   built-in fetch ignores `HTTPS_PROXY` otherwise).
 
+## RosterIQ models (xG + prospects)
+
+- **Model outputs, not official data.** Imported through the gated pipeline and labelled as
+  model output wherever shown. The app never runs a model; it imports season totals and
+  per-player projections written by `analytics/`.
+- **xG sees no passes.** The NHL feed does not record pre-shot passes (cross-seam, royal road),
+  the biggest gap in any public xG model. Blocked shots are not modelled (as MoneyPuck); empty-net
+  attempts are counted, not modelled; penalty shots are excluded.
+- **The NHL's event recording changes from season to season.** 2021-22 → 2025-26: rebounds 7.2% →
+  10.6% of unblocked attempts (goal rate 17.5% → 10.2%), attempts inside 10 ft 9.5% → 14.5%,
+  tips 7.0% → 9.6%. The model weights seasons by distance to the season it scores (half-life
+  chosen on validation data) but cannot know a future season's recording in advance; the nightly
+  drift check flags when goals and xG part ways. No arena-by-arena location correction.
+- **xG is descriptive.** It measures the chances a player got, not finishing skill and not a
+  forecast; small samples (a few weeks of a season) are noisy.
+- **Prospects: draft position predicts better.** On the 2016–2019 test drafts the stats-only
+  model was clearly worse than draft position alone, and adding the stats to draft position gave
+  no detectable improvement (paired bootstrap, 95% intervals on the model card). The model's
+  value is explaining a production profile and flagging disagreement with the draft slot, not
+  ranking players.
+- **Prospect inputs are thin.** Points, goals, games, age, draft-time size, position and league
+  only — no ice time, role, quality of competition, or anything scouts see. Outcome (200 NHL
+  games in seven seasons) also depends on opportunity, and the shortened 2019-20 / 2020-21
+  seasons and the 84-game schedule from 2026-27 shift it slightly by cohort. Goalies are not
+  modelled.
+- **NHLe** is estimated from players who changed leagues (not a random sample; promotions follow
+  good seasons) and is league-level only. League names were merged and tournaments excluded by
+  explicit lists (`analytics/rosteriq_models/prospects/careers.py`) — judgement calls. Four draft
+  picks (2005–2026) could not be linked to an NHL player id and are reported, not guessed.
+- **Leakage kept small but not zero:** NHLe factors use all seasons, including later careers of
+  test-draft players (league-level averages only).
+
 ## College / NIL
 
 - Schema-only (schools, conferences, college teams, athletes, scholarships, allocations,
