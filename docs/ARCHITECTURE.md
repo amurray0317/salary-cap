@@ -134,6 +134,35 @@ explicit approval ─► commitImport ─► data_sources row ─► connectorCo
 - **Separation from official records**: real data lives in `ext_*` reference tables and never
   writes `players`, `contracts`, or cap tables; the demo seed is unchanged.
 
+## RosterIQ models (offline) → model-output imports
+
+```
+scripts/data/fetch-raw.ts (rate-limited, allowlisted, gzip cache in .data/raw)
+   NHL play-by-play + skater bios · draft picks ─► player search ─► landing (draft details must match)
+analytics/ (Python, pinned)
+   xg/shots.py (parse, validated against MoneyPuck's shot file) ─► features ─► explainable.py
+   prospects/careers.py (league aliases, tournaments dropped) ─► nhle.py (network NHLe) ─► dataset ─► explainable.py
+   explainable.py: logistic regression (splines) + XGBoost trees on its logit (base_margin)
+                   → exact per-group contributions (LR terms + TreeSHAP) → probability units
+   train steps: selection on a validation split, test on unseen seasons/drafts,
+                leave-one-out scoring for every historical total
+   export.py ─► models/<version>/import_*.csv (+ metrics.json model card, production model)
+app
+   Real data → RosterIQ models form ─► connectorService.runModelImport
+      readModelFile (fixed names, version regex, SHA-256) ─► header must equal the import definition
+      ─► createConnectorImport (source_kind=connector, connector_key=rosteriq_models) ─► approval ─► commit
+      xG totals → ext_player_seasons / ext_team_seasons (source rosteriq_xg[_goalies]); prospects →
+      ext_prospect_projections; NHLe → ext_league_equivalencies (migration 0010, RLS)
+```
+
+- The app never runs a model: it imports season totals and per-player projections that the
+  pipeline wrote, through the same gated path as every other source. Model cards
+  (`metrics.json`) are rendered at `/real-data/models`.
+- Draft picks carry no NHL player id in the feed; a pick is linked only when the candidate's
+  landing page reports the same draft year and overall pick (unit-tested on recorded
+  responses, including three players named Mikko Lehtonen). Forfeited picks are reported as
+  "no player selected".
+
 ## NCAA player list & percentiles
 
 `prospectListService.listProspects` is the shared assembly for the players page and the
