@@ -8,6 +8,9 @@
  *   - NHL draft picks for the given years, each pick linked to an NHL
  *     player id (verified against the landing page's draft details), and
  *     the landing page (full career, all leagues) of every linked player
+ *   - NHL Central Scouting skater rankings; with --rank-links, every ranked
+ *     player linked to an NHL id (verified by exact birth date)
+ *   - NHL regular-season skater summaries per season (games, TOI per game)
  *
  * Files already on disk are not re-fetched. Only FINAL games are cached.
  * Nothing is dropped silently: every failure and every unresolved draft pick
@@ -15,12 +18,13 @@
  *
  * Usage (Node's fetch needs NODE_USE_ENV_PROXY=1 behind an HTTPS proxy):
  *   npm run data:fetch -- --pbp 20212022,20222023 --draft 2005-2025 --rankings 2008-2026
+ *   npm run data:fetch -- --rank-links 2008-2019 --nhl-seasons 2005-2025
  */
 import fs from "fs";
 import path from "path";
 import { gunzipSync, gzipSync } from "zlib";
 import { ConnectorHttpError, rateLimitedGet, type FetchImpl } from "@/lib/connectors/http";
-import { linkDraftPick, parseDraftPickRefs, parseSearchResults, type LinkOutcome } from "@/lib/prospects/draftLink";
+import { linkDraftPick, linkRankedPlayer, parseDraftPickRefs, parseRankings, parseSearchResults, type LinkOutcome } from "@/lib/prospects/draftLink";
 
 export const RAW_DIR = path.join(process.cwd(), ".data", "raw");
 const fetchImpl: FetchImpl = (url, init) => fetch(url, init);
@@ -142,6 +146,14 @@ async function fetchSeasonPbp(season: string) {
 
 // ------------------------------------------------------------------- draft
 
+const landing = (id: string) => cached(path.join(RAW_DIR, "nhl", "landing", `${id}.json.gz`), `https://api-web.nhle.com/v1/player/${id}/landing`);
+const search = async (q: string) => {
+  const url = `https://search.d3.nhle.com/api/v1/search/player?culture=en-us&limit=20&q=${encodeURIComponent(q)}`;
+  const key = q.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  const json = await cached(path.join(RAW_DIR, "nhl", "search", `${key}.json.gz`), url);
+  return json ? parseSearchResults(json) : [];
+};
+
 async function fetchDraftYear(year: number) {
   const picksJson = await cached(
     path.join(RAW_DIR, "nhl", "draft", `picks_${year}.json.gz`),
@@ -151,13 +163,6 @@ async function fetchDraftYear(year: number) {
   const { picks, noSelection } = parseDraftPickRefs(picksJson, year);
   report.noSelectionPicks.push(...noSelection);
   bump("picks_no_selection", noSelection.length);
-  const landing = (id: string) => cached(path.join(RAW_DIR, "nhl", "landing", `${id}.json.gz`), `https://api-web.nhle.com/v1/player/${id}/landing`);
-  const search = async (q: string) => {
-    const url = `https://search.d3.nhle.com/api/v1/search/player?culture=en-us&limit=20&q=${encodeURIComponent(q)}`;
-    const key = q.toLowerCase().replace(/[^a-z0-9]+/g, "_");
-    const json = await cached(path.join(RAW_DIR, "nhl", "search", `${key}.json.gz`), url);
-    return json ? parseSearchResults(json) : [];
-  };
   const links: Array<{ pick: (typeof picks)[number]; outcome: LinkOutcome }> = [];
   for (const pick of picks) {
     const outcome = await linkDraftPick(pick, { search, landing });
@@ -187,10 +192,57 @@ async function fetchRankings(year: number) {
   bump("ranking_years");
 }
 
+/**
+ * Links every ranked skater (final or midterm rank) of one draft year to an
+ * NHL id. Unresolved rows are written too, with the reason: they are the
+ * players who were never drafted or signed (or whose name the index spells
+ * differently; the Python step measures that rate on drafted players).
+ */
+async function linkRankingsYear(year: number) {
+  const links: Array<{ row: ReturnType<typeof parseRankings>[number]; outcome: LinkOutcome }> = [];
+  for (const category of [1, 2] as const) {
+    const json = await cached(
+      path.join(RAW_DIR, "nhl", "rankings", `rankings_${year}_${category}.json.gz`),
+      `https://api-web.nhle.com/v1/draft/rankings/${year}/${category}`,
+    );
+    if (!json) continue;
+    for (const row of parseRankings(json, year, category)) {
+      if (row.finalRank === null && row.midtermRank === null) continue;
+      const outcome = await linkRankedPlayer(row, { search, landing });
+      links.push({ row, outcome });
+      bump(outcome.status === "linked" ? "ranked_linked" : "ranked_unresolved");
+    }
+  }
+  fs.writeFileSync(path.join(RAW_DIR, "nhl", "rankings", `links_${year}.json`), JSON.stringify(links, null, 1));
+  const linked = links.filter((l) => l.outcome.status === "linked").length;
+  console.log(`[rank-links] ${year}: ${linked}/${links.length} ranked skaters linked to an NHL id`);
+}
+
+// ------------------------------------------------------------ NHL seasons
+
+/** Regular-season skater summaries (games played, TOI per game, team) for one season. */
+async function fetchSkaterSeason(startYear: number) {
+  const season = `${startYear}${startYear + 1}`;
+  const url = `https://api.nhle.com/stats/rest/en/skater/summary?isAggregate=false&isGame=false&limit=-1&cayenneExp=seasonId=${season}%20and%20gameTypeId=2`;
+  const data = await cached(path.join(RAW_DIR, "nhl", "skater_summary", `summary_${season}.json.gz`), url, (d) => {
+    const rows = (d as { data?: unknown }).data;
+    return Array.isArray(rows) && rows.length > 0;
+  });
+  const rows = (data as { data?: unknown[] } | null)?.data;
+  if (data && !(Array.isArray(rows) && rows.length > 0)) throw new Error(`skater summary ${season} has no rows`);
+  bump("skater_seasons");
+}
+
 // -------------------------------------------------------------------- main
 
 function parseArgs(argv: string[]) {
-  const out: { pbp: string[]; draft: number[]; rankings: number[] } = { pbp: [], draft: [], rankings: [] };
+  const out: { pbp: string[]; draft: number[]; rankings: number[]; rankLinks: number[]; nhlSeasons: number[] } = {
+    pbp: [],
+    draft: [],
+    rankings: [],
+    rankLinks: [],
+    nhlSeasons: [],
+  };
   const range = (spec: string | undefined, flag: string) => {
     const [a, b] = (spec ?? "").split("-").map(Number);
     if (!a || !b || b < a) throw new Error(`${flag} expects a range like 2008-2026`);
@@ -200,6 +252,8 @@ function parseArgs(argv: string[]) {
     if (argv[i] === "--pbp") out.pbp = (argv[++i] ?? "").split(",").filter(Boolean);
     else if (argv[i] === "--draft") out.draft = range(argv[++i], "--draft");
     else if (argv[i] === "--rankings") out.rankings = range(argv[++i], "--rankings");
+    else if (argv[i] === "--rank-links") out.rankLinks = range(argv[++i], "--rank-links");
+    else if (argv[i] === "--nhl-seasons") out.nhlSeasons = range(argv[++i], "--nhl-seasons");
     else throw new Error(`unknown argument ${argv[i]}`);
   }
   for (const s of out.pbp) if (!/^\d{8}$/.test(s)) throw new Error(`season ${s} must look like 20252026`);
@@ -208,8 +262,8 @@ function parseArgs(argv: string[]) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (args.pbp.length === 0 && args.draft.length === 0 && args.rankings.length === 0) {
-    throw new Error("nothing to do: pass --pbp, --draft and/or --rankings");
+  if (Object.values(args).every((v) => v.length === 0)) {
+    throw new Error("nothing to do: pass --pbp, --draft, --rankings, --rank-links and/or --nhl-seasons");
   }
   // PBP and draft run concurrently; the shared limiter still spaces requests per host.
   await Promise.all([
@@ -218,7 +272,18 @@ async function main() {
     })(),
     (async () => {
       for (const y of args.rankings) await fetchRankings(y);
+      for (const y of args.nhlSeasons) await fetchSkaterSeason(y);
     })(),
+    // Four ranking years at a time (the per-host limiter still spaces
+    // requests); a failing year is recorded and the others continue.
+    pool(args.rankLinks, 4, async (y) => {
+      try {
+        await linkRankingsYear(y);
+      } catch (err) {
+        report.yearErrors.push({ draftYear: y, error: `rank-links: ${err instanceof Error ? err.message : String(err)}` });
+        console.error(`[rank-links] ${y} failed:`, err);
+      }
+    }),
     // Two draft years at a time; each year's picks are linked in order. A
     // failing year is recorded and the others continue.
     pool(args.draft, 2, async (y) => {

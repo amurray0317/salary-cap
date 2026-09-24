@@ -6,12 +6,17 @@ import fs from "fs";
 import path from "path";
 import { describe, expect, it } from "vitest";
 import {
+  landingMatchesBirthDate,
   landingMatchesPick,
   linkDraftPick,
+  linkRankedPlayer,
+  nameSimilarity,
   normalizeName,
   parseDraftPickRefs,
+  parseRankings,
   parseSearchResults,
   rankCandidates,
+  type RankedPlayerRef,
 } from "@/lib/prospects/draftLink";
 
 const FIX = path.join(__dirname, "fixtures", "connectors", "nhl");
@@ -82,6 +87,76 @@ describe("linkDraftPick", () => {
     const out = await linkDraftPick(pick, { ...deps, search: async () => lehtonen }, 3);
     expect(out).toEqual({ status: "unresolved", reason: "no candidate's landing page reported this draft year and pick", candidatesChecked: 3 });
     expect(checked).toEqual(["8482247", "8469714", "8471747"]);
+  });
+});
+
+describe("parseRankings", () => {
+  it("parses real Central Scouting rows with birth dates and both ranks", () => {
+    const rows = parseRankings(load("draft-rankings-2025-1.json"), 2025, 1);
+    expect(rows).toHaveLength(26);
+    expect(rows[0]).toEqual({
+      draftYear: 2025,
+      category: 1,
+      firstName: "Matthew",
+      lastName: "Schaefer",
+      birthDate: rows[0]!.birthDate,
+      finalRank: 1,
+      midtermRank: 1,
+    });
+    expect(rows[0]!.birthDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // Rows without a midterm rank (added to the final list) keep null.
+    expect(rows.filter((r) => r.midtermRank === null)).toHaveLength(6);
+  });
+
+  it("rejects a row without a birth date (it could not be linked safely)", () => {
+    const json = load("draft-rankings-2025-1.json");
+    delete json.rankings[3].birthDate;
+    expect(() => parseRankings(json, 2025, 1)).toThrow(/row 3 .* birth date/);
+  });
+});
+
+describe("linkRankedPlayer", () => {
+  const ref = (birthDate: string): RankedPlayerRef => ({
+    draftYear: 2012,
+    category: 2,
+    firstName: "Mikko",
+    lastName: "Lehtonen",
+    birthDate,
+    finalRank: 50,
+    midtermRank: null,
+  });
+
+  it("picks the Mikko Lehtonen with the same birth date", async () => {
+    const { deps, checked } = recordedDeps();
+    const out = await linkRankedPlayer(ref("1994-01-16"), deps);
+    expect(out).toMatchObject({ status: "linked", playerId: "8482247", via: "full_name" });
+    expect(checked).toEqual(["8482247"]);
+    const older = await linkRankedPlayer(ref("1987-04-01"), recordedDeps().deps);
+    expect(older).toMatchObject({ status: "linked", playerId: "8471747" });
+  });
+
+  it("does not link a same-name player born on another day", async () => {
+    const { deps, checked } = recordedDeps();
+    const lehtonen = parseSearchResults(load("search-mikko_lehtonen.json"));
+    const out = await linkRankedPlayer(ref("1995-01-01"), { ...deps, search: async () => lehtonen }, 3);
+    expect(out).toEqual({ status: "unresolved", reason: "no candidate's landing page reported this birth date", candidatesChecked: 3 });
+    expect(checked).toEqual(["8482247", "8469714", "8471747"]);
+    expect(landingMatchesBirthDate(load("landing-draft-8482247.json"), "1994-01-16")).toBe(true);
+  });
+
+  it("does not open unrelated players' pages when the index returns other names", async () => {
+    const { deps, checked } = recordedDeps();
+    const others = parseSearchResults(load("search-mikko_lehtonen.json")).filter((c) => c.name !== "Mikko Lehtonen");
+    const out = await linkRankedPlayer({ ...ref("1997-01-13"), firstName: "Nick", lastName: "Azar" }, { ...deps, search: async () => others });
+    expect(out.status).toBe("unresolved");
+    expect(checked).toEqual([]);
+    expect(nameSimilarity("vyacheslav voynov", "vyacheslav voinov")).toBeGreaterThan(0.9);
+    expect(nameSimilarity("nick azar", "nick deschenes")).toBeLessThan(0.7);
+  });
+
+  it("reports a player the index does not know (never drafted or signed) as unresolved", async () => {
+    const out = await linkRankedPlayer({ ...ref("1997-01-13"), firstName: "Nick", lastName: "Azar" }, { search: async () => [], landing: async () => null });
+    expect(out).toEqual({ status: "unresolved", reason: "no search candidates", candidatesChecked: 0 });
   });
 });
 

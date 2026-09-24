@@ -135,41 +135,125 @@ export type LinkOutcome =
   | { status: "linked"; playerId: string; via: "full_name" | "last_name"; candidatesChecked: number }
   | { status: "unresolved"; reason: string; candidatesChecked: number };
 
+export interface NameDeps {
+  search: (q: string) => Promise<SearchCandidate[]>;
+  landing: (id: string) => Promise<unknown>;
+}
+
 /**
- * Resolves one pick. `search(q)` returns candidates; `landing(id)` returns
- * the landing JSON. Checks at most `maxChecks` candidates per query.
+ * Searches the NHL player index by name and returns the first candidate
+ * whose landing page passes `accept`. Checks at most `maxChecks`
+ * candidates per query.
  */
-export async function linkDraftPick(
-  pick: DraftPickRef,
-  deps: { search: (q: string) => Promise<SearchCandidate[]>; landing: (id: string) => Promise<unknown> },
-  maxChecks = 6,
+async function linkByName(
+  person: { firstName: string; lastName: string },
+  accept: (landing: unknown) => boolean,
+  deps: NameDeps,
+  maxChecks: number,
+  noMatchReason: string,
+  fullNameFilter: (c: SearchCandidate) => boolean = () => true,
 ): Promise<LinkOutcome> {
   let checked = 0;
   const seen = new Set<string>();
   // The search index sometimes spells names without accents ("Gidlof" for
   // "Gidlöf"), so accented names are also searched in plain ASCII.
   const fold = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const full = `${pick.firstName} ${pick.lastName}`;
+  const full = `${person.firstName} ${person.lastName}`;
   const queries: Array<["full_name" | "last_name", string]> = [["full_name", full]];
   if (fold(full) !== full) queries.push(["full_name", fold(full)]);
-  queries.push(["last_name", pick.lastName]);
-  if (fold(pick.lastName) !== pick.lastName) queries.push(["last_name", fold(pick.lastName)]);
+  queries.push(["last_name", person.lastName]);
+  if (fold(person.lastName) !== person.lastName) queries.push(["last_name", fold(person.lastName)]);
   for (const [via, q] of queries) {
-    const ranked = rankCandidates(pick, await deps.search(q));
+    const ranked = rankCandidates(person, await deps.search(q));
     // A last-name query can return many unrelated players: only verify surname matches.
-    const pool = via === "last_name" ? ranked.filter((c) => normalizeName(c.name).endsWith(normalizeName(pick.lastName))) : ranked;
+    const pool =
+      via === "last_name" ? ranked.filter((c) => normalizeName(c.name).endsWith(normalizeName(person.lastName))) : ranked.filter(fullNameFilter);
     for (const c of pool.slice(0, maxChecks)) {
       if (seen.has(c.playerId)) continue;
       seen.add(c.playerId);
       checked += 1;
-      if (landingMatchesPick(await deps.landing(c.playerId), pick)) {
+      if (accept(await deps.landing(c.playerId))) {
         return { status: "linked", playerId: c.playerId, via, candidatesChecked: checked };
       }
     }
   }
-  return {
-    status: "unresolved",
-    reason: checked === 0 ? "no search candidates" : "no candidate's landing page reported this draft year and pick",
-    candidatesChecked: checked,
-  };
+  return { status: "unresolved", reason: checked === 0 ? "no search candidates" : noMatchReason, candidatesChecked: checked };
+}
+
+/** Resolves one pick: a candidate is accepted only if its landing page reports this draft year and overall pick. */
+export function linkDraftPick(pick: DraftPickRef, deps: NameDeps, maxChecks = 6): Promise<LinkOutcome> {
+  return linkByName(pick, (l) => landingMatchesPick(l, pick), deps, maxChecks, "no candidate's landing page reported this draft year and pick");
+}
+
+/** A Central Scouting ranking row (skaters list), as the rankings feed gives it. */
+export interface RankedPlayerRef {
+  draftYear: number;
+  category: 1 | 2;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  finalRank: number | null;
+  midtermRank: number | null;
+}
+
+/** True when a player landing page reports exactly this birth date. */
+export function landingMatchesBirthDate(landing: unknown, birthDate: string): boolean {
+  return (landing as { birthDate?: unknown })?.birthDate === birthDate;
+}
+
+/**
+ * Resolves a ranked player to an NHL id: a same-surname candidate whose
+ * landing page reports the same birth date. The NHL player index only holds
+ * players who were drafted or signed an NHL contract, so "unresolved"
+ * usually means the player never did either (and never played an NHL
+ * game); spelling differences can also cause it, which is why the
+ * resolution rate is measured on ranked players whose id is known.
+ */
+export function linkRankedPlayer(row: RankedPlayerRef, deps: NameDeps, maxChecks = 6): Promise<LinkOutcome> {
+  // Most ranked players who were never drafted are not in the index at all,
+  // and a full-name search then returns unrelated players: only candidates
+  // whose name is close (spelling / transliteration variants) are verified.
+  const target = normalizeName(`${row.firstName} ${row.lastName}`);
+  const close = (c: SearchCandidate) => nameSimilarity(normalizeName(c.name), target) >= RANKED_NAME_SIMILARITY;
+  return linkByName(row, (l) => landingMatchesBirthDate(l, row.birthDate), deps, maxChecks, "no candidate's landing page reported this birth date", close);
+}
+
+export const RANKED_NAME_SIMILARITY = 0.7;
+
+/** 1 - Levenshtein distance / length of the longer string (1 = identical). */
+export function nameSimilarity(a: string, b: string): number {
+  if (a === b) return 1;
+  const m = a.length;
+  const n = b.length;
+  if (m === 0 || n === 0) return 0;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(prev[j]! + 1, cur[j - 1]! + 1, prev[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return 1 - prev[n]! / Math.max(m, n);
+}
+
+/** Parses /v1/draft/rankings/{year}/{category}; rows without a name or birth date throw. */
+export function parseRankings(json: unknown, draftYear: number, category: 1 | 2): RankedPlayerRef[] {
+  const rows = (json as { rankings?: unknown })?.rankings;
+  if (!Array.isArray(rows)) throw new ConnectorParseError(`rankings ${draftYear}/${category} has no rankings array`);
+  return rows.map((r, i) => {
+    const o = r as Record<string, unknown>;
+    if (typeof o.firstName !== "string" || typeof o.lastName !== "string" || typeof o.birthDate !== "string") {
+      throw new ConnectorParseError(`ranking row ${i} in ${draftYear}/${category} is missing name or birth date`);
+    }
+    return {
+      draftYear,
+      category,
+      firstName: o.firstName,
+      lastName: o.lastName,
+      birthDate: o.birthDate,
+      finalRank: intOrNull(o.finalRank),
+      midtermRank: intOrNull(o.midtermRank),
+    };
+  });
 }

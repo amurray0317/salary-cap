@@ -119,3 +119,23 @@ def test_central_scouting_linking_handles_transliterations_and_refuses_guesses()
     assert out["css_final"].tolist()[:2] == [8.0, 210.0]
     assert pd.isna(out["css_final"].iloc[2])  # same birthday, dissimilar name: never linked
     assert counts["linked_last_name"] == 1 and counts["linked_similar_name"] == 1
+
+
+def test_top_of_lineup_uses_league_wide_toi_rank_by_position_and_season_length():
+    from rosteriq_models.prospects import lineup
+
+    rows = []
+    # Two teams, 10-game season: top-of-lineup = rank <= 2 x 6 forwards, 2 x 4 defence.
+    for i in range(14):
+        rows.append({"player_id": i, "season": 20202021, "pos": "F", "gp": 10, "toi_per_gp": 1000 - i, "teams": "AAA" if i % 2 else "BBB"})
+    for i in range(10):
+        rows.append({"player_id": 100 + i, "season": 20202021, "pos": "D", "gp": 10, "toi_per_gp": 1500 - i, "teams": "AAA" if i % 2 else "BBB"})
+    # Most ice time of all but only 4 of 10 games: not qualified, so not top.
+    rows.append({"player_id": 999, "season": 20202021, "pos": "F", "gp": 4, "toi_per_gp": 5000, "teams": "AAA"})
+    # Traded mid-season: counts once, team list is not a team.
+    rows.append({"player_id": 998, "season": 20202021, "pos": "F", "gp": 6, "toi_per_gp": 4000, "teams": "AAA,BBB"})
+    usage, report = lineup.season_usage(pd.DataFrame(rows))
+    top = set(usage.loc[usage["top_lineup"], "player_id"])
+    assert top == set(range(11)) | {998} | set(range(100, 108))
+    r = report.iloc[0]
+    assert (r["teams"], r["season_games"], r["top_forwards"], r["top_defence"]) == (2, 10, 12, 8)

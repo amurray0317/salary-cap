@@ -69,21 +69,24 @@ def load_rankings(yrs: list[int]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def link(players: pd.DataFrame, css: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
-    """Adds css_list / css_final to drafted players. A ranking row links to at
-    most one player; ambiguous matches are left unlinked and counted."""
-    css = css[css["css_final"].notna()].copy()
+def link(players: pd.DataFrame, css: pd.DataFrame, require: str = "final") -> tuple[pd.DataFrame, dict]:
+    """Adds css_list / css_final / css_midterm to drafted players. A ranking
+    row links to at most one player; ambiguous matches are left unlinked and
+    counted. require="final" uses only rows with a final rank (the benchmark
+    above); "any" also uses rows with only a midterm rank."""
+    keep = css["css_final"].notna() if require == "final" else css["css_final"].notna() | css["css_midterm"].notna()
+    css = css[keep].copy()
     css["k_full"] = css["css_name"].map(norm) + "|" + css["birth_date"].fillna("")
     css["k_last"] = css["css_last"].map(norm) + "|" + css["birth_date"].fillna("") + "|" + css["draft_year"].astype(str)
     p = players.copy()
     p["k_full"] = p["name"].map(norm) + "|" + p["birth_date"].fillna("")
     p["k_last"] = p["name"].map(lambda n: norm(n).split(" ")[-1] if n else "") + "|" + p["birth_date"].fillna("") + "|" + p["draft_year"].astype(str)
-    out = p.assign(css_list=None, css_final=np.nan)
+    out = p.assign(css_list=None, css_final=np.nan, css_midterm=np.nan, css_linked=False)
     used = set()
     counts = {"linked_full_name": 0, "linked_last_name": 0, "ambiguous": 0}
     for key, via in (("k_full", "linked_full_name"), ("k_last", "linked_last_name")):
         grp = css.groupby(key)
-        for i, row in out[out["css_final"].isna()].iterrows():
+        for i, row in out[~out["css_linked"]].iterrows():
             if row[key] not in grp.groups:
                 continue
             cand = css.loc[grp.groups[row[key]]]
@@ -97,8 +100,7 @@ def link(players: pd.DataFrame, css: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
                 continue
             c = cand.iloc[0]
             used.add(c.name)
-            out.at[i, "css_list"] = c["css_list"]
-            out.at[i, "css_final"] = float(c["css_final"])
+            _set(out, i, c)
             counts[via] += 1
     # Third pass: exact birth date + similar name (transliterations such as
     # Voynov / Voinov, Trunev / Trunyov). Accepted only when exactly one
@@ -106,7 +108,7 @@ def link(players: pd.DataFrame, css: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     free = css[~css.index.isin(used)]
     by_bd = free.groupby("birth_date")
     counts["linked_similar_name"] = 0
-    for i, row in out[out["css_final"].isna()].iterrows():
+    for i, row in out[~out["css_linked"]].iterrows():
         if not row["birth_date"] or row["birth_date"] not in by_bd.groups:
             continue
         cand = free.loc[by_bd.groups[row["birth_date"]]]
@@ -122,21 +124,29 @@ def link(players: pd.DataFrame, css: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         if len(ok) != 1:
             counts["ambiguous"] += int(len(ok) > 1)
             continue
-        c = css.loc[ok[0]]
         used.add(ok[0])
-        out.at[i, "css_list"] = c["css_list"]
-        out.at[i, "css_final"] = float(c["css_final"])
+        _set(out, i, css.loc[ok[0]])
         counts["linked_similar_name"] += 1
-    counts["css_final_rows"] = int(len(css))
+    counts["css_final_rows" if require == "final" else "css_ranked_rows"] = int(len(css))
     counts["css_rows_linked_share"] = round(len(used) / max(len(css), 1), 4)
     return out, counts
 
 
-def css_features(df: pd.DataFrame) -> np.ndarray:
-    na = (df["css_list"] == "north_american").to_numpy(float)
-    intl = (df["css_list"] == "international").to_numpy(float)
-    lr = np.log(df["css_final"].fillna(1.0).clip(1, 300).to_numpy())
-    return np.column_stack([na, intl, na * lr, intl * lr])  # unranked = all zeros (intercept)
+def _set(out: pd.DataFrame, i, c: pd.Series) -> None:
+    out.at[i, "css_list"] = c["css_list"]
+    out.at[i, "css_final"] = float(c["css_final"]) if pd.notna(c["css_final"]) else np.nan
+    out.at[i, "css_midterm"] = float(c["css_midterm"]) if pd.notna(c["css_midterm"]) else np.nan
+    out.at[i, "css_linked"] = True
+
+
+def css_features(df: pd.DataFrame, col: str = "css_final") -> np.ndarray:
+    """One intercept shift and one log-rank slope per list; players without
+    a rank in `col` are all zeros (the intercept)."""
+    ranked = df[col].notna().to_numpy()
+    na = ((df["css_list"] == "north_american").to_numpy() & ranked).astype(float)
+    intl = ((df["css_list"] == "international").to_numpy() & ranked).astype(float)
+    lr = np.log(df[col].fillna(1.0).clip(1, 300).to_numpy())
+    return np.column_stack([na, intl, na * lr, intl * lr])
 
 
 def main() -> None:
