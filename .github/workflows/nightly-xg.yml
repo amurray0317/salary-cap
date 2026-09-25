@@ -22,7 +22,12 @@ name: Nightly xG
 
 on:
   schedule:
-    - cron: "0 10 * * *"
+    # GitHub can delay or drop scheduled runs under load (the first 10:00 run
+    # never started), so a second slot backs it up. Both are before the
+    # earliest NHL puck drop (~16:00 UTC); a repeat run is a no-op: games are
+    # cached and each game's prediction is frozen once.
+    - cron: "7 10 * * *"
+    - cron: "37 13 * * *"
   workflow_dispatch:
     inputs:
       rehearse:
