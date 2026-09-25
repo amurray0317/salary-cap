@@ -22,3 +22,7 @@ coverage/
 .venv/
 __pycache__/
 .pytest_cache/
+
+# Draft-class boards name 16-17-year-old junior players with model projections:
+# rebuilt locally (python -m rosteriq_models.prospects.draft_class), not committed.
+models/rosteriq-draft-*/
