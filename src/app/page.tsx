@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSessionUser } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
+import { registrationMode } from "@/server/services/inviteService";
 
 const MODULES = [
   {
@@ -32,6 +33,9 @@ const MODULES = [
 export default async function LandingPage() {
   const user = await getSessionUser();
   if (user) redirect(user.preferences.startPage);
+  // The seeded demo account only exists on open (local/demo) installs; a private,
+  // invite-only deployment never advertises it.
+  const demo = registrationMode() === "open";
   return (
     <main className="mx-auto max-w-5xl px-6 py-16">
       <header className="flex items-center justify-between">
@@ -72,13 +76,15 @@ export default async function LandingPage() {
             className="rounded-md border border-line px-5 py-2.5 font-medium text-ink-secondary hover:text-ink"
             href="/login"
           >
-            Explore the demo
+            {demo ? "Explore the demo" : "Sign in"}
           </Link>
         </div>
-        <p className="mt-3 text-sm text-ink-muted">
-          Demo login: <code className="text-ink-secondary">gm@aurora.demo</code> / password{" "}
-          <code className="text-ink-secondary">rosteriq-demo</code> (seeded fictional data).
-        </p>
+        {demo && (
+          <p className="mt-3 text-sm text-ink-muted">
+            Demo login: <code className="text-ink-secondary">gm@aurora.demo</code> / password{" "}
+            <code className="text-ink-secondary">rosteriq-demo</code> (seeded fictional data).
+          </p>
+        )}
       </section>
 
       <section className="mt-20 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

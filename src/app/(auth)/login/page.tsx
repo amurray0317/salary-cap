@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { loginAction } from "@/server/actions/auth";
 import { AuthForm } from "@/components/AuthForm";
+import { registrationMode } from "@/server/services/inviteService";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -15,7 +16,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       </Link>
       <h1 className="text-2xl font-semibold">Sign in</h1>
       <p className="mb-6 mt-1 text-sm text-ink-muted">
-        Demo: gm@aurora.demo / rosteriq-demo
+        {registrationMode() === "open" ? "Demo: gm@aurora.demo / rosteriq-demo" : "Welcome back."}
       </p>
       <AuthForm
         hidden={next ? { next } : {}}
