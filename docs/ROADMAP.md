@@ -96,6 +96,42 @@ Single power user for now (may expand later); everything in-app.
 8. **Draft-day war room:** live board (model + Central Scouting + needs),
    picks crossed off, best available with reasons; ready by June 2027.
 
+### New categories and ideas (owner's answers, 2026-09-25)
+
+- **Coaches** and **GMs & AGMs**: directory and career history, track-record
+  analytics (coaches: results and goal/xG share vs expected, special teams,
+  development; GMs: draft value vs pick expectation, trades, signings, cap
+  efficiency), hiring pipeline, private notes. Staff lists already come with
+  HockeyTech rosters (CHL, USHL, AHL, ECHL, back to the early 2000s: head
+  coaches, GMs, AGMs, assistants, scouts); NHL staff needs a source check.
+- **Women's hockey**: PWHL, NCAA women's, international (IIHF); stats and
+  standings first, then the same analytics as the men's side once data
+  depth allows. Sources to verify.
+- **Viewing planner**, **re-drafts & class reviews**, **data health
+  dashboard**, **backups & exports**.
+
+### Direction and sustainability
+
+Personal use now; could become a product. That shapes three rules:
+
+1. **Licensing before selling.** The NHL API, HockeyTech feeds and MoneyPuck
+   are used under personal, non-commercial terms. A product needs commercial
+   licenses (or licensed providers such as Elite Prospects' paid API) before
+   launch. Every source already sits behind one connector, so a licensed
+   feed can replace a free one without touching the rest of the app.
+2. **Breakage is expected and caught.** Undocumented feeds change without
+   notice. Parsers fail loudly instead of importing guesses, tests run on
+   recorded real responses, the nightly job alarms on drift, and a data
+   health page (planned) shows every source's last good pull.
+3. **Yearly chores are automated.** Season rollover (the "last complete
+   season" setting, new season ids), rule changes (the 84-game schedule
+   from 2026-27), dependency updates and backups are scripted or scheduled
+   so the tool keeps working without a full-time maintainer.
+
+Free-tier limits to watch: GitHub Actions minutes (nightly jobs use a few
+minutes a day), Supabase free database size (500 MB) and its pause after a
+week without use, Vercel Hobby (personal, non-commercial only).
+
 ### Models
 
 - **Prospect model v2 (in progress):** tiered outcome (NHL regular / top of
