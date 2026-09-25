@@ -7,6 +7,7 @@ import { resolveAppContext } from "@/server/appContext";
 import { computeRoleScores, computeTrends, ageAtSeason } from "@/server/services/scoutingService";
 import { TREND_LABELS, type TrendClassification } from "@/lib/scouting/trends";
 import { formatDate, pct } from "@/lib/format";
+import { formatHeight, formatWeight } from "@/lib/preferences";
 
 export const metadata: Metadata = { title: "Prospect report export" };
 
@@ -62,7 +63,7 @@ export default async function ProspectReportExport({ params }: { params: Promise
       <section className="mt-4 text-sm">
         <h2 className="mb-1 text-sm font-bold uppercase tracking-wide">Profile</h2>
         <p>
-          Age {age ?? "—"} · {p.shootsCatches ? `${p.shootsCatches}-hand` : "hand unknown"} · {p.heightCm ?? "—"} cm / {p.weightKg ?? "—"} kg · {p.nationality ?? "—"} ·{" "}
+          Age {age ?? "—"} · {p.shootsCatches ? `${p.shootsCatches}-hand` : "hand unknown"} · {formatHeight(p.heightCm, ctx.user.preferences.units)} / {formatWeight(p.weightKg, ctx.user.preferences.units)} · {p.nationality ?? "—"} ·{" "}
           {p.nhlDraftStatus === "drafted" ? `drafted ${p.draftYear ?? ""} (rights: ${p.nhlRightsHolder ?? "held"})` : `undrafted (${p.collegeFreeAgentStatus})`}
         </p>
         <p className="mt-1">

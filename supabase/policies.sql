@@ -210,3 +210,25 @@ alter table ext_team_standings enable row level security;
 create policy ext_team_standings_rw on ext_team_standings
   for all using (is_org_member(organization_id))
   with check (is_org_member(organization_id));
+
+-- Organization invites (migration 0012). Members can see their organization's
+-- invites; creating, revoking and accepting go through the server, which
+-- checks the admin capability and the hashed token.
+alter table organization_invites enable row level security;
+create policy organization_invites_rw on organization_invites
+  for all using (is_org_member(organization_id))
+  with check (is_org_member(organization_id));
+
+-- Profile photos (migration 0013). Direct access is limited to the owner;
+-- teammates see photos through the app's /api/avatar route, which checks a
+-- shared organization.
+alter table user_avatars enable row level security;
+create policy user_avatars_self on user_avatars
+  for all using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+-- Subscriptions (migration 0014). Members can read their organization's plan;
+-- only the server (billing webhook, service role) writes it.
+alter table organization_subscriptions enable row level security;
+create policy organization_subscriptions_read on organization_subscriptions
+  for select using (is_org_member(organization_id));

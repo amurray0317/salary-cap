@@ -157,6 +157,36 @@ async function fetchSeasonPbp(season: string) {
   }
 }
 
+/**
+ * Shift charts (who was on the ice, second by second) for every completed
+ * game: the input for on-ice RAPM and WAR. api.nhle.com, so it runs
+ * alongside the play-by-play download (api-web.nhle.com) without sharing a
+ * rate limit. A game whose shift list is empty is not cached (the NHL
+ * sometimes publishes shifts late) and is retried on the next run.
+ */
+async function fetchSeasonShifts(season: string) {
+  for (const gameType of [2, 3]) {
+    const listUrl = `https://api.nhle.com/stats/rest/en/game?cayenneExp=season=${season}%20and%20gameType=${gameType}`;
+    const list = (await getJson(listUrl)) as { data?: Array<{ id: number; gameStateId: number }> };
+    if (!Array.isArray(list.data)) throw new Error(`game list for ${season}/${gameType} has no data array`);
+    const games = list.data.filter((g) => FINAL_STATE_IDS.has(g.gameStateId)).map((g) => g.id).sort((a, b) => a - b);
+    let done = 0;
+    let empty = 0;
+    await pool(games, 3, async (id) => {
+      const url = `https://api.nhle.com/stats/rest/en/shiftcharts?cayenneExp=gameId=${id}`;
+      const data = await cached(path.join(RAW_DIR, "nhl", "shifts", season, `${id}.json.gz`), url, (d) => {
+        const rows = (d as { data?: unknown[] }).data;
+        return Array.isArray(rows) && rows.length > 0;
+      });
+      if (!data || !Array.isArray((data as { data?: unknown[] }).data) || (data as { data: unknown[] }).data.length === 0) empty += 1;
+      done += 1;
+      if (done % 200 === 0 || done === games.length) console.log(`[shifts] ${season} type ${gameType}: ${done}/${games.length}`);
+    });
+    bump(`shift_games_${season}_${gameType}`, games.length);
+    bump(`shift_games_empty_${season}_${gameType}`, empty);
+  }
+}
+
 // ------------------------------------------------------------------- draft
 
 const landing = (id: string) => cached(path.join(RAW_DIR, "nhl", "landing", `${id}.json.gz`), `https://api-web.nhle.com/v1/player/${id}/landing`);
@@ -283,8 +313,9 @@ async function fetchHtLeague(league: HtLeague, years: number[]) {
 // -------------------------------------------------------------------- main
 
 function parseArgs(argv: string[]) {
-  const out: { pbp: string[]; draft: number[]; rankings: number[]; rankLinks: number[]; nhlSeasons: number[]; ht: HtLeague[]; htYears: number[] } = {
+  const out: { pbp: string[]; shifts: string[]; draft: number[]; rankings: number[]; rankLinks: number[]; nhlSeasons: number[]; ht: HtLeague[]; htYears: number[] } = {
     pbp: [],
+    shifts: [],
     draft: [],
     rankings: [],
     rankLinks: [],
@@ -299,6 +330,7 @@ function parseArgs(argv: string[]) {
   };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--pbp") out.pbp = (argv[++i] ?? "").split(",").filter(Boolean);
+    else if (argv[i] === "--shifts") out.shifts = (argv[++i] ?? "").split(",").filter(Boolean);
     else if (argv[i] === "--draft") out.draft = range(argv[++i], "--draft");
     else if (argv[i] === "--rankings") out.rankings = range(argv[++i], "--rankings");
     else if (argv[i] === "--rank-links") out.rankLinks = range(argv[++i], "--rank-links");
@@ -314,6 +346,7 @@ function parseArgs(argv: string[]) {
     else throw new Error(`unknown argument ${argv[i]}`);
   }
   for (const s of out.pbp) if (!/^\d{8}$/.test(s)) throw new Error(`season ${s} must look like 20252026`);
+  for (const s of out.shifts) if (!/^\d{8}$/.test(s)) throw new Error(`season ${s} must look like 20252026`);
   return out;
 }
 
@@ -321,12 +354,15 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.ht.length > 0 && args.htYears.length === 0) throw new Error("--ht needs --ht-years (e.g. 2003-2025)");
   if (Object.values(args).every((v) => v.length === 0)) {
-    throw new Error("nothing to do: pass --pbp, --draft, --rankings, --rank-links, --nhl-seasons and/or --ht");
+    throw new Error("nothing to do: pass --pbp, --shifts, --draft, --rankings, --rank-links, --nhl-seasons and/or --ht");
   }
   // PBP and draft run concurrently; the shared limiter still spaces requests per host.
   await Promise.all([
     (async () => {
       for (const s of args.pbp) await fetchSeasonPbp(s);
+    })(),
+    (async () => {
+      for (const s of args.shifts) await fetchSeasonShifts(s);
     })(),
     (async () => {
       for (const y of args.rankings) await fetchRankings(y);

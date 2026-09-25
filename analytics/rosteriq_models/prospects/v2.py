@@ -260,7 +260,9 @@ def pop_bias(pop: pd.DataFrame, tr_years: list[int], te_years: list[int], col: s
 
 # ------------------------------------------------- population + junior stats
 
-HT_STAT_COLS = ["d0_ppg", "d0_es_ppg", "d0_pp_ppg", "d0_gpg", "d0_team_goal_share", "d0_shots_pg", "dm1_ppg"]
+# Era/league-relative rates (see hockeytech.py): raw PPG drifted upward across
+# draft classes and made every model trained on older classes over-predict.
+HT_STAT_COLS = ["d0_ppg_rel", "d0_es_ppg_rel", "d0_pp_ppg_rel", "d0_gpg_rel", "d0_team_goal_share", "d0_shots_pg_rel", "dm1_ppg_rel"]
 
 
 def season_label(start_year: int) -> str:
@@ -295,7 +297,9 @@ def attach_junior_stats(pop: pd.DataFrame, ht: pd.DataFrame) -> pd.DataFrame:
         keys = list(zip(out["key"], [season_label(y - off) for y in out["rank_year"]]))
         sub = by.reindex(keys)
         ok = (sub["gp"] >= MIN_GP).to_numpy()
-        for c in ("league", "gp", "ppg", "es_ppg", "pp_ppg", "gpg", "team_goal_share", "shots_pg"):
+        for c in ("league", "gp", "ppg", "es_ppg", "pp_ppg", "gpg", "team_goal_share", "shots_pg", "ppg_rel", "es_ppg_rel", "pp_ppg_rel", "gpg_rel", "shots_pg_rel"):
+            if c not in sub:
+                continue
             out[f"{tag}_{c}"] = np.where(ok, sub[c].to_numpy(), np.nan if c != "league" else None)
     return out
 

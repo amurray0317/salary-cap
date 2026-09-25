@@ -8,6 +8,7 @@ import { cookies } from "next/headers";
 import { createHash, randomBytes } from "crypto";
 import { eq, and, gt } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
+import { readPreferences, type Preferences } from "@/lib/preferences";
 
 export const SESSION_COOKIE = "riq_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14; // 14 days
@@ -20,6 +21,10 @@ export interface SessionUser {
   id: string;
   email: string;
   fullName: string;
+  jobTitle: string | null;
+  /** Null when the user has no profile photo; otherwise versions its URL. */
+  avatarUpdatedAt: Date | null;
+  preferences: Preferences;
 }
 
 export async function createSession(userId: string): Promise<string> {
@@ -59,12 +64,16 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       id: schema.users.id,
       email: schema.users.email,
       fullName: schema.users.fullName,
+      jobTitle: schema.users.jobTitle,
+      avatarUpdatedAt: schema.users.avatarUpdatedAt,
+      preferences: schema.users.preferences,
     })
     .from(schema.sessions)
     .innerJoin(schema.users, eq(schema.sessions.userId, schema.users.id))
     .where(and(eq(schema.sessions.tokenHash, hashToken(token)), gt(schema.sessions.expiresAt, new Date())))
     .limit(1);
-  return rows[0] ?? null;
+  const row = rows[0];
+  return row ? { ...row, preferences: readPreferences(row.preferences) } : null;
 }
 
 export async function destroySession(): Promise<void> {

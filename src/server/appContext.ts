@@ -6,10 +6,12 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
 import { getSessionUser, type SessionUser } from "@/lib/auth/session";
 import type { OrgRole } from "@/server/context";
+import { pickCurrentSeason } from "@/lib/season";
+import { TZ_COOKIE, isValidTimeZone, resolveTimeZone } from "@/lib/timezone";
 
 export const ORG_COOKIE = "riq_org";
 export const TEAM_COOKIE = "riq_team";
@@ -18,12 +20,16 @@ export const SEASON_COOKIE = "riq_season";
 export interface AppContext {
   user: SessionUser;
   memberships: Array<{ organizationId: string; organizationName: string; role: OrgRole }>;
-  org: { id: string; name: string; slug: string };
+  org: { id: string; name: string; slug: string; program: string };
   role: OrgRole;
   teams: Array<typeof schema.teams.$inferSelect>;
-  team: (typeof schema.teams.$inferSelect) | null;
+  team: typeof schema.teams.$inferSelect | null;
   seasons: Array<typeof schema.leagueSeasons.$inferSelect>;
-  season: (typeof schema.leagueSeasons.$inferSelect) | null;
+  season: typeof schema.leagueSeasons.$inferSelect | null;
+  /** IANA zone for times on screen: the user's pinned zone, or this device's (Preferences → Automatic). */
+  timeZone: string;
+  /** The zone this device last reported (null until its first page load). */
+  deviceTimeZone: string | null;
 }
 
 export async function resolveAppContext(): Promise<AppContext> {
@@ -45,22 +51,18 @@ export async function resolveAppContext(): Promise<AppContext> {
 
   const store = await cookies();
   const wantedOrg = store.get(ORG_COOKIE)?.value;
-  const activeMembership =
-    memberships.find((m) => m.organizationId === wantedOrg) ?? memberships[0];
+  const activeMembership = memberships.find((m) => m.organizationId === wantedOrg) ?? memberships[0];
   if (!activeMembership) redirect("/onboarding");
 
-  const orgRows = await db
-    .select()
-    .from(schema.organizations)
-    .where(eq(schema.organizations.id, activeMembership.organizationId))
-    .limit(1);
+  const orgRows = await db.select().from(schema.organizations).where(eq(schema.organizations.id, activeMembership.organizationId)).limit(1);
   const org = orgRows[0];
   if (!org) redirect("/onboarding");
 
+  // Hidden (inactive) teams, e.g. a retired demo team, stay in the database but leave the switcher.
   const teams = await db
     .select()
     .from(schema.teams)
-    .where(eq(schema.teams.organizationId, org.id))
+    .where(and(eq(schema.teams.organizationId, org.id), eq(schema.teams.isActive, true)))
     .orderBy(asc(schema.teams.name));
 
   const wantedTeam = store.get(TEAM_COOKIE)?.value;
@@ -78,20 +80,20 @@ export async function resolveAppContext(): Promise<AppContext> {
   const teamSeasons = team ? seasons.filter((s) => s.leagueId === team.leagueId) : seasons;
 
   const wantedSeason = store.get(SEASON_COOKIE)?.value;
-  const season =
-    teamSeasons.find((s) => s.id === wantedSeason) ??
-    teamSeasons.find((s) => s.isCurrent) ??
-    teamSeasons[0] ??
-    null;
+  const reported = store.get(TZ_COOKIE)?.value;
+  const deviceTimeZone = reported && isValidTimeZone(decodeURIComponent(reported)) ? decodeURIComponent(reported) : null;
+  const season = teamSeasons.find((s) => s.id === wantedSeason) ?? pickCurrentSeason(teamSeasons) ?? null;
 
   return {
     user,
     memberships,
-    org: { id: org.id, name: org.name, slug: org.slug },
+    org: { id: org.id, name: org.name, slug: org.slug, program: org.program },
     role: activeMembership.role,
     teams,
     team,
     seasons: teamSeasons,
     season,
+    timeZone: resolveTimeZone(user.preferences.timeZone, deviceTimeZone),
+    deviceTimeZone,
   };
 }

@@ -117,7 +117,8 @@ export function parseHtRoster(json: unknown): HtRosterPlayer[] {
     .filter((p): p is Record<string, unknown> => isObject(p) && str(p.player_id) !== "")
     .map((p) => ({
       playerId: str(p.player_id),
-      name: str(p.name),
+      // First + last: the QMJHL's `name` is "Last, First".
+      name: [str(p.first_name), str(p.last_name)].filter(Boolean).join(" ") || str(p.name),
       firstName: str(p.first_name),
       lastName: str(p.last_name),
       birthDate: /^\d{4}-\d{2}-\d{2}$/.test(str(p.birthdate)) ? str(p.birthdate) : "",

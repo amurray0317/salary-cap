@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { resolveAppContext } from "@/server/appContext";
 import { listReferencePlayers } from "@/server/services/referenceDataService";
 import { Card, EmptyState, Td, Th } from "@/components/ui";
+import { PlayerPhoto, TeamLogo } from "@/components/NhlImages";
 
 export const metadata: Metadata = { title: "Real data · players" };
 
@@ -64,7 +65,8 @@ export default async function RealDataPlayersPage({ searchParams }: { searchPara
               <tbody>
                 {players.map((p) => (
                   <tr key={`${p.bioSource ?? "nhl"}-${p.externalId}`} className="border-b border-line/50 last:border-0 hover:bg-subtle">
-                    <Td>
+                    <Td className="whitespace-nowrap">
+                      {p.bioSource !== "eliteprospects" && <PlayerPhoto playerId={p.externalId} name={p.name} size={28} className="mr-2 inline-block align-middle" />}
                       {p.bioSource === "eliteprospects" ? (
                         <span className="font-medium">{p.name}</span>
                       ) : (
@@ -75,7 +77,10 @@ export default async function RealDataPlayersPage({ searchParams }: { searchPara
                       <span className="ml-2 font-mono text-xs text-ink-muted">{p.externalId}</span>
                     </Td>
                     <Td>{p.position ?? "—"}</Td>
-                    <Td>{p.team ?? "—"}</Td>
+                    <Td className="whitespace-nowrap">
+                      {p.team && <TeamLogo team={p.team} size={18} className="mr-1.5 align-middle" />}
+                      {p.team ?? "—"}
+                    </Td>
                     <Td className="whitespace-nowrap">{p.dateOfBirth ?? "—"}</Td>
                     <Td right>{p.seasonLines}</Td>
                     <Td>{p.latestSeason ?? "—"}</Td>

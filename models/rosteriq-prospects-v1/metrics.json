@@ -2173,6 +2173,299 @@
       }
      }
     }
+   },
+   "with_junior_stats": {
+    "coverage": {
+     "ranked_listed_in_these_leagues": 1165,
+     "matched_to_draft_year_line": 1114,
+     "match_rate": 0.9562
+    },
+    "players": 1954,
+    "not_drafted_that_year": 843,
+    "nhl_regular:css_final": {
+     "train_rows": 1152,
+     "test_rows": 610,
+     "test": {
+      "css_only": {
+       "players": 610,
+       "regulars": 76,
+       "expected": 94.3,
+       "log_loss": 0.23952,
+       "auc": 0.9015,
+       "brier": 0.06871
+      },
+      "css_plus_junior_stats": {
+       "players": 610,
+       "regulars": 76,
+       "expected": 99.0,
+       "log_loss": 0.24029,
+       "auc": 0.899,
+       "brier": 0.06886
+      },
+      "css_plus_junior_stats_drafted_only_training": {
+       "players": 610,
+       "regulars": 76,
+       "expected": 108.2,
+       "log_loss": 0.25688,
+       "auc": 0.8936,
+       "brier": 0.07246
+      }
+     },
+     "test_not_drafted_that_year": {
+      "css_only": {
+       "players": 253,
+       "regulars": 1,
+       "expected": 12.6,
+       "log_loss": 0.06266,
+       "auc": 0.7579,
+       "brier": 0.00754
+      },
+      "css_plus_junior_stats": {
+       "players": 253,
+       "regulars": 1,
+       "expected": 11.0,
+       "log_loss": 0.05512,
+       "auc": 0.881,
+       "brier": 0.00757
+      },
+      "css_plus_junior_stats_drafted_only_training": {
+       "players": 253,
+       "regulars": 1,
+       "expected": 17.1,
+       "log_loss": 0.09221,
+       "auc": 0.881,
+       "brier": 0.01469
+      }
+     },
+     "bootstrap_vs_css_only": {
+      "all:css_plus_junior_stats": {
+       "auc_diff_ci95": [
+        -0.0203,
+        -0.0023,
+        0.0134
+       ],
+       "log_loss_diff_ci95": [
+        -0.0131,
+        0.0005,
+        0.0151
+       ],
+       "resamples": 2000
+      }
+     }
+    },
+    "nhl_regular:css_midterm": {
+     "train_rows": 1092,
+     "test_rows": 613,
+     "test": {
+      "css_only": {
+       "players": 613,
+       "regulars": 73,
+       "expected": 89.7,
+       "log_loss": 0.23375,
+       "auc": 0.8997,
+       "brier": 0.06707
+      },
+      "css_plus_junior_stats": {
+       "players": 613,
+       "regulars": 73,
+       "expected": 96.0,
+       "log_loss": 0.22915,
+       "auc": 0.9129,
+       "brier": 0.06699
+      },
+      "css_plus_junior_stats_drafted_only_training": {
+       "players": 613,
+       "regulars": 73,
+       "expected": 102.0,
+       "log_loss": 0.23456,
+       "auc": 0.9116,
+       "brier": 0.0672
+      }
+     },
+     "test_not_drafted_that_year": {
+      "css_only": {
+       "players": 273,
+       "regulars": 1,
+       "expected": 13.4,
+       "log_loss": 0.0624,
+       "auc": 0.5772,
+       "brier": 0.0073
+      },
+      "css_plus_junior_stats": {
+       "players": 273,
+       "regulars": 1,
+       "expected": 10.3,
+       "log_loss": 0.04933,
+       "auc": 0.886,
+       "brier": 0.00675
+      },
+      "css_plus_junior_stats_drafted_only_training": {
+       "players": 273,
+       "regulars": 1,
+       "expected": 14.3,
+       "log_loss": 0.06361,
+       "auc": 0.8787,
+       "brier": 0.00841
+      }
+     },
+     "bootstrap_vs_css_only": {
+      "all:css_plus_junior_stats": {
+       "auc_diff_ci95": [
+        -0.0059,
+        0.013,
+        0.0334
+       ],
+       "log_loss_diff_ci95": [
+        -0.0212,
+        -0.0055,
+        0.0131
+       ],
+       "resamples": 2000
+      }
+     }
+    },
+    "top_lineup:css_final": {
+     "train_rows": 1152,
+     "test_rows": 610,
+     "test": {
+      "css_only": {
+       "players": 610,
+       "regulars": 46,
+       "expected": 64.4,
+       "log_loss": 0.18777,
+       "auc": 0.8883,
+       "brier": 0.05169
+      },
+      "css_plus_junior_stats": {
+       "players": 610,
+       "regulars": 46,
+       "expected": 68.0,
+       "log_loss": 0.18913,
+       "auc": 0.8947,
+       "brier": 0.05313
+      },
+      "css_plus_junior_stats_drafted_only_training": {
+       "players": 610,
+       "regulars": 46,
+       "expected": 72.0,
+       "log_loss": 0.19727,
+       "auc": 0.8884,
+       "brier": 0.05474
+      }
+     },
+     "test_not_drafted_that_year": {
+      "css_only": {
+       "players": 253,
+       "regulars": 1,
+       "expected": 8.0,
+       "log_loss": 0.04403,
+       "auc": 0.8611,
+       "brier": 0.00529
+      },
+      "css_plus_junior_stats": {
+       "players": 253,
+       "regulars": 1,
+       "expected": 6.5,
+       "log_loss": 0.0377,
+       "auc": 0.8929,
+       "brier": 0.0054
+      },
+      "css_plus_junior_stats_drafted_only_training": {
+       "players": 253,
+       "regulars": 1,
+       "expected": 9.9,
+       "log_loss": 0.06197,
+       "auc": 0.8968,
+       "brier": 0.01027
+      }
+     },
+     "bootstrap_vs_css_only": {
+      "all:css_plus_junior_stats": {
+       "auc_diff_ci95": [
+        -0.021,
+        0.0067,
+        0.0312
+       ],
+       "log_loss_diff_ci95": [
+        -0.0151,
+        0.0012,
+        0.018
+       ],
+       "resamples": 2000
+      }
+     }
+    },
+    "top_lineup:css_midterm": {
+     "train_rows": 1092,
+     "test_rows": 613,
+     "test": {
+      "css_only": {
+       "players": 613,
+       "regulars": 45,
+       "expected": 61.3,
+       "log_loss": 0.18516,
+       "auc": 0.8838,
+       "brier": 0.05084
+      },
+      "css_plus_junior_stats": {
+       "players": 613,
+       "regulars": 45,
+       "expected": 65.4,
+       "log_loss": 0.18134,
+       "auc": 0.9075,
+       "brier": 0.05201
+      },
+      "css_plus_junior_stats_drafted_only_training": {
+       "players": 613,
+       "regulars": 45,
+       "expected": 67.7,
+       "log_loss": 0.18127,
+       "auc": 0.9066,
+       "brier": 0.05142
+      }
+     },
+     "test_not_drafted_that_year": {
+      "css_only": {
+       "players": 273,
+       "regulars": 1,
+       "expected": 8.4,
+       "log_loss": 0.04362,
+       "auc": 0.7169,
+       "brier": 0.00499
+      },
+      "css_plus_junior_stats": {
+       "players": 273,
+       "regulars": 1,
+       "expected": 6.0,
+       "log_loss": 0.03407,
+       "auc": 0.8713,
+       "brier": 0.00476
+      },
+      "css_plus_junior_stats_drafted_only_training": {
+       "players": 273,
+       "regulars": 1,
+       "expected": 8.1,
+       "log_loss": 0.04104,
+       "auc": 0.864,
+       "brier": 0.00542
+      }
+     },
+     "bootstrap_vs_css_only": {
+      "all:css_plus_junior_stats": {
+       "auc_diff_ci95": [
+        -0.0011,
+        0.0232,
+        0.057
+       ],
+       "log_loss_diff_ci95": [
+        -0.0215,
+        -0.0044,
+        0.0123
+       ],
+       "resamples": 2000
+      }
+     }
+    }
    }
   }
  }

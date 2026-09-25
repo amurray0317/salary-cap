@@ -22,7 +22,12 @@ name: Nightly xG
 
 on:
   schedule:
-    - cron: "0 10 * * *"
+    # GitHub can delay or drop scheduled runs under load (the first 10:00 run
+    # never started), so a second slot backs it up. Both are before the
+    # earliest NHL puck drop (~16:00 UTC); a repeat run is a no-op: games are
+    # cached and each game's prediction is frozen once.
+    - cron: "7 10 * * *"
+    - cron: "37 13 * * *"
   workflow_dispatch:
     inputs:
       rehearse:
@@ -101,6 +106,20 @@ jobs:
           # 0 = ok, 2 = drift flagged (commit first, fail after); anything else is an error.
           if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then exit "$code"; fi
 
+      - name: Running tab (game win probabilities)
+        # Scores yesterday's finals, then freezes today's pre-game probabilities
+        # (10:00 UTC is before every NHL puck drop). A failure here never blocks the xG commit.
+        if: github.event.inputs.rehearse == ''
+        continue-on-error: true
+        working-directory: analytics
+        run: |
+          season=${{ steps.season.outputs.id }}
+          today=$(TZ=America/New_York date +%F)
+          if ls ../.data/raw/nhl/pbp/$season/*.json.gz >/dev/null 2>&1; then
+            python -m rosteriq_models.games.build $season || echo "no completed games to tabulate yet"
+          fi
+          python -m rosteriq_models.games.predict --season $season --score --date "$today"
+
       - name: Push rehearsal to its own branch
         if: github.event.inputs.rehearse != ''
         run: |
@@ -116,7 +135,7 @@ jobs:
         run: |
           git config user.name "rosteriq-nightly[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add models/rosteriq-xg-v1
+          git add models/rosteriq-xg-v1 models/rosteriq-games-v0
           if git diff --cached --quiet; then
             echo "No new completed games."
           else

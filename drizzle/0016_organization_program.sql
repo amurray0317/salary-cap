@@ -1,0 +1,1 @@
+ALTER TABLE "organizations" ADD COLUMN "program" text DEFAULT 'pro' NOT NULL;

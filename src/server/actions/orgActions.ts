@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getDb, schema } from "@/db/client";
 import { requireOrgAccess, requireUser, writeAudit } from "@/server/context";
 import { ORG_COOKIE, TEAM_COOKIE } from "@/server/appContext";
+import { seasonLabel, seasonStartYear } from "@/lib/season";
 
 export interface FormState {
   error?: string;
@@ -94,10 +95,10 @@ export async function createTeamAction(_prev: FormState, formData: FormData): Pr
     const growth = (input.capGrowthPct ?? 4) / 100;
     const floorPct = (input.floorPct ?? 74) / 100;
     const minSalary = input.minSalary ?? 800_000;
-    const startYear = new Date().getFullYear();
+    const startYear = seasonStartYear();
     for (let y = 0; y < 4; y++) {
       const cap = Math.round(input.capYear1 * (1 + growth) ** y);
-      const name = `${startYear + y}-${String((startYear + y + 1) % 100).padStart(2, "0")}`;
+      const name = seasonLabel(startYear + y);
       const startDate = `${startYear + y}-10-07`;
       const [season] = await db
         .insert(schema.leagueSeasons)
@@ -114,7 +115,8 @@ export async function createTeamAction(_prev: FormState, formData: FormData): Pr
       const rules = [
         { key: "cap.upper_limit", name: "Salary cap upper limit", category: "cap", value: cap },
         { key: "cap.lower_limit", name: "Salary cap lower limit (floor)", category: "cap", value: Math.round(cap * floorPct) },
-        { key: "cap.buried_allowance", name: "Buried-contract cap relief allowance", category: "cap", value: 1_150_000 },
+        // CBA 50.5(d): a buried contract still counts for its cap hit above league minimum + $375,000.
+        { key: "cap.buried_allowance", name: "Buried-contract cap relief allowance (above league minimum)", category: "cap", value: 375_000 },
         { key: "roster.max_active", name: "Maximum active roster size", category: "roster", value: 23 },
         { key: "roster.min_active", name: "Minimum active roster size", category: "roster", value: 20 },
         { key: "roster.min_goalies", name: "Minimum goaltenders on active roster", category: "roster", value: 2 },

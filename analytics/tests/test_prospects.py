@@ -163,3 +163,19 @@ def test_junior_stats_match_by_birth_date_with_nickname_fallback_and_no_guessing
     assert out.loc[0, "d0_league"] == "OHL" and out.loc[0, "d0_ppg"] == 1.68 and out.loc[0, "dm1_ppg"] == 1.51
     assert pd.isna(out.loc[1, "d0_ppg"])  # ambiguous last name + birth date
     assert pd.isna(out.loc[2, "d0_ppg"])  # under MIN_GP
+
+
+def test_relative_rates_are_per_league_season_and_ignore_short_seasons():
+    from rosteriq_models.prospects.hockeytech import add_relative_rates
+
+    d = pd.DataFrame([
+        {"league": "OHL", "season": "2015-16", "gp": 60, "ppg": 1.2, "gpg": 0.5, "es_ppg": 0.8, "pp_ppg": 0.4, "shots_pg": 3.0},
+        {"league": "OHL", "season": "2015-16", "gp": 60, "ppg": 0.6, "gpg": 0.2, "es_ppg": 0.4, "pp_ppg": 0.2, "shots_pg": 1.0},
+        {"league": "OHL", "season": "2015-16", "gp": 3, "ppg": 3.0, "gpg": 1.0, "es_ppg": 2.0, "pp_ppg": 1.0, "shots_pg": 5.0},  # not in the mean
+        {"league": "WHL", "season": "2015-16", "gp": 60, "ppg": 1.2, "gpg": 0.5, "es_ppg": 0.8, "pp_ppg": 0.4, "shots_pg": float("nan")},
+    ])
+    out = add_relative_rates(d)
+    assert abs(out.loc[0, "ppg_rel"] - 1.2 / 0.9) < 1e-12
+    assert abs(out.loc[2, "ppg_rel"] - 3.0 / 0.9) < 1e-12  # short seasons still get a relative value
+    assert out.loc[3, "ppg_rel"] == 1.0  # its own league-season
+    assert pd.isna(out.loc[3, "shots_pg_rel"])

@@ -101,6 +101,7 @@ export const freeAgentStatus = pgEnum("free_agent_status", [
   "rfa",
   "ufa",
   "unsigned_prospect",
+  "unknown", // e.g. imported from a public roster, which carries no contract data
 ]);
 
 export const waiverStatus = pgEnum("waiver_status", [
@@ -109,6 +110,7 @@ export const waiverStatus = pgEnum("waiver_status", [
   "cleared",
   "claimed",
   "on_waivers",
+  "unknown",
 ]);
 
 export const rosterStatus = pgEnum("roster_status", [
@@ -183,9 +185,25 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash"),
   fullName: text("full_name").notNull(),
+  jobTitle: text("job_title"),
+  /** Display preferences and notification choices (see src/lib/preferences.ts). */
+  preferences: jsonb("preferences").notNull().default({}),
+  /** Set when a profile photo is saved; also versions the photo URL. */
+  avatarUpdatedAt: timestamp("avatar_updated_at", { withTimezone: true }),
   authProvider: text("auth_provider").notNull().default("local"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Profile photos, kept apart from users so the image is only read when shown. Resized to 256 px before upload. */
+export const userAvatars = pgTable("user_avatars", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  mime: text("mime").notNull(),
+  /** Base64 image bytes (at most ~200 KB decoded). */
+  data: text("data").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -201,10 +219,58 @@ export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+  /** pro | junior | college | youth (src/lib/programs.ts): which parts of the app the organization uses. */
+  program: text("program").notNull().default("pro"),
   orgType: text("org_type").notNull().default("pro_team"), // pro_team | college | agency | league_office | consultancy
   settings: jsonb("settings").notNull().default({}),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Invitations to join an organization with a given role. Only a SHA-256 of
+ * the link token is stored; the link itself is shown once to the admin who
+ * created it. Valid while not revoked, not expired and under max_uses.
+ */
+export const organizationInvites = pgTable(
+  "organization_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    role: orgRole("role").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    /** Optional: only this email may accept. */
+    email: text("email"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    maxUses: integer("max_uses").notNull().default(1),
+    uses: integer("uses").notNull().default(0),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("organization_invites_token").on(t.tokenHash)],
+);
+
+/**
+ * An organization's paid plan, kept in step with Stripe by the billing
+ * webhook. No row = the Free plan. Ignored while billing is switched off.
+ */
+export const organizationSubscriptions = pgTable("organization_subscriptions", {
+  organizationId: uuid("organization_id")
+    .primaryKey()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  plan: text("plan").notNull(), // a PlanId from src/lib/billing/plans.ts
+  interval: text("interval").notNull(), // "month" | "year"
+  /** Stripe subscription status: active, trialing, past_due, canceled, unpaid, incomplete… */
+  status: text("status").notNull(),
+  seats: integer("seats").notNull().default(1),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id").unique(),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -375,13 +441,15 @@ export const players = pgTable(
     waiverStatus: waiverStatus("waiver_status").notNull().default("required"),
     injuryStatus: text("injury_status"),
     proGamesPlayed: integer("pro_games_played").notNull().default(0),
+    /** NHL player id when the player came from (or was matched to) NHL data; links photos and league stats. */
+    nhlPlayerId: text("nhl_player_id"),
     notes: text("notes"),
     sourceId: uuid("source_id").references(() => dataSources.id),
     provenance: dataProvenance("provenance").notNull().default("user_entered"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("players_org_idx").on(t.organizationId)],
+  (t) => [index("players_org_idx").on(t.organizationId), uniqueIndex("players_org_nhl_id").on(t.organizationId, t.nhlPlayerId)],
 );
 
 export const rosters = pgTable("rosters", {

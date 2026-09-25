@@ -85,6 +85,41 @@
       "when": 1790287637110,
       "tag": "0011_team_standings",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790300321427,
+      "tag": "0012_organization_invites",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790301240181,
+      "tag": "0013_user_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790302465786,
+      "tag": "0014_organization_subscriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790335185224,
+      "tag": "0015_nhl_club_import",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790336287197,
+      "tag": "0016_organization_program",
+      "breakpoints": true
     }
   ]
 }

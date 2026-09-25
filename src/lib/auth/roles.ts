@@ -96,6 +96,23 @@ const CAPABILITY_MIN_TIER: Record<Capability, number> = {
   assign_followups: 3,
 };
 
+/** Seniority tier (0 viewer … 5 admin). Used to stop anyone granting a role above their own. */
+export function roleTier(role: OrgRole): number {
+  return ROLE_TIER[role];
+}
+
 export function roleHasCapability(role: OrgRole, capability: Capability): boolean {
   return ROLE_TIER[role] >= CAPABILITY_MIN_TIER[capability];
+}
+
+const ROLE_LABEL_OVERRIDES: Partial<Record<OrgRole, string>> = {
+  general_manager: "General Manager",
+  assistant_gm: "Assistant GM",
+  nil_admin: "NIL Admin",
+  scouting_asst_director: "Asst. Scouting Director",
+};
+
+/** "org_admin" → "Org Admin"; hockey titles spelled out where the id abbreviates them. */
+export function roleLabel(role: string): string {
+  return ROLE_LABEL_OVERRIDES[role as OrgRole] ?? role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }

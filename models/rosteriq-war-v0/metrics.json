@@ -1,0 +1,166 @@
+{
+ "model": "rosteriq-war-v0",
+ "goals_per_win_from_seasons": [
+  20212022,
+  20222023,
+  20232024,
+  20242025,
+  20252026
+ ],
+ "seasons": {
+  "20242025": {
+   "season": 20242025,
+   "shots_matched_to_stints": {
+    "shots_matched": 106353,
+    "strength_agreement": 0.9914
+   },
+   "ev5_hours": 1021.6,
+   "rapm": {
+    "ev5": {
+     "alpha": 64000.0,
+     "cv_weighted_mse": {
+      "4000.0": 126.437,
+      "16000.0": 126.337,
+      "64000.0": 126.315,
+      "256000.0": 126.39
+     },
+     "intercept_xg60": 2.224,
+     "home_trailing_leading_xg60": [
+      0.13,
+      0.121,
+      -0.012
+     ]
+    },
+    "pp5v4": {
+     "alpha": 16000.0,
+     "cv_weighted_mse": {
+      "1000.0": 176.642,
+      "4000.0": 175.19,
+      "16000.0": 174.965,
+      "64000.0": 175.462
+     },
+     "intercept_xg60": 6.206
+    }
+   },
+   "replacement": {
+    "off": {
+     "F": -0.0315,
+     "D": -0.026
+    },
+    "def": {
+     "F": -0.0008,
+     "D": 0.0229
+    },
+    "pp_off": {
+     "F": -0.0727,
+     "D": -0.1074
+    },
+    "sh_def": {
+     "F": -0.0154,
+     "D": -0.0517
+    },
+    "pen_net_60": {
+     "F": -0.0063,
+     "D": -0.379
+    },
+    "fin_60": {
+     "F": -0.1714,
+     "D": -0.0195
+    }
+   },
+   "goalie_replacement_gsax_per_xg": -0.1576,
+   "penalty_value_goals": 0.1338,
+   "minutes_of_5v4_per_minor": 1.259,
+   "goals_per_win": 6.11,
+   "split_half_reliability_ev5": {
+    "off": {
+     "players": 501,
+     "r_half": 0.512,
+     "r_full_spearman_brown": 0.677
+    },
+    "def": {
+     "players": 501,
+     "r_half": 0.362,
+     "r_full_spearman_brown": 0.532
+    }
+   }
+  },
+  "20252026": {
+   "season": 20252026,
+   "shots_matched_to_stints": {
+    "shots_matched": 111066,
+    "strength_agreement": 0.9901
+   },
+   "ev5_hours": 1057.2,
+   "rapm": {
+    "ev5": {
+     "alpha": 64000.0,
+     "cv_weighted_mse": {
+      "4000.0": 136.02,
+      "16000.0": 135.919,
+      "64000.0": 135.895,
+      "256000.0": 135.975
+     },
+     "intercept_xg60": 2.296,
+     "home_trailing_leading_xg60": [
+      0.121,
+      0.224,
+      0.035
+     ]
+    },
+    "pp5v4": {
+     "alpha": 16000.0,
+     "cv_weighted_mse": {
+      "1000.0": 215.717,
+      "4000.0": 213.655,
+      "16000.0": 213.116,
+      "64000.0": 213.664
+     },
+     "intercept_xg60": 6.954
+    }
+   },
+   "replacement": {
+    "off": {
+     "F": -0.0361,
+     "D": -0.0219
+    },
+    "def": {
+     "F": -0.0101,
+     "D": 0.0185
+    },
+    "pp_off": {
+     "F": -0.0143,
+     "D": -0.0002
+    },
+    "sh_def": {
+     "F": 0.0216,
+     "D": -0.0164
+    },
+    "pen_net_60": {
+     "F": -0.0427,
+     "D": -0.2962
+    },
+    "fin_60": {
+     "F": -0.1215,
+     "D": -0.0323
+    }
+   },
+   "goalie_replacement_gsax_per_xg": -0.0856,
+   "penalty_value_goals": 0.1386,
+   "minutes_of_5v4_per_minor": 1.3,
+   "goals_per_win": 6.11,
+   "split_half_reliability_ev5": {
+    "off": {
+     "players": 507,
+     "r_half": 0.57,
+     "r_full_spearman_brown": 0.726
+    },
+    "def": {
+     "players": 507,
+     "r_half": 0.36,
+     "r_full_spearman_brown": 0.53
+    }
+   }
+  }
+ }
+}

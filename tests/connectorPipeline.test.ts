@@ -181,6 +181,20 @@ describe("gated connector imports", () => {
     expect(entries.every((e) => e.season === "2024-25")).toBe(true);
   });
 
+  it("roster ALL: one request per club, every club's players in one preview", async () => {
+    const chi = manifest.find((m) => m.url.includes("/roster/CHI/20242025"))!;
+    const body = fs.readFileSync(path.join(FIX, chi.file), "utf8");
+    const calls: string[] = [];
+    const impl: FetchImpl = async (url) => {
+      calls.push(url);
+      return { status: 200, headers: { get: () => "application/json" }, text: async () => body };
+    };
+    const res = await run({ dataset: "nhl_roster", team: "ALL", season: "2024-25" }, { impl, calls }, fx.orgId, { bypassCache: true });
+    expect(calls).toHaveLength(32);
+    expect(new Set(calls.map((u) => u.split("/roster/")[1]!.slice(0, 3))).size).toBe(32);
+    expect(res).toMatchObject({ validCount: 32 * 24, errorCount: 0 });
+  });
+
   it("game logs: two requests per player, NULL goalie fields for skaters, upsert on re-import", async () => {
     const f = fixtureFetch();
     const res = await run({ dataset: "nhl_game_logs", playerIds: ["8478402", "8476945"], season: "2024-25", gameType: "regular" }, f);

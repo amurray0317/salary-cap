@@ -40,6 +40,23 @@ export const RANKING_CATEGORIES = [
 /* URL builders (validated inputs only)                                */
 /* ------------------------------------------------------------------ */
 
+/** The 32 NHL clubs' tri-codes (2026-27). */
+export const NHL_TEAMS = [
+  "ANA", "BOS", "BUF", "CAR", "CBJ", "CGY", "CHI", "COL", "DAL", "DET", "EDM", "FLA", "LAK", "MIN", "MTL", "NJD",
+  "NSH", "NYI", "NYR", "OTT", "PHI", "PIT", "SEA", "SJS", "STL", "TBL", "TOR", "UTA", "VAN", "VGK", "WPG", "WSH",
+] as const;
+
+/** Full club names by tri-code (2026-27). */
+export const NHL_TEAM_NAMES: Record<(typeof NHL_TEAMS)[number], string> = {
+  ANA: "Anaheim Ducks", BOS: "Boston Bruins", BUF: "Buffalo Sabres", CAR: "Carolina Hurricanes", CBJ: "Columbus Blue Jackets",
+  CGY: "Calgary Flames", CHI: "Chicago Blackhawks", COL: "Colorado Avalanche", DAL: "Dallas Stars", DET: "Detroit Red Wings",
+  EDM: "Edmonton Oilers", FLA: "Florida Panthers", LAK: "Los Angeles Kings", MIN: "Minnesota Wild", MTL: "Montréal Canadiens",
+  NJD: "New Jersey Devils", NSH: "Nashville Predators", NYI: "New York Islanders", NYR: "New York Rangers", OTT: "Ottawa Senators",
+  PHI: "Philadelphia Flyers", PIT: "Pittsburgh Penguins", SEA: "Seattle Kraken", SJS: "San Jose Sharks", STL: "St. Louis Blues",
+  TBL: "Tampa Bay Lightning", TOR: "Toronto Maple Leafs", UTA: "Utah Mammoth", VAN: "Vancouver Canucks", VGK: "Vegas Golden Knights",
+  WPG: "Winnipeg Jets", WSH: "Washington Capitals",
+};
+
 export function assertTeam(team: string): string {
   const t = team.trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(t)) throw new ConnectorParseError("Team must be a 3-letter NHL tri-code (e.g. CHI)");
