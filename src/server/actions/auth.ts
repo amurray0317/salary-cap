@@ -6,7 +6,10 @@ import { z } from "zod";
 import { getDb, schema } from "@/db/client";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, destroySession, setSessionCookie } from "@/lib/auth/session";
+import { cookies } from "next/headers";
 import { writeAudit } from "@/server/context";
+import { ORG_COOKIE } from "@/server/appContext";
+import { InviteError, acceptInvite, lookupInvite, registrationMode } from "@/server/services/inviteService";
 
 const registerSchema = z.object({
   fullName: z.string().min(1, "Name is required").max(120),
@@ -26,6 +29,14 @@ export async function registerAction(_prev: AuthFormState, formData: FormData): 
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const invite = String(formData.get("invite") ?? "").trim();
+  if (invite) {
+    const info = await lookupInvite(invite);
+    if (info.status !== "valid") return { error: "This invite link is no longer valid. Ask for a new one." };
+    if (info.email && info.email !== parsed.data.email) return { error: "This invite is for a different email address." };
+  } else if (registrationMode() === "invite_only") {
+    return { error: "New accounts need an invite link from an organization admin." };
   }
   const db = getDb();
   const existing = await db
@@ -54,7 +65,24 @@ export async function registerAction(_prev: AuthFormState, formData: FormData): 
   });
   const token = await createSession(user.id);
   await setSessionCookie(token);
+  if (invite) {
+    try {
+      const orgId = await acceptInvite({ token: invite, userId: user.id, userEmail: user.email });
+      (await cookies()).set(ORG_COOKIE, orgId, { httpOnly: true, sameSite: "lax", path: "/" });
+      redirect("/dashboard");
+    } catch (err) {
+      // Account exists either way; the join page explains what went wrong.
+      if (err instanceof InviteError) redirect(`/invite/${encodeURIComponent(invite)}`);
+      throw err;
+    }
+  }
   redirect("/onboarding");
+}
+
+/** Only same-site paths under /invite/ are accepted as a post-login destination. */
+function safeNext(v: FormDataEntryValue | null): string | null {
+  const s = String(v ?? "");
+  return /^\/invite\/[A-Za-z0-9_-]{16,64}$/.test(s) ? s : null;
 }
 
 const loginSchema = z.object({
@@ -80,7 +108,7 @@ export async function loginAction(_prev: AuthFormState, formData: FormData): Pro
   }
   const token = await createSession(user.id);
   await setSessionCookie(token);
-  redirect("/dashboard");
+  redirect(safeNext(formData.get("next")) ?? "/dashboard");
 }
 
 export async function logoutAction(): Promise<void> {

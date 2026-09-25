@@ -116,6 +116,8 @@ Copy `.env.example` to `.env`. Everything is optional in local mode:
 - `DATABASE_URL` — managed Postgres; unset = embedded PGlite in `.data/`
 - `PGLITE_DATA_DIR` — override the local data directory
 - `AUTH_PROVIDER` — `local` (default) or `supabase`
+- `REGISTRATION_MODE=invite_only` — only people with an invite link (Settings → Invite people) can
+  create an account; unset = open sign-up
 - `SESSION_SECRET` — required in production for the local provider
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — Supabase mode
 - `LLM_PROVIDER`, `LLM_API_KEY` — reserved for the future AI assistant (off by default)

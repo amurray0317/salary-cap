@@ -5,7 +5,8 @@ import { AuthForm } from "@/components/AuthForm";
 
 export const metadata: Metadata = { title: "Sign in" };
 
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const { next } = await searchParams;
   return (
     <div className="w-full max-w-sm">
       <Link href="/" className="mb-8 flex items-center gap-2 lg:hidden">
@@ -17,6 +18,7 @@ export default function LoginPage() {
         Demo: gm@aurora.demo / rosteriq-demo
       </p>
       <AuthForm
+        hidden={next ? { next } : {}}
         action={loginAction}
         submitLabel="Sign in"
         fields={[

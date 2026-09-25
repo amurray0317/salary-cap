@@ -208,6 +208,32 @@ export const organizations = pgTable("organizations", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Invitations to join an organization with a given role. Only a SHA-256 of
+ * the link token is stored; the link itself is shown once to the admin who
+ * created it. Valid while not revoked, not expired and under max_uses.
+ */
+export const organizationInvites = pgTable(
+  "organization_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    role: orgRole("role").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    /** Optional: only this email may accept. */
+    email: text("email"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    maxUses: integer("max_uses").notNull().default(1),
+    uses: integer("uses").notNull().default(0),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("organization_invites_token").on(t.tokenHash)],
+);
+
 export const organizationMembers = pgTable(
   "organization_members",
   {

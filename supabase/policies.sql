@@ -210,3 +210,11 @@ alter table ext_team_standings enable row level security;
 create policy ext_team_standings_rw on ext_team_standings
   for all using (is_org_member(organization_id))
   with check (is_org_member(organization_id));
+
+-- Organization invites (migration 0012). Members can see their organization's
+-- invites; creating, revoking and accepting go through the server, which
+-- checks the admin capability and the hashed token.
+alter table organization_invites enable row level security;
+create policy organization_invites_rw on organization_invites
+  for all using (is_org_member(organization_id))
+  with check (is_org_member(organization_id));

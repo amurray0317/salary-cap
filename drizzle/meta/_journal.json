@@ -85,6 +85,13 @@
       "when": 1790287637110,
       "tag": "0011_team_standings",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790300321427,
+      "tag": "0012_organization_invites",
+      "breakpoints": true
     }
   ]
 }

@@ -96,6 +96,11 @@ const CAPABILITY_MIN_TIER: Record<Capability, number> = {
   assign_followups: 3,
 };
 
+/** Seniority tier (0 viewer … 5 admin). Used to stop anyone granting a role above their own. */
+export function roleTier(role: OrgRole): number {
+  return ROLE_TIER[role];
+}
+
 export function roleHasCapability(role: OrgRole, capability: Capability): boolean {
   return ROLE_TIER[role] >= CAPABILITY_MIN_TIER[capability];
 }

@@ -14,14 +14,20 @@ export function AuthForm({
   action,
   fields,
   submitLabel,
+  hidden = {},
 }: {
   action: (prev: AuthFormState, formData: FormData) => Promise<AuthFormState>;
   fields: Field[];
   submitLabel: string;
+  /** Extra values sent with the form (e.g. an invite token or where to go next). */
+  hidden?: Record<string, string>;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   return (
     <form action={formAction} className="space-y-4">
+      {Object.entries(hidden).map(([k, v]) => (
+        <input key={k} type="hidden" name={k} value={v} />
+      ))}
       {fields.map((f) => (
         <label key={f.name} className="block">
           <span className="mb-1 block text-sm text-ink-secondary">{f.label}</span>
