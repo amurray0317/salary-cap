@@ -234,7 +234,11 @@ def goals_per_win(seasons: list[int]) -> float:
 
 def main(argv: list[str]) -> None:
     seasons = [int(a) for a in argv]
-    gpw = goals_per_win(seasons)
+    # Goals per win from every season with a game table (more team-seasons, steadier slope).
+    from rosteriq_models.games.build import OUT as GAMES
+
+    gpw_seasons = sorted(int(f.name.split(".")[0]) for f in GAMES.glob("*.csv.gz"))
+    gpw = goals_per_win(gpw_seasons or seasons)
     OUT.mkdir(parents=True, exist_ok=True)
     cards = {}
     for s in seasons:
@@ -244,7 +248,7 @@ def main(argv: list[str]) -> None:
         top = df[df["kind"] == "skater"].head(10)[["name", "team", "pos", "war"]]
         print(json.dumps(card, indent=1, default=str))
         print(top.round(2).to_string())
-    (OUT / "metrics.json").write_text(json.dumps({"model": "rosteriq-war-v0", "seasons": cards}, indent=1, default=str))
+    (OUT / "metrics.json").write_text(json.dumps({"model": "rosteriq-war-v0", "goals_per_win_from_seasons": gpw_seasons, "seasons": cards}, indent=1, default=str))
 
 
 if __name__ == "__main__":

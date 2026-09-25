@@ -185,6 +185,52 @@ exercise the workflow, not to describe real athletes.
   from non-random movers and league-level only; goalies not modelled.
 - **Status**: active. Next: 2027 pre-draft scoring (Central Scouting list + season-to-date rates).
 
+## Model card: rosteriq-games-v0 — Win drivers and pre-game win probability
+
+- **Question**: which stats go with winning inside a game (descriptive), and what, known
+  before puck drop, predicts the winner (predictive). Target: home team wins, OT and shootout
+  included (the moneyline result); regular season.
+- **Data**: NHL play-by-play 2021-22 to 2025-26 (6,560 games) + RosterIQ xG v1. Game tables
+  reconciled exactly to the NHL's 2025-26 totals (goals 8,086 excluding shootouts, 5v5 goals
+  5,362, power-play goals 1,565, empty-net goals 508, points 2,950, 119 shootouts).
+- **Descriptive** (leader of the stat in that game won): more power-play goals 71.3%, scored
+  first 67.1%, more 5v5 xG 61.8%, more xG 60.1%, more shots on goal 55.1%, more faceoffs 52.0%,
+  more hits 43.5%, more blocked shots 41.2% (score effects: trailing teams hit and get blocked).
+- **Predictive** (walk-forward: each of 2022-23 to 2025-26 predicted by a model trained on
+  earlier seasons only; 5,248 games; season-to-date rates shrunk to a prior worth 10 games):
+  log loss home ice 0.6906, points % 0.6748, Elo 0.6704, **compact 0.6646** (5v5 xG share,
+  starting goalie's saves above expected, special teams, points %, rest, back-to-back; chosen
+  before testing), every feature 0.6659. Compact vs Elo −0.006 [−0.010, −0.002]; vs points %
+  −0.010 [−0.014, −0.006]. Picks 58.8% of winners (published ceiling ≈ 62%). Best single input:
+  5v5 xG share; save % adds nothing; goalie and rest effects small. Slightly overconfident at
+  the extremes (calibration table in the card and the app).
+- **Live (2026-27)**: probabilities frozen at 10:00 UTC with the expected starter (checked on 56
+  games of 2025-26: identical to the backtest when the guess is right, mean |diff| 0.009) and
+  scored after each final against home ice and Elo.
+- **Limits**: no odds, so no closing-line-value test (the real test for betting use); xG is
+  in-sample for the shot model; travel and injuries not modelled.
+
+## Model card: rosteriq-war-v0 — Wins above replacement
+
+- **Method**: stints from NHL shift charts (skater and goalie on-ice sets; strength agrees
+  with play-by-play on 99.0–99.1% of shots); weighted ridge RAPM on xG per 60 at 5v5 (home ice
+  and score state as covariates; penalty by grouped 5-fold CV) and at 5v4 (power play vs
+  penalty kill); penalties drawn − taken × the net goal value of a power play (0.139 goals in
+  2025-26); finishing = goals − individual xG; goalies = xG faced − goals. Replacement level:
+  players outside each team's top 13 F / 7 D by ice time (goalies outside the top 64 by xG
+  faced). Goals per win 6.11 (team records 2021-22 to 2025-26).
+- **Seasons**: 2024-25 (1,255 of 1,312 games; the NHL did not publish shift charts for 57) and
+  2025-26 (all 1,312). 2021-22 to 2023-24 follow once their shift charts are processed.
+- **Reliability**: split-half (odd/even games) 5v5 offence 0.73, defence 0.53 (Spearman-Brown);
+  2024-25 → 2025-26 for 488 skaters with 500+ 5v5 minutes both years: offence 0.58, defence
+  0.36, power play 0.47, WAR 0.49. Goalie saves above expected per xG repeat at 0.07 (47 goalies).
+- **Face validity (2025-26)**: MacKinnon 4.0, Caufield 3.7, Kucherov 3.6, Robertson, McDavid,
+  Celebrini 3.3; defence led by Werenski.
+- **Differences from Evolving-Hockey (the public reference; paywalled, not compared
+  number-for-number)**: xG rather than goals as the RAPM target, no box-score (SPM) stage, no
+  zone-start or prior-season priors, so totals run smaller. Goalie WAR depends heavily on the
+  replacement level (−8.6% of xG faced in 2025-26).
+
 ## Surplus value
 
 `surplus = performanceValue − capHit` — see CALCULATIONS.md. Stored per player/season/model in

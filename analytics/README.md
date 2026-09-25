@@ -50,6 +50,18 @@ cd analytics
 #    (needs: npm run data:fetch -- --rank-links 2008-2019 --nhl-seasons 2005-2025)
 ../.venv/bin/python -m rosteriq_models.prospects.v2 --train 2005-2013 --valid 2014-2015 --test 2016-2019
 
+# 9. Games: team-game tables (play-by-play + xG), win drivers, and the walk-forward
+#    pre-game model; writes models/rosteriq-games-v0/{metrics,model,priors}.json
+#    (needs: npm run data:fetch -- --pbp 20212022,20222023,20232024,20242025,20252026)
+../.venv/bin/python -m rosteriq_models.games.build 20212022 20222023 20232024 20242025 20252026
+../.venv/bin/python -m rosteriq_models.games.evaluate 20212022 20222023 20232024 20242025 20252026
+#    Live (the nightly job runs this): freeze a day's probabilities, score finished games
+../.venv/bin/python -m rosteriq_models.games.predict --season 20262027 --score --date 2026-10-06
+
+# 10. WAR: stints from shift charts, RAPM, components; writes models/rosteriq-war-v0/
+#     (needs step 9's game tables for goals per win, and: npm run data:fetch -- --shifts <seasons>)
+../.venv/bin/python -m rosteriq_models.war.war 20242025 20252026
+
 # Before opening night: rehearse the nightly xG run on a completed season
 # (writes to copies of the model files; models/ is untouched)
 ../.venv/bin/python -m rosteriq_models.xg.score --season 20252026 --rehearse /tmp/xg-rehearsal
