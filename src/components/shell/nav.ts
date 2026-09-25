@@ -34,6 +34,23 @@ const LATER_LEAGUES = "Planned: as league data sources are connected.";
 export const NAV: NavSection[] = [
   /* ------------------------------------------------------------ Hockey ops */
   {
+    id: "leagues",
+    label: "Leagues",
+    icon: "◎",
+    area: "Hockey ops",
+    groups: [
+      {
+        items: [
+          {
+            label: "League directory",
+            planned: "Planned: every league we track, with standings, stats, teams and how complete our data is (see LEAGUE_COVERAGE).",
+          },
+          { label: "Junior & minor pro (HockeyTech)", planned: "Planned: OHL, WHL, QMJHL, USHL, AHL, ECHL pages; data connector built." },
+        ],
+      },
+    ],
+  },
+  {
     id: "teams",
     label: "Teams",
     icon: "⌂",
@@ -124,7 +141,7 @@ export const NAV: NavSection[] = [
         label: "Dev / coaching tools",
         items: [
           { label: "Drill library", planned: MANUAL },
-          { label: "Development video", planned: "Planned: video links (YouTube, Vimeo, Drive)." },
+          { label: "Development video", planned: "Planned: development clips, in the Video library." },
         ],
       },
     ],
@@ -143,6 +160,20 @@ export const NAV: NavSection[] = [
           { label: "Mock drafts", planned: "Planned: simulate the draft with the model, Central Scouting and team needs." },
           { label: "War room", planned: "Planned for June 2027: live board, picks crossed off, best available with reasons." },
           { label: "Re-drafts & class reviews", planned: "Planned: past drafts re-ordered by outcomes vs how our model ranked them." },
+        ],
+      },
+    ],
+  },
+  {
+    id: "video",
+    label: "Video",
+    icon: "▶",
+    area: "Scouting & draft",
+    groups: [
+      {
+        items: [
+          { label: "Clip library", planned: "Planned: clips by player, game and tag (links to YouTube, Vimeo or Drive; no uploads)." },
+          { label: "Tagging & playlists", planned: MANUAL },
         ],
       },
     ],
@@ -193,6 +224,7 @@ export const NAV: NavSection[] = [
           { label: "Our players", href: "/players" },
           { label: "NHL players", href: "/real-data/players" },
           { label: "NCAA players", href: "/scouting/players" },
+          { label: "League leaders", planned: "Planned: leaders by league and category (points, xG, rates), all connected leagues." },
           { label: "Player comparison", planned: "Planned: 2–4 players side by side (stats, xG, model breakdowns, contracts)." },
           { label: "Other leagues' players", planned: LATER_LEAGUES },
         ],
@@ -379,6 +411,20 @@ export const NAV: NavSection[] = [
 
   /* ------------------------------------------------------------- Me & data */
   {
+    id: "feed",
+    label: "Feed",
+    icon: "☷",
+    area: "Me & data",
+    groups: [
+      {
+        items: [
+          { label: "My feed", planned: "Planned: prospect breakouts, new Central Scouting lists, standings moves, alerts, in one stream." },
+          { label: "News & notes", planned: "Planned: NHL transactions (source to verify) and our own research write-ups." },
+        ],
+      },
+    ],
+  },
+  {
     id: "calendar",
     label: "Calendar & key dates",
     icon: "▦",
@@ -404,6 +450,7 @@ export const NAV: NavSection[] = [
         items: [
           { label: "Scouting dashboard", href: "/scouting" },
           { label: "Watchlists", href: "/scouting/watchlists" },
+          { label: "Smart lists", planned: "Planned: saved searches that refresh themselves (e.g. OHL D, draft year, > 1.0 P/GP)." },
           { label: "Scouting assignments", href: "/scouting/assignments" },
           { label: "Organizational needs", href: "/scouting/needs" },
           { label: "Role finder", href: "/scouting/roles" },
@@ -433,7 +480,14 @@ export const NAV: NavSection[] = [
     label: "Profile",
     icon: "◉",
     area: "Me & data",
-    groups: [{ items: [{ label: "Profile & settings", href: "/settings" }] }],
+    groups: [
+      {
+        items: [
+          { label: "Profile & settings", href: "/settings" },
+          { label: "Plan & billing", planned: "Planned only if RosterIQ becomes a product (needs licensed data first)." },
+        ],
+      },
+    ],
   },
 ];
 
