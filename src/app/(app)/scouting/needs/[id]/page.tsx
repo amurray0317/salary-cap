@@ -161,7 +161,7 @@ export default async function NeedDetailPage({
   }
 
   const selectCls =
-    "rounded-md border border-line bg-navy-900 px-2 py-1.5 text-sm text-ink-secondary focus:border-accent focus:outline-none";
+    "rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink-secondary focus:border-accent focus:outline-none";
 
   return (
     <div className="space-y-4">
@@ -305,7 +305,7 @@ export default async function NeedDetailPage({
                 </thead>
                 <tbody>
                   {pageRows.map((r) => (
-                    <tr key={r.f.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                    <tr key={r.f.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                       <Td><input type="checkbox" name="ids" value={r.p.id} aria-label={`Compare ${r.p.fullName}`} /></Td>
                       <Td right className="text-ink-muted">{rankOf.get(r.f.id)}</Td>
                       <Td>
@@ -364,7 +364,7 @@ export default async function NeedDetailPage({
       )}
 
       {canManage && (
-        <details className="rounded-lg border border-line bg-navy-900 px-4 py-3">
+        <details className="rounded-lg border border-line bg-surface px-4 py-3">
           <summary className="cursor-pointer text-sm font-medium">Edit need</summary>
           <div className="mt-3">
             <NeedForm

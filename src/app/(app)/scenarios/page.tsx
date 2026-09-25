@@ -74,7 +74,7 @@ export default async function ScenariosPage() {
             </thead>
             <tbody>
               {[...active, ...archived].map(({ scenario, teamName, seasonName }) => (
-                <tr key={scenario.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                <tr key={scenario.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                   <Td>
                     <Link href={`/scenarios/${scenario.id}`} className="font-medium hover:text-accent-text">
                       {scenario.name}
@@ -91,8 +91,8 @@ export default async function ScenariosPage() {
                         scenario.status === "active"
                           ? "bg-accent-soft text-accent-text"
                           : scenario.status === "archived"
-                            ? "bg-navy-800 text-ink-muted"
-                            : "bg-navy-800 text-ink-secondary"
+                            ? "bg-track text-ink-muted"
+                            : "bg-track text-ink-secondary"
                       }`}
                     >
                       {scenario.status}

@@ -258,3 +258,23 @@ export async function listProspectProjections(organizationId: string, opts: { ye
           .orderBy(asc(t.overallPick));
   return { years: years.map((y) => y.year), year: year ?? null, rows };
 }
+
+/** Latest imported standings for one season (default: the newest imported), regular season first. */
+export async function listStandings(organizationId: string, opts: { season?: string; gameType?: string }) {
+  const db = getDb();
+  const t = schema.extTeamStandings;
+  const scope = eq(t.organizationId, organizationId);
+  const seasons = await db.selectDistinct({ season: t.season }).from(t).where(scope).orderBy(desc(t.season));
+  const season = opts.season ?? seasons[0]?.season;
+  const gameType = opts.gameType ?? "regular";
+  const rows =
+    season === undefined
+      ? []
+      : await db
+          .select()
+          .from(t)
+          .where(and(scope, eq(t.season, season), eq(t.gameType, gameType)))
+          .orderBy(asc(t.leagueRank), desc(t.points));
+  const asOf = rows.reduce<string | null>((a, r) => (a === null || r.standingsDate > a ? r.standingsDate : a), null);
+  return { seasons: seasons.map((s) => s.season), season: season ?? null, gameType, asOf, rows };
+}

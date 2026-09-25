@@ -43,7 +43,7 @@ export default async function ProspectReportExport({ params }: { params: Promise
 
   return (
     <div className="mx-auto max-w-3xl bg-white p-8 text-neutral-900 print:p-0" style={{ colorScheme: "light" }}>
-      <div className="no-print mb-4 flex justify-between rounded-md border border-line bg-navy-900 p-3 text-ink">
+      <div className="no-print mb-4 flex justify-between rounded-md border border-line bg-surface p-3 text-ink">
         <span className="text-sm">Print-optimized scouting report — use Print → Save as PDF.</span>
         <span className="text-sm text-ink-muted">Ctrl/Cmd + P</span>
       </div>

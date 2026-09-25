@@ -117,7 +117,7 @@ export default async function NeedsPage({ searchParams }: { searchParams: Promis
                 {visible.map((n) => {
                   const run = latestRunByNeed.get(n.id);
                   return (
-                    <tr key={n.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                    <tr key={n.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                       <Td>
                         <Link href={`/scouting/needs/${n.id}`} className="font-medium hover:text-accent-text">
                           {n.name}

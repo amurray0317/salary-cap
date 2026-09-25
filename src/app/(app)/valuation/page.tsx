@@ -84,7 +84,7 @@ export default async function ValuationPage() {
                 {rows.map(({ valuation, player }) => {
                   const s = surplusByPlayer.get(player.id);
                   return (
-                    <tr key={valuation.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                    <tr key={valuation.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                       <Td>
                         <Link href={`/players/${player.id}`} className="font-medium hover:text-accent-text">
                           {player.fullName}

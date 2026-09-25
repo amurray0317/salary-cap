@@ -34,7 +34,7 @@ export default async function RealDataPlayersPage({ searchParams }: { searchPara
             name="q"
             defaultValue={q ?? ""}
             placeholder="Search by name…"
-            className="w-56 rounded-md border border-line bg-navy-950 px-3 py-1.5 text-sm"
+            className="w-56 rounded-md border border-line bg-canvas px-3 py-1.5 text-sm"
           />
           <button className="rounded-md border border-line px-3 py-1.5 text-sm text-ink-secondary hover:text-ink">Search</button>
         </form>
@@ -63,7 +63,7 @@ export default async function RealDataPlayersPage({ searchParams }: { searchPara
               </thead>
               <tbody>
                 {players.map((p) => (
-                  <tr key={`${p.bioSource ?? "nhl"}-${p.externalId}`} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                  <tr key={`${p.bioSource ?? "nhl"}-${p.externalId}`} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                     <Td>
                       {p.bioSource === "eliteprospects" ? (
                         <span className="font-medium">{p.name}</span>

@@ -45,6 +45,15 @@ cd analytics
 #    (needs: npm run data:fetch -- --rankings 2008-2026); written into the committed card
 ../.venv/bin/python -m rosteriq_models.prospects.css --train 2008-2015 --test 2016-2019
 
+# 8. Prospect model v2 research: tiers, the full ranked population, benchmarks
+#    vs draft position and Central Scouting final + midterm ranks
+#    (needs: npm run data:fetch -- --rank-links 2008-2019 --nhl-seasons 2005-2025)
+../.venv/bin/python -m rosteriq_models.prospects.v2 --train 2005-2013 --valid 2014-2015 --test 2016-2019
+
+# Before opening night: rehearse the nightly xG run on a completed season
+# (writes to copies of the model files; models/ is untouched)
+../.venv/bin/python -m rosteriq_models.xg.score --season 20252026 --rehearse /tmp/xg-rehearsal
+
 # Tests
 ../.venv/bin/pytest -q tests
 ```

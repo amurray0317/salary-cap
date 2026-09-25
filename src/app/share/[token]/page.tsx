@@ -60,9 +60,9 @@ export default async function SharedReportPage({ params }: { params: Promise<{ t
     <main className="mx-auto max-w-3xl px-6 py-10">
       <header className="border-b border-line pb-4">
         <div className="mb-2 flex items-center gap-2">
-          <span className="inline-block h-5 w-5 rounded bg-accent" aria-hidden />
+          <span className="inline-block h-5 w-5 rounded bg-linear-to-br from-ice-bright to-accent" aria-hidden />
           <span className="font-semibold">RosterIQ</span>
-          <span className="ml-2 rounded bg-navy-800 px-2 py-0.5 text-xs text-ink-secondary">
+          <span className="ml-2 rounded bg-track px-2 py-0.5 text-xs text-ink-secondary">
             Shared read-only report
           </span>
         </div>
@@ -124,7 +124,7 @@ export default async function SharedReportPage({ params }: { params: Promise<{ t
           <h2 className="mb-2 text-sm font-medium text-ink-secondary">Cap charges by line</h2>
           <div className="max-h-96 overflow-auto rounded-md border border-line">
             <table className="w-full">
-              <thead className="sticky top-0 bg-navy-900">
+              <thead className="sticky top-0 bg-surface">
                 <tr className="border-b border-line">
                   <th className={th}>Line</th>
                   <th className={th}>Category</th>

@@ -47,7 +47,7 @@ export default async function RoleFinderPage({ searchParams }: { searchParams: P
         <select
           name="role"
           defaultValue={selected?.key}
-          className="rounded-md border border-line bg-navy-900 px-2 py-1.5 text-sm text-ink-secondary focus:border-accent focus:outline-none"
+          className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink-secondary focus:border-accent focus:outline-none"
         >
           {archetypes.map((a) => (
             <option key={a.key} value={a.key}>[{a.positionGroup}] {a.label}</option>
@@ -74,7 +74,7 @@ export default async function RoleFinderPage({ searchParams }: { searchParams: P
             </thead>
             <tbody>
               {ranked.map((r, i) => (
-                <tr key={r.score.id} className="border-b border-line/50 last:border-0 hover:bg-navy-850">
+                <tr key={r.score.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
                   <Td right className="text-ink-muted">{i + 1}</Td>
                   <Td>
                     <Link href={`/scouting/players/${r.p.id}`} className="font-medium hover:text-accent-text">{r.p.fullName}</Link>

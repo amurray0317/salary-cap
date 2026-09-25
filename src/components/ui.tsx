@@ -14,14 +14,14 @@ export function Card({
   className?: string;
 }) {
   return (
-    <section className={`rounded-lg border border-line bg-navy-900 ${className}`}>
+    <section className={`rounded-lg border border-line bg-surface ${className}`}>
       {(title || action) && (
-        <header className="flex items-center justify-between border-b border-line px-4 py-3">
+        <header className="flex items-center justify-between border-b border-line px-3.5 py-2">
           {title && <h2 className="text-sm font-medium text-ink-secondary">{title}</h2>}
           {action}
         </header>
       )}
-      <div className="p-4">{children}</div>
+      <div className="p-3.5">{children}</div>
     </section>
   );
 }
@@ -40,7 +40,7 @@ export function StatTile({
   const toneClass =
     tone === "good" ? "text-good" : tone === "warn" ? "text-warn" : tone === "critical" ? "text-critical" : "text-ink";
   return (
-    <div className="rounded-lg border border-line bg-navy-900 px-4 py-3">
+    <div className="rounded-lg border border-line bg-surface px-3.5 py-2.5">
       <div className="text-xs uppercase tracking-wide text-ink-muted">{label}</div>
       <div className={`mt-1 text-2xl font-semibold tabular-nums ${toneClass}`}>{value}</div>
       {detail && <div className="mt-0.5 text-xs text-ink-muted">{detail}</div>}
@@ -73,9 +73,9 @@ export function CapMeter({
           {moneyCompact(value)} <span className="text-ink-muted">/ {moneyCompact(limit)}</span>
         </span>
       </div>
-      <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded bg-navy-800" role="img" aria-label={`${label}: ${money(value)} of ${money(limit)}`}>
+      <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded bg-track" role="img" aria-label={`${label}: ${money(value)} of ${money(limit)}`}>
         <div
-          className={`h-full rounded ${over ? "bg-critical" : "bg-accent"}`}
+          className={`h-full rounded ${over ? "bg-critical" : "bg-ice"}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -88,7 +88,7 @@ const SEVERITY_META: Record<CapViolation["severity"], { label: string; icon: str
   blocking: { label: "Blocking", icon: "⛔", cls: "border-critical/40 bg-critical/10 text-critical" },
   requires_review: { label: "Requires review", icon: "⚑", cls: "border-warn/40 bg-warn/10 text-warn" },
   warning: { label: "Warning", icon: "⚠", cls: "border-warn/40 bg-warn/10 text-warn" },
-  info: { label: "Info", icon: "ℹ", cls: "border-line bg-navy-850 text-ink-secondary" },
+  info: { label: "Info", icon: "ℹ", cls: "border-line bg-subtle text-ink-secondary" },
 };
 
 export function ViolationList({ items, emptyText = "No violations." }: { items: CapViolation[]; emptyText?: string }) {
@@ -132,8 +132,8 @@ export function EmptyState({ title, body, cta }: { title: string; body: string; 
   );
 }
 
-export const thCls = "px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-ink-muted";
-export const tdCls = "px-3 py-2 text-sm";
+export const thCls = "px-2.5 py-1.5 text-left text-[11px] font-medium uppercase tracking-wide text-ink-muted";
+export const tdCls = "px-2.5 py-1 text-[13px]";
 
 export function Th({ children, right = false }: { children: React.ReactNode; right?: boolean }) {
   return <th className={`${thCls} ${right ? "text-right" : ""}`}>{children}</th>;

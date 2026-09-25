@@ -63,7 +63,7 @@ export default async function ComparePage({
                     name="sel"
                     value={s.id}
                     defaultChecked={selected.includes(s.id)}
-                    className="accent-[#0d9488]"
+                    className="accent-accent"
                   />
                   <span className="truncate">{s.name}</span>
                   <span className="text-xs text-ink-muted">({s.status})</span>

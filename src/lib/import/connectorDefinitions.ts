@@ -22,6 +22,8 @@ export const CONNECTOR_IMPORT_TYPES = [
   "nhl_skater_stats",
   "nhl_goalie_stats",
   "nhl_team_stats",
+  "nhl_standings",
+  "hockeytech_skater_stats",
   "nhl_draft_picks",
   "nhl_draft_rankings",
   "moneypuck_skaters",
@@ -42,6 +44,7 @@ export type ExtTable =
   | "ext_player_seasons"
   | "ext_game_logs"
   | "ext_team_seasons"
+  | "ext_team_standings"
   | "ext_draft_picks"
   | "ext_draft_rankings"
   | "ext_prospect_projections"
@@ -147,7 +150,7 @@ export const PROSPECT_GROUPS = ["d0_scoring", "dm1_scoring", "age", "size", "pos
 
 export interface ConnectorDatasetDef {
   type: ConnectorImportType;
-  connectorKey: "nhl_api" | "moneypuck" | "eliteprospects" | "rosteriq_models";
+  connectorKey: "nhl_api" | "moneypuck" | "eliteprospects" | "hockeytech" | "rosteriq_models";
   table: ExtTable;
   /** Value of the `source` column written on committed rows. */
   sourceTag: string;
@@ -402,6 +405,80 @@ export const CONNECTOR_DEFINITIONS: Record<ConnectorImportType, ConnectorDataset
       fraction("m_pk_net_pct", "PK net %", "`penaltyKillNetPct`"),
     ],
     rowKey: (v) => `${v.team_abbrev || v.team_name}|${v.season}|${v.game_type}|all`,
+  },
+
+  nhl_standings: {
+    type: "nhl_standings",
+    connectorKey: "nhl_api",
+    table: "ext_team_standings",
+    sourceTag: "nhl",
+    label: "NHL API · standings",
+    description:
+      "League standings as of a date from api-web.nhle.com /v1/standings/{date}. Each import replaces that team's row for the season, so the table holds the latest standings imported.",
+    fields: [
+      text("team_abbrev", "Team", "`teamAbbrev.default`", true),
+      text("team_name", "Team name", "`teamName.default`", true),
+      seasonField("`seasonId`"),
+      gameTypeField("`gameTypeId`"),
+      { ...dateField("standings_date", "As of", "`date` (the standings date)"), required: true, validate: (v) => (v === "" ? "is required" : dateField("", "", "").validate(v)) },
+      text("conference", "Conference", "`conferenceName`"),
+      text("division", "Division", "`divisionName`"),
+      intField("games_played", "GP", "`gamesPlayed`", { min: 0, required: true }),
+      intField("wins", "W", "`wins`", { min: 0, required: true }),
+      intField("losses", "L", "`losses`", { min: 0, required: true }),
+      intField("ot_losses", "OTL", "`otLosses`", { min: 0, required: true }),
+      intField("points", "PTS", "`points`", { min: 0, required: true }),
+      fraction("point_pct", "Point %", "`pointPctg`"),
+      count("regulation_wins", "RW", "`regulationWins`"),
+      count("regulation_plus_ot_wins", "ROW", "`regulationPlusOtWins`"),
+      count("goals_for", "GF", "`goalFor`"),
+      count("goals_against", "GA", "`goalAgainst`"),
+      intField("league_rank", "League rank", "`leagueSequence`", { min: 1 }),
+      intField("conference_rank", "Conference rank", "`conferenceSequence`", { min: 1 }),
+      intField("division_rank", "Division rank", "`divisionSequence`", { min: 1 }),
+      intField("wildcard_rank", "Wild-card rank", "`wildcardSequence` (0 = in a division top-3 spot)", { min: 0 }),
+      text("clinch", "Clinched", "`clinchIndicator` (x playoff spot, y division, z conference, p Presidents' Trophy, e eliminated)"),
+      text("streak", "Streak", "`streakCode` + `streakCount` (e.g. W3)"),
+      text("last_ten", "Last 10", "`l10Wins`-`l10Losses`-`l10OtLosses`"),
+      text("home_record", "Home", "`homeWins`-`homeLosses`-`homeOtLosses`"),
+      text("road_record", "Road", "`roadWins`-`roadLosses`-`roadOtLosses`"),
+      count("m_shootout_wins", "SO wins", "`shootoutWins`"),
+      count("m_shootout_losses", "SO losses", "`shootoutLosses`"),
+    ],
+    rowKey: (v) => `${v.team_abbrev}|${v.season}|${v.game_type}`,
+  },
+
+  hockeytech_skater_stats: {
+    type: "hockeytech_skater_stats",
+    connectorKey: "hockeytech",
+    table: "ext_player_seasons",
+    sourceTag: "hockeytech",
+    label: "HockeyTech · league skater stats (OHL, WHL, QMJHL, USHL, AHL, ECHL)",
+    description:
+      "Every skater's regular-season line in one league and season from the HockeyTech feed behind the league's website (statviewfeed players, expanded). Player id is `<league>:<HockeyTech id>`.",
+    fields: [
+      text("external_player_id", "Player id", "`<league>:<player_id>`", true),
+      text("player_name", "Player", "`name` (QMJHL: `prop.shortname.seoName`)"),
+      seasonField("the season's start date"),
+      gameTypeField("always regular"),
+      text("league", "League", "OHL, WHL, QMJHL, USHL, AHL or ECHL"),
+      text("team_name", "Team", "`team_code` (the player's current team when traded)"),
+      text("situation", "Situation", "Always `all`", true),
+      positionField("`position`"),
+      count("games_played", "GP", "`games_played`"),
+      count("goals", "G", "`goals`"),
+      count("assists", "A", "`assists`"),
+      count("points", "P", "`points`"),
+      intField("plus_minus", "+/-", "`plus_minus`"),
+      count("penalty_minutes", "PIM", "`penalty_minutes`"),
+      count("shots", "Shots", "`shots` (blank where the league does not report them)"),
+      count("pp_goals", "PPG", "`power_play_goals`"),
+      count("pp_points", "PPP", "`power_play_goals` + `power_play_assists`"),
+      count("sh_goals", "SHG", "`short_handed_goals`"),
+      count("sh_points", "SHP", "`short_handed_goals` + `short_handed_assists`"),
+      intField("m_es_points", "ESP", "points minus power-play and short-handed points"),
+    ],
+    rowKey: (v) => `${v.external_player_id}|${v.season}|${v.game_type}`,
   },
 
   nhl_draft_picks: {

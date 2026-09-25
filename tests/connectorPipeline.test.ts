@@ -226,6 +226,66 @@ describe("gated connector imports", () => {
     expect(vgk[0]).toMatchObject({ points: 110, season: "2024-25", source: "nhl_stats" });
   });
 
+  it("standings replace the team's previous row and keep division, streak and records", async () => {
+    const f = fixtureFetch();
+    const res = await run({ dataset: "nhl_standings", date: "2026-04-17" }, f);
+    expect(f.calls).toEqual(["https://api-web.nhle.com/v1/standings/2026-04-17"]);
+    await commitImport({ importId: res.importId, organizationId: fx.orgId, userId: fx.userId });
+    const t = schema.extTeamStandings;
+    const rows = await db.select().from(t).where(eq(t.organizationId, fx.orgId));
+    expect(rows).toHaveLength(32);
+    const col = rows.find((r) => r.teamAbbrev === "COL")!;
+    expect(col).toMatchObject({
+      season: "2025-26",
+      gameType: "regular",
+      standingsDate: "2026-04-17",
+      conference: "Western",
+      division: "Central",
+      gamesPlayed: 82,
+      wins: 55,
+      losses: 16,
+      otLosses: 11,
+      points: 121,
+      leagueRank: 1,
+      clinch: "p",
+      streak: "W3",
+      lastTen: "7-2-1",
+      homeRecord: "26-9-6",
+      roadRecord: "29-7-5",
+    });
+    expect(col.metrics).toEqual({ shootout_wins: 4, shootout_losses: 6 });
+    // Every team's division rank 1..n and league ranks 1..32 are present.
+    expect(new Set(rows.map((r) => r.leagueRank))).toEqual(new Set(Array.from({ length: 32 }, (_, i) => i + 1)));
+    // A second import of the same standings updates in place (no duplicates).
+    const again = await run({ dataset: "nhl_standings", date: "2026-04-17" }, fixtureFetch(), fx.orgId, { bypassCache: true });
+    await commitImport({ importId: again.importId, organizationId: fx.orgId, userId: fx.userId });
+    expect(await db.select().from(t).where(eq(t.organizationId, fx.orgId))).toHaveLength(32);
+  });
+
+  it("HockeyTech skater stats: looks up the season id, then imports every line under a league-prefixed id", async () => {
+    const f = fixtureFetch();
+    const res = await run({ dataset: "hockeytech_skater_stats", league: "ohl", season: "2025-26" }, f);
+    expect(f.calls).toHaveLength(2);
+    expect(f.calls[1]).toContain("season=83");
+    await commitImport({ importId: res.importId, organizationId: fx.orgId, userId: fx.userId });
+    const s = schema.extPlayerSeasons;
+    const rows = await db.select().from(s).where(and(eq(s.organizationId, fx.orgId), eq(s.source, "hockeytech")));
+    expect(rows).toHaveLength(4);
+    const k = rows.find((r) => r.externalPlayerId === "ohl:9385")!;
+    expect(k).toMatchObject({ league: "OHL", season: "2025-26", gameType: "regular", teamName: "SAG", position: "RW", goals: 37, points: 97, powerPlayPoints: 38, shots: 240 });
+    expect(k.metrics).toMatchObject({ es_points: 97 - 38 - 3 });
+  });
+
+  it("HockeyTech: a season the league does not have is refused with a clear message", async () => {
+    await expect(run({ dataset: "hockeytech_skater_stats", league: "ohl", season: "1990-91" })).rejects.toThrow(/No 1990-91 regular season/);
+  });
+
+  it("rejects an invalid standings date before touching the network", async () => {
+    const f = fixtureFetch();
+    await expect(run({ dataset: "nhl_standings", date: "2026-4-17" }, f)).rejects.toThrow();
+    expect(f.calls).toHaveLength(0);
+  });
+
   it("EliteProspects stays disabled until configured and surfaces real API errors", async () => {
     await expect(run({ dataset: "ep_players", query: "Celebrini" })).rejects.toThrow(/Disabled until configured/);
     const f = fixtureFetch();

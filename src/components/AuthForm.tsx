@@ -30,7 +30,7 @@ export function AuthForm({
             type={f.type}
             required
             autoComplete={f.autoComplete}
-            className="w-full rounded-md border border-line bg-navy-950 px-3 py-2 text-ink outline-none focus:border-accent"
+            className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-ink outline-none focus:border-accent"
           />
         </label>
       ))}

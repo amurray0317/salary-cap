@@ -45,6 +45,7 @@ import {
   parseSkaterSummary,
   parseTeamIndex,
   parseTeamSummary,
+  parseStandings,
 } from "@/lib/connectors/nhl";
 import {
   MONEYPUCK_CREDIT,
@@ -56,6 +57,16 @@ import {
   parseMoneyPuckTeams,
 } from "@/lib/connectors/moneypuck";
 import { EP_CREDIT, EP_TERMS, epPlayerSearchUrl, getEpConfig, parseEpError, parseEpPlayers } from "@/lib/connectors/eliteprospects";
+import {
+  HT_CREDIT,
+  HT_LEAGUES,
+  HT_TERMS,
+  htRegularSeasonId,
+  htSkaterRecords,
+  htUrls,
+  parseHtSeasons,
+  parseHtSkaterStats,
+} from "@/lib/connectors/hockeytech";
 import {
   MODEL_FILES,
   ROSTERIQ_MODELS_CREDIT,
@@ -98,6 +109,12 @@ export const connectorRequestSchema = z.discriminatedUnion("dataset", [
   z.object({ dataset: z.literal("nhl_skater_stats"), season: seasonLabel, gameType }),
   z.object({ dataset: z.literal("nhl_goalie_stats"), season: seasonLabel, gameType }),
   z.object({ dataset: z.literal("nhl_team_stats"), season: seasonLabel, gameType }),
+  z.object({
+    dataset: z.literal("hockeytech_skater_stats"),
+    league: z.enum(Object.keys(HT_LEAGUES) as [keyof typeof HT_LEAGUES, ...Array<keyof typeof HT_LEAGUES>]),
+    season: seasonLabel,
+  }),
+  z.object({ dataset: z.literal("nhl_standings"), date: z.union([z.literal("now"), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD or now")]) }),
   z.object({ dataset: z.literal("nhl_draft_picks"), year: z.number().int().min(1963).max(2100), round: z.union([z.literal("all"), z.number().int().min(1).max(7)]) }),
   z.object({ dataset: z.literal("nhl_draft_rankings"), year: z.number().int().min(2008).max(2100), category: z.number().int().min(1).max(4) }),
   z.object({ dataset: z.literal("moneypuck_skaters"), season: seasonLabel, gameType, situations }),
@@ -220,6 +237,8 @@ interface Plan {
   credit: string;
   terms: string;
   urls: string[];
+  /** Further URLs that depend on the first responses (e.g. a season id looked up in a list). */
+  followUp?: (responses: FetchedResponse[]) => string[];
   parse: (responses: FetchedResponse[]) => ParsedDataset;
 }
 
@@ -297,6 +316,27 @@ function buildPlan(req: ConnectorRequest, env: Record<string, string | undefined
         [nhlUrls.teamSummary(seasonLabelToNhlId(req.season), gt(req.gameType)), nhlUrls.teams()],
         ([summary, index]) => parseTeamSummary(parseJson(summary!), gt(req.gameType), parseTeamIndex(parseJson(index!))),
       );
+    case "hockeytech_skater_stats": {
+      const league = HT_LEAGUES[req.league];
+      return {
+        connector: "hockeytech",
+        sourceName: `HockeyTech — ${league.name} skater stats ${req.season}`,
+        credit: HT_CREDIT,
+        terms: HT_TERMS,
+        urls: [htUrls.seasons(league)],
+        followUp: ([seasons]) => [htUrls.skaterStats(league, htRegularSeasonId(parseHtSeasons(parseJson(seasons!)), req.season))],
+        parse: ([, stats]) => {
+          const { records, warnings } = htSkaterRecords(parseHtSkaterStats(stats!.body), league, req.season);
+          return { records, effectiveSeason: req.season, warnings };
+        },
+      };
+    }
+    case "nhl_standings":
+      return nhl(
+        `NHL API — standings as of ${req.date === "now" ? "today" : req.date}`,
+        [nhlUrls.standings(req.date)],
+        ([r]) => parseStandings(parseJson(r!)),
+      );
     case "nhl_draft_picks":
       return nhl(
         `NHL API — ${req.year} NHL Draft picks (${req.round === "all" ? "all rounds" : `round ${req.round}`})`,
@@ -354,7 +394,7 @@ function buildPlan(req: ConnectorRequest, env: Record<string, string | undefined
  * Returns the import id; the user reviews and approves it on /imports/[id].
  */
 export async function runConnectorImport(
-  opts: { organizationId: string; userId: string; request: ConnectorRequest; bypassCache?: boolean },
+  opts: { organizationId: string; userId: string; request: ConnectorRequest; bypassCache?: boolean; bundle?: string },
   deps: ConnectorDeps = {},
 ): Promise<{ importId: string; validCount: number; errorCount: number }> {
   const request = connectorRequestSchema.parse(opts.request);
@@ -369,13 +409,26 @@ export async function runConnectorImport(
   }
 
   const responses: FetchedResponse[] = [];
-  for (const url of plan.urls) {
-    responses.push(
-      await cachedFetch(
-        { organizationId: opts.organizationId, userId: opts.userId, connector: plan.connector, url, bypassCache: opts.bypassCache },
-        deps,
-      ),
-    );
+  const fetchAll = async (urls: string[]) => {
+    for (const url of urls) {
+      responses.push(
+        await cachedFetch(
+          { organizationId: opts.organizationId, userId: opts.userId, connector: plan.connector, url, bypassCache: opts.bypassCache },
+          deps,
+        ),
+      );
+    }
+  };
+  await fetchAll(plan.urls);
+  if (plan.followUp) {
+    let more: string[];
+    try {
+      more = plan.followUp(responses);
+    } catch (err) {
+      if (err instanceof ConnectorParseError) throw new ConnectorError(err.message);
+      throw err;
+    }
+    await fetchAll(more);
   }
 
   let parsed: ParsedDataset;
@@ -398,7 +451,7 @@ export async function runConnectorImport(
     termsNote: plan.terms,
     fromCache: responses.map((r) => r.fromCache),
     warnings: parsed.warnings,
-    params: { ...request },
+    params: { ...request, ...(opts.bundle ? { bundle: opts.bundle } : {}) },
   };
   try {
     return await createConnectorImport({
@@ -517,11 +570,20 @@ async function runModelImport(
  * bundle commits all three (importActions.approveBundleAction).
  */
 export async function stageXgBundle(
-  opts: { organizationId: string; userId: string; season: string; gameType: "regular" | "playoffs" },
+  opts: { organizationId: string; userId: string; season: string; gameType: "regular" | "playoffs"; withStandings?: boolean },
   deps: ConnectorDeps = {},
 ): Promise<{ bundle: string; importIds: string[] }> {
   const bundle = randomUUID();
   const importIds: string[] = [];
+  if (opts.withStandings) {
+    // Staged first (fresh, not from cache): if the NHL API is unreachable,
+    // nothing is staged and the error is shown, instead of a half bundle.
+    const res = await runConnectorImport(
+      { organizationId: opts.organizationId, userId: opts.userId, request: { dataset: "nhl_standings", date: "now" }, bypassCache: true, bundle },
+      deps,
+    );
+    importIds.push(res.importId);
+  }
   for (const dataset of ["rosteriq_xg_skaters", "rosteriq_xg_goalies", "rosteriq_xg_teams"] as const) {
     const request = connectorRequestSchema.parse({ dataset, season: opts.season, gameType: opts.gameType }) as ModelRequest;
     const res = await runModelImport({ organizationId: opts.organizationId, userId: opts.userId, request, bundle }, deps);
@@ -537,6 +599,7 @@ export function connectorStatus(env: Record<string, string | undefined> = proces
     nhl_api: { enabled: true, credit: NHL_CREDIT, terms: NHL_TERMS },
     moneypuck: { enabled: true, credit: MONEYPUCK_CREDIT, terms: MONEYPUCK_TERMS },
     eliteprospects: { enabled: ep.enabled, credit: EP_CREDIT, terms: EP_TERMS, reason: ep.reason },
+    hockeytech: { enabled: true, credit: HT_CREDIT, terms: HT_TERMS },
     rosteriq_models: { enabled: true, credit: ROSTERIQ_MODELS_CREDIT, terms: ROSTERIQ_MODELS_TERMS, files: modelFilesStatus() },
   };
 }

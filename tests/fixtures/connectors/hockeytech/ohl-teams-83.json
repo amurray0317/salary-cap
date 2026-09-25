@@ -1,0 +1,59 @@
+{
+ "SiteKit": {
+  "Parameters": {
+   "feed": "modulekit",
+   "view": "teamsbyseason",
+   "season_id": 83,
+   "key": "2976319eb44abe94",
+   "client_code": "ohl",
+   "fmt": "json",
+   "lang": "en",
+   "lang_id": 1,
+   "league_id": "1"
+  },
+  "Teamsbyseason": [
+   {
+    "id": "7",
+    "name": "Barrie Colts",
+    "city": "Barrie",
+    "code": "BAR",
+    "nickname": "Colts",
+    "team_caption": "",
+    "division_id": "2",
+    "division_long_name": "Central Division",
+    "division_short_name": "Central",
+    "team_logo_url": "https://assets.leaguestat.com/ohl/logos/7.png"
+   },
+   {
+    "id": "18",
+    "name": "Brampton Steelheads",
+    "city": "Brampton",
+    "code": "BRAM",
+    "nickname": "Steelheads",
+    "team_caption": "",
+    "division_id": "2",
+    "division_long_name": "Central Division",
+    "division_short_name": "Central",
+    "team_logo_url": "https://assets.leaguestat.com/ohl/logos/18.jpg"
+   },
+   {
+    "id": "1",
+    "name": "Brantford Bulldogs",
+    "city": "Brantford",
+    "code": "BFD",
+    "nickname": "Bulldogs",
+    "team_caption": "",
+    "division_id": "1",
+    "division_long_name": "East Division",
+    "division_short_name": "East",
+    "team_logo_url": "https://assets.leaguestat.com/ohl/logos/1.png"
+   }
+  ],
+  "Copyright": {
+   "required_copyright": "Official statistics provided by Ontario Hockey League",
+   "required_link": "http://leaguestat.com",
+   "powered_by": "Powered by HockeyTech.com",
+   "powered_by_url": "http://hockeytech.com"
+  }
+ }
+}

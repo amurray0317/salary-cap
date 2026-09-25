@@ -87,7 +87,7 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
         </p>
       )}
       {row.status === "rejected" && (
-        <p className="rounded-md border border-line bg-navy-850 px-3 py-2 text-sm text-ink-secondary">
+        <p className="rounded-md border border-line bg-subtle px-3 py-2 text-sm text-ink-secondary">
           This import was discarded. Nothing was committed.
         </p>
       )}
@@ -194,22 +194,22 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
       {row.status === "awaiting_approval" && preview && (
         <>
           <div className={`grid gap-3 ${existingCount !== null ? "grid-cols-2 md:grid-cols-4" : "grid-cols-3"}`}>
-            <div className="rounded-lg border border-line bg-navy-900 px-4 py-3">
+            <div className="rounded-lg border border-line bg-surface px-4 py-3">
               <div className="text-xs uppercase tracking-wide text-ink-muted">Total rows</div>
               <div className="mt-1 text-2xl font-semibold tabular-nums">{row.rowCount}</div>
             </div>
-            <div className="rounded-lg border border-line bg-navy-900 px-4 py-3">
+            <div className="rounded-lg border border-line bg-surface px-4 py-3">
               <div className="text-xs uppercase tracking-wide text-ink-muted">Valid</div>
               <div className="mt-1 text-2xl font-semibold tabular-nums text-good">{preview.validRecords.length}</div>
             </div>
-            <div className="rounded-lg border border-line bg-navy-900 px-4 py-3">
+            <div className="rounded-lg border border-line bg-surface px-4 py-3">
               <div className="text-xs uppercase tracking-wide text-ink-muted">Rows with errors</div>
               <div className={`mt-1 text-2xl font-semibold tabular-nums ${errors.length > 0 ? "text-critical" : "text-ink"}`}>
                 {new Set(errors.map((e) => e.rowNumber)).size}
               </div>
             </div>
             {existingCount !== null && (
-              <div className="rounded-lg border border-line bg-navy-900 px-4 py-3">
+              <div className="rounded-lg border border-line bg-surface px-4 py-3">
                 <div className="text-xs uppercase tracking-wide text-ink-muted">New / update existing</div>
                 <div className="mt-1 text-2xl font-semibold tabular-nums">
                   {preview.validRecords.length - existingCount} / {existingCount}
@@ -284,7 +284,7 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
         <Card title={`Row-level errors (${errors.length})`}>
           <div className="max-h-96 overflow-auto">
             <table className="w-full">
-              <thead className="sticky top-0 bg-navy-900">
+              <thead className="sticky top-0 bg-surface">
                 <tr className="border-b border-line">
                   <Th right>Row</Th>
                   <Th>Column</Th>

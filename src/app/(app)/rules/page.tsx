@@ -93,7 +93,7 @@ export default async function RulesPage() {
                           type="number"
                           step="any"
                           placeholder="New value"
-                          className="w-32 rounded-md border border-line bg-navy-950 px-2 py-1 text-xs"
+                          className="w-32 rounded-md border border-line bg-canvas px-2 py-1 text-xs"
                         />
                         <button className="rounded border border-line px-2 py-1 text-xs text-ink-secondary hover:text-ink">
                           Save v{r.ruleVersion + 1}

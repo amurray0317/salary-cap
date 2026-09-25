@@ -12,12 +12,23 @@
 # committed and the run is then marked failed, so GitHub emails the owner.
 #
 # Off-season runs are no-ops. Scheduled workflows run from the default branch.
+#
+# Rehearsal (run manually before opening night, "Run workflow" with a
+# completed season such as 20252026): scores that season exactly as the
+# nightly run would, on copies of the model files, and pushes the result to
+# the throwaway branch `nightly-rehearsal`. It proves every step, including
+# the bot's permission to push, without touching main or models/.
 name: Nightly xG
 
 on:
   schedule:
     - cron: "0 10 * * *"
   workflow_dispatch:
+    inputs:
+      rehearse:
+        description: "Rehearsal: a completed season id to re-score as if in progress (e.g. 20252026). Leave blank for a normal run."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -29,7 +40,8 @@ concurrency:
 jobs:
   score:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # A rehearsal downloads a whole season (~1,400 games at 2 requests/s).
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,7 +58,13 @@ jobs:
 
       - name: Season in progress
         id: season
+        env:
+          REHEARSE: ${{ github.event.inputs.rehearse }}
         run: |
+          if [ -n "$REHEARSE" ]; then
+            if ! [[ "$REHEARSE" =~ ^[0-9]{8}$ ]]; then echo "::error::rehearse must look like 20252026"; exit 1; fi
+            echo "id=$REHEARSE" >> "$GITHUB_OUTPUT"; exit 0
+          fi
           y=$(date -u +%Y); m=$(date -u +%-m)
           if [ "$m" -ge 9 ]; then s=$y; else s=$((y - 1)); fi
           echo "id=${s}$((s + 1))" >> "$GITHUB_OUTPUT"
@@ -73,13 +91,28 @@ jobs:
         working-directory: analytics
         run: |
           set +e
-          python -m rosteriq_models.xg.score --season ${{ steps.season.outputs.id }}
+          if [ -n "${{ github.event.inputs.rehearse }}" ]; then
+            python -m rosteriq_models.xg.score --season ${{ steps.season.outputs.id }} --rehearse ../rehearsal/rosteriq-xg-v1
+          else
+            python -m rosteriq_models.xg.score --season ${{ steps.season.outputs.id }}
+          fi
           code=$?
           echo "code=$code" >> "$GITHUB_OUTPUT"
           # 0 = ok, 2 = drift flagged (commit first, fail after); anything else is an error.
           if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then exit "$code"; fi
 
+      - name: Push rehearsal to its own branch
+        if: github.event.inputs.rehearse != ''
+        run: |
+          git config user.name "rosteriq-nightly[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c nightly-rehearsal
+          git add rehearsal
+          git commit -m "Nightly xG rehearsal ${{ steps.season.outputs.id }} [skip ci]"
+          git push --force origin nightly-rehearsal
+
       - name: Commit updated totals
+        if: github.event.inputs.rehearse == ''
         run: |
           git config user.name "rosteriq-nightly[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

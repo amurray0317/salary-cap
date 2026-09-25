@@ -30,7 +30,7 @@ export function ContextSelect({
         name={name}
         defaultValue={value}
         onChange={() => formRef.current?.requestSubmit()}
-        className="max-w-44 truncate rounded-md border border-line bg-navy-900 px-2 py-1.5 text-sm text-ink-secondary hover:text-ink focus:border-accent focus:outline-none"
+        className="max-w-44 truncate rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink-secondary hover:text-ink focus:border-accent focus:outline-none"
       >
         {options.map((o) => (
           <option key={o.id} value={o.id}>

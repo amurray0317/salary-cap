@@ -152,6 +152,37 @@ export default async function RealDataPage() {
             <ConnectorForm {...common} dataset="nhl_goalie_stats" submitLabel="Fetch goalie summary → preview" fields={[season, gameType]} />
             <div className="my-4 border-t border-line" />
             <ConnectorForm {...common} dataset="nhl_team_stats" submitLabel="Fetch team summary → preview" fields={[season, gameType]} />
+            <div className="my-4 border-t border-line" />
+            <ConnectorForm
+              {...common}
+              dataset="nhl_standings"
+              submitLabel="Fetch standings → preview"
+              fields={[{ name: "date", label: "As of", type: "text", defaultValue: "now", placeholder: "now or YYYY-MM-DD", hint: "Each import replaces the previous standings for that season." }]}
+            />
+          </Card>
+          <Card title="Junior & minor-pro leagues (HockeyTech)">
+            <p className="mb-3 text-xs text-ink-muted">{status.hockeytech.terms}</p>
+            <ConnectorForm
+              {...common}
+              dataset="hockeytech_skater_stats"
+              submitLabel="Fetch league skater stats → preview"
+              fields={[
+                {
+                  name: "league",
+                  label: "League",
+                  type: "select",
+                  options: [
+                    { value: "ohl", label: "OHL" },
+                    { value: "whl", label: "WHL" },
+                    { value: "qmjhl", label: "QMJHL" },
+                    { value: "ushl", label: "USHL" },
+                    { value: "ahl", label: "AHL" },
+                    { value: "echl", label: "ECHL" },
+                  ],
+                },
+                season,
+              ]}
+            />
           </Card>
           <Card title="Draft history & NHL Central Scouting rankings">
             <ConnectorForm
@@ -203,7 +234,7 @@ export default async function RealDataPage() {
       <section className="space-y-4">
         <h2 className="text-base font-semibold">
           EliteProspects <span className="text-xs font-normal text-ink-muted">official API only</span>{" "}
-          <span className={`ml-1 rounded px-1.5 py-0.5 text-xs ${status.eliteprospects.enabled ? "bg-good/10 text-good" : "bg-navy-800 text-ink-muted"}`}>
+          <span className={`ml-1 rounded px-1.5 py-0.5 text-xs ${status.eliteprospects.enabled ? "bg-good/10 text-good" : "bg-track text-ink-muted"}`}>
             {status.eliteprospects.enabled ? "Enabled" : "Disabled until configured"}
           </span>
         </h2>
@@ -238,7 +269,7 @@ export default async function RealDataPage() {
                   Descriptive: ixG measures the chances a player got, not what he will get.
                 </p>
                 {Object.entries(inSeason).map(([sid, v]) => (
-                  <p key={sid} className="mb-3 rounded-md border border-line bg-navy-850 px-3 py-2 text-xs text-ink-secondary">
+                  <p key={sid} className="mb-3 rounded-md border border-line bg-subtle px-3 py-2 text-xs text-ink-secondary">
                     {`${sid.slice(0, 4)}-${sid.slice(6)}`} in progress: data through {v.through ?? "—"} ({v.games ?? 0} games). Stage and approve to refresh the app.
                   </p>
                 ))}
@@ -247,8 +278,18 @@ export default async function RealDataPage() {
                   action={stageXgBundleAction}
                   cacheable={false}
                   dataset="rosteriq_xg_bundle"
-                  submitLabel="Stage all xG totals (skaters, goalies, teams) → preview"
-                  fields={[{ ...season, options: xgSeasons }, gameType]}
+                  submitLabel="Stage today's updates → preview"
+                  fields={[
+                    { ...season, options: xgSeasons },
+                    gameType,
+                    {
+                      name: "extras",
+                      label: "Include",
+                      type: "checkboxes",
+                      options: [{ value: "standings", label: "Today's NHL standings" }],
+                      defaultValues: ["standings"],
+                    },
+                  ]}
                 />
                 <div className="my-4 border-t border-line" />
                 <ConnectorForm {...common} cacheable={false} dataset="rosteriq_xg_skaters" submitLabel="Stage skater xG → preview" fields={[{ ...season, options: xgSeasons }, gameType]} />

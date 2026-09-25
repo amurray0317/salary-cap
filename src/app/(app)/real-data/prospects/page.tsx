@@ -55,7 +55,7 @@ export default async function RealDataProspectsPage({ searchParams }: { searchPa
               <Link
                 key={y}
                 href={`/real-data/prospects?y=${y}`}
-                className={`rounded px-2 py-1 ${y === shown ? "bg-accent-soft text-accent-text" : "bg-navy-850 text-ink-secondary hover:text-ink"}`}
+                className={`rounded px-2 py-1 ${y === shown ? "bg-accent-soft text-accent-text" : "bg-subtle text-ink-secondary hover:text-ink"}`}
               >
                 {y}
               </Link>
@@ -74,7 +74,7 @@ export default async function RealDataProspectsPage({ searchParams }: { searchPa
           <Card title={`${shown} NHL Draft · skaters (${rows.length})`}>
             <div className="max-h-[40rem] overflow-auto">
               <table className="w-full">
-                <thead className="sticky top-0 bg-navy-900">
+                <thead className="sticky top-0 bg-surface">
                   <tr className="border-b border-line">
                     <Th right>Pick</Th>
                     <Th>Player</Th>

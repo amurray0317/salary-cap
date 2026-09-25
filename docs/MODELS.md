@@ -124,6 +124,40 @@ exercise the workflow, not to describe real athletes.
   name + exact birth date (1,831 full name, 100 last name, 18 reviewed transliterations, 2
   ambiguous left unlinked). Caveats: drafted players only (ranked players who went undrafted
   have no outcome here); one four-draft window. Reproduce: `rosteriq_models.prospects.css`.
+- **v2 research (`rosteriq_models.prospects.v2`, results in the card under `v2_research`; not
+  yet used for the projections)**:
+  - *Scaled regular bar*: 200 games of a normal 574-game window, scaled to games scheduled
+    (187–196 in windows with 2012-13, 2019-20 or 2020-21); 23 labels change; 2016–2019 test
+    drafts: 128 regulars.
+  - *Tier 2, top of lineup*: a regular with 2+ seasons in D+1..D+7 as a top-6 forward / top-4
+    defenceman by TOI per game (league-wide rank <= teams x slots, among skaters with half the
+    season's games; cut-offs about 15.5 and 18.7 min every season). P(top) = P(regular) x
+    P(top | regular). Top-5 picks: 93% regular, 80% top of lineup; picks 6–10: 83% vs 61%.
+  - *Before the draft, 2016–2019 drafts (771 skaters; 128 regulars, 73 top of lineup)*, paired
+    bootstrap 95%:
+
+    | Comparison | Regular: AUC | Regular: log loss | Top: AUC | Top: log loss |
+    |---|---|---|---|---|
+    | Stats + midterm vs midterm only (January) | +0.026 [+0.008, +0.046] | −0.018 [−0.028, −0.008] | +0.021 [−0.001, +0.048] | −0.010 [−0.020, −0.000] |
+    | … after round 1 | +0.062 [+0.024, +0.105] | −0.014 [−0.023, −0.006] | +0.057 [−0.000, +0.126] | −0.008 [−0.017, −0.000] |
+    | Stats + final vs final only (April) | +0.017 [+0.002, +0.034] | −0.013 [−0.022, −0.004] | +0.009 [−0.010, +0.030] | −0.005 [−0.014, +0.005] |
+    | … after round 1 | +0.048 [+0.017, +0.089] | −0.009 [−0.017, −0.002] | +0.026 [−0.025, +0.080] | −0.005 [−0.012, +0.003] |
+    | Stats only vs draft position | −0.046 [−0.082, −0.009] | +0.049 [+0.026, +0.071] | −0.046 [−0.092, +0.001] | +0.030 [+0.009, +0.051] |
+
+    The stats add most to the midterm list (the January decision point); for top-of-lineup
+    players the direction is the same but intervals reach zero (73 events).
+  - *Population*: all 4,142 skaters Central Scouting ranked 2008–2019 (first ranked year),
+    linked to NHL ids by name + exact birth date (99.3% of known-drafted rows found; 15
+    nickname spellings filled from the draft records); unlinked = never drafted or signed =
+    no NHL games. 2,147 were never drafted; 3 became regulars (Dillon, Sustr, Vatrano).
+    Central Scouting inputs only (draft-year stats do not exist in the NHL feed for undrafted
+    players): trained on drafted players only, the model predicts 181.6 regulars for the
+    2016–2019 ranked lists vs 125 actual (log loss 0.209); trained on everyone ranked, 147.3
+    (0.195). Live pre-draft scoring therefore trains on the whole ranked population.
+  - *Calibration*: the 2016–2019 drafts produced about 10–15% fewer regulars than every model
+    expected, draft position included, even after scaling for shortened seasons. After round 1
+    the stats model over-predicts in almost every draft year (a selected group: teams passed on
+    those players for reasons the stats cannot see).
 - **Use**: explain a production profile and flag disagreement with the draft slot (a 10-point
   gap is marked), not rank players. Historical projections are leave-one-draft-out; drafts
   2020–2026 have no outcome yet.

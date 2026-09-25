@@ -60,7 +60,7 @@ export default async function SettingsPage() {
       <Card title="Audit history (latest 50)">
         <div className="max-h-96 overflow-auto">
           <table className="w-full">
-            <thead className="sticky top-0 bg-navy-900">
+            <thead className="sticky top-0 bg-surface">
               <tr className="border-b border-line">
                 <Th>When</Th>
                 <Th>Action</Th>
