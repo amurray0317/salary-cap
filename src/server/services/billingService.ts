@@ -5,7 +5,7 @@
  */
 import { count, eq } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
-import { PLANS, planHas, type Feature, type Interval, type PlanId } from "@/lib/billing/plans";
+import { PLANS, isPlanId, planHas, type Feature, type Interval, type PlanId } from "@/lib/billing/plans";
 import { billingConfig, type BillingConfig } from "@/lib/billing/stripe";
 
 /** Statuses that keep paid features on. past_due keeps them during Stripe's retry window. */
@@ -29,8 +29,9 @@ export async function getPlanState(organizationId: string, env: Record<string, s
     .select({ n: count() })
     .from(schema.organizationMembers)
     .where(eq(schema.organizationMembers.organizationId, organizationId))) as [{ n: number }];
-  if (!cfg.enabled) return { billingEnabled: false, plan: "club", subscription: sub ?? null, seatsUsed: n, seatLimit: null };
-  const paid = sub && PAID_STATUSES.has(sub.status) && (sub.plan === "pro" || sub.plan === "club") ? (sub.plan as PlanId) : "free";
+  // Billing off: everything on (the Pro club plan has every feature), no seat limit.
+  if (!cfg.enabled) return { billingEnabled: false, plan: "pro_club", subscription: sub ?? null, seatsUsed: n, seatLimit: null };
+  const paid: PlanId = sub && PAID_STATUSES.has(sub.status) && isPlanId(sub.plan) ? sub.plan : "free";
   return { billingEnabled: true, plan: paid, subscription: sub ?? null, seatsUsed: n, seatLimit: paid === "free" ? PLANS.free.seats : sub!.seats };
 }
 
@@ -82,7 +83,7 @@ export async function applyStripeEvent(
     plan: base.plan,
     interval: base.interval as Interval,
     status: event.type === "customer.subscription.deleted" ? "canceled" : sub.status,
-    seats: PLANS[base.plan].seats + (base.plan === "club" ? extraSeats : 0),
+    seats: PLANS[base.plan].seats + (PLANS[base.plan].family === "organization" ? extraSeats : 0),
     stripeCustomerId: sub.customer,
     stripeSubscriptionId: sub.id,
     currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,

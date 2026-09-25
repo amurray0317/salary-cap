@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireOrgAccess } from "@/server/context";
 import { billingConfig, createCheckoutSession, createPortalSession } from "@/lib/billing/stripe";
+import { PURCHASABLE, type PlanId } from "@/lib/billing/plans";
 import { getPlanState } from "@/server/services/billingService";
 
 const back = (msg: string) => redirect(`/settings/billing?error=${encodeURIComponent(msg)}`);
@@ -11,7 +12,7 @@ const back = (msg: string) => redirect(`/settings/billing?error=${encodeURICompo
 /** Admins only: sends the browser to Stripe Checkout for the chosen plan. */
 export async function startCheckoutAction(fd: FormData): Promise<void> {
   const parsed = z
-    .object({ organizationId: z.string().uuid(), plan: z.enum(["pro", "club"]), interval: z.enum(["month", "year"]) })
+    .object({ organizationId: z.string().uuid(), plan: z.enum(PURCHASABLE as [string, ...string[]]), interval: z.enum(["month", "year"]) })
     .safeParse({ organizationId: fd.get("organizationId"), plan: fd.get("plan"), interval: fd.get("interval") });
   if (!parsed.success) back("Choose a plan");
   const { organizationId, plan, interval } = parsed.data!;
@@ -23,7 +24,7 @@ export async function startCheckoutAction(fd: FormData): Promise<void> {
   try {
     url = await createCheckoutSession(cfg, {
       organizationId,
-      plan,
+      plan: plan as Exclude<PlanId, "free">,
       interval,
       email: ctx.user.email,
       customerId: state.subscription?.stripeCustomerId,

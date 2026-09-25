@@ -219,6 +219,8 @@ export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+  /** pro | junior | college | youth (src/lib/programs.ts): which parts of the app the organization uses. */
+  program: text("program").notNull().default("pro"),
   orgType: text("org_type").notNull().default("pro_team"), // pro_team | college | agency | league_office | consultancy
   settings: jsonb("settings").notNull().default({}),
   createdBy: uuid("created_by").references(() => users.id),
@@ -260,7 +262,7 @@ export const organizationSubscriptions = pgTable("organization_subscriptions", {
   organizationId: uuid("organization_id")
     .primaryKey()
     .references(() => organizations.id, { onDelete: "cascade" }),
-  plan: text("plan").notNull(), // "pro" | "club"
+  plan: text("plan").notNull(), // a PlanId from src/lib/billing/plans.ts
   interval: text("interval").notNull(), // "month" | "year"
   /** Stripe subscription status: active, trialing, past_due, canceled, unpaid, incomplete… */
   status: text("status").notNull(),

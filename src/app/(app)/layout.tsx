@@ -12,7 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen" data-density={ctx.user.preferences.density}>
-      <Sidebar />
+      <Sidebar program={ctx.org.program} />
       <TimeZoneSync current={ctx.deviceTimeZone} />
       <div className="min-w-0 flex-1">
         <header className="no-print sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-line bg-surface/90 px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] shadow-[0_1px_0_rgba(16,24,40,0.02)] backdrop-blur lg:px-5">

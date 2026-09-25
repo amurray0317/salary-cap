@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
-import { NAV, activeHref } from "@/components/shell/nav";
+import { NAV as ALL_NAV, activeHref } from "@/components/shell/nav";
+import { hiddenSections } from "@/lib/programs";
 
 const STORE_COLLAPSED = "riq_nav_collapsed";
 const STORE_OPEN = "riq_nav_open";
@@ -16,8 +17,11 @@ const TABS = [
   { href: "/players", label: "Players", icon: "▤" },
 ];
 
-export function Sidebar() {
+export function Sidebar({ program = "pro" }: { program?: string }) {
   const pathname = usePathname();
+  // The organization's program (pro / junior / college / youth) decides which sections apply.
+  const hidden = hiddenSections(program);
+  const NAV = ALL_NAV.filter((s) => !hidden.has(s.id));
   const current = activeHref(pathname);
   const owner = NAV.find((s) => s.groups.some((g) => g.items.some((i) => i.href === current)))?.id;
   const [collapsed, setCollapsed] = useState(false);

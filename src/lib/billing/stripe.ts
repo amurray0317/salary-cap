@@ -2,13 +2,16 @@
  * Stripe, through its REST API (no SDK): Checkout for new subscriptions, the
  * customer portal for changes and cancellation, and webhook verification.
  *
- * Billing is OFF unless BILLING_ENABLED=true and every key and price id
- * below is set. While it is off, every organization has every feature.
- * Card details never touch RosterIQ: Checkout and the portal are pages on
+ * Billing is OFF unless BILLING_ENABLED=true and the key, webhook secret and
+ * app URL are set. Each plan is sold only once its Stripe price ids are set
+ * (STRIPE_PRICE_<PLAN>_MONTH / _YEAR, e.g. STRIPE_PRICE_SCOUT_YEAR); the rest
+ * show as not yet available. While billing is off, every organization has
+ * every feature. Card details never touch RosterIQ: Checkout and the portal
+ * are pages on
  * stripe.com.
  */
 import { createHmac, timingSafeEqual } from "crypto";
-import type { Interval, PlanId } from "@/lib/billing/plans";
+import { PURCHASABLE, type Interval, type PlanId } from "@/lib/billing/plans";
 
 export const STRIPE_API = "https://api.stripe.com/v1";
 
@@ -24,12 +27,7 @@ export interface BillingConfig {
   priceFor: (plan: Exclude<PlanId, "free">, interval: Interval) => string | null;
 }
 
-const PRICE_ENV = {
-  STRIPE_PRICE_PRO_MONTH: ["pro", "month"],
-  STRIPE_PRICE_PRO_YEAR: ["pro", "year"],
-  STRIPE_PRICE_CLUB_MONTH: ["club", "month"],
-  STRIPE_PRICE_CLUB_YEAR: ["club", "year"],
-} as const;
+export const priceEnvKey = (plan: PlanId, interval: Interval) => `STRIPE_PRICE_${plan.toUpperCase()}_${interval.toUpperCase()}`;
 
 export function billingConfig(env: Record<string, string | undefined> = process.env): BillingConfig {
   const secretKey = env.STRIPE_SECRET_KEY ?? "";
@@ -37,18 +35,20 @@ export function billingConfig(env: Record<string, string | undefined> = process.
   const appUrl = (env.APP_URL ?? "").replace(/\/$/, "");
   const prices: BillingConfig["prices"] = {};
   const byPlan = new Map<string, string>();
-  for (const [key, [plan, interval]] of Object.entries(PRICE_ENV)) {
-    const id = env[key];
-    if (id) {
-      prices[id] = { plan, interval };
-      byPlan.set(`${plan}:${interval}`, id);
+  for (const plan of PURCHASABLE) {
+    for (const interval of ["month", "year"] as const) {
+      const id = env[priceEnvKey(plan, interval)];
+      if (id) {
+        prices[id] = { plan: plan as Exclude<PlanId, "free">, interval };
+        byPlan.set(`${plan}:${interval}`, id);
+      }
     }
   }
   const missing = [
     !secretKey && "STRIPE_SECRET_KEY",
     !webhookSecret && "STRIPE_WEBHOOK_SECRET",
     !appUrl && "APP_URL",
-    ...Object.keys(PRICE_ENV).filter((k) => !env[k]),
+    byPlan.size === 0 && "any STRIPE_PRICE_<PLAN>_<MONTH|YEAR>",
   ].filter(Boolean);
   const reason =
     env.BILLING_ENABLED !== "true"

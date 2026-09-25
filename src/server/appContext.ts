@@ -20,7 +20,7 @@ export const SEASON_COOKIE = "riq_season";
 export interface AppContext {
   user: SessionUser;
   memberships: Array<{ organizationId: string; organizationName: string; role: OrgRole }>;
-  org: { id: string; name: string; slug: string };
+  org: { id: string; name: string; slug: string; program: string };
   role: OrgRole;
   teams: Array<typeof schema.teams.$inferSelect>;
   team: typeof schema.teams.$inferSelect | null;
@@ -87,7 +87,7 @@ export async function resolveAppContext(): Promise<AppContext> {
   return {
     user,
     memberships,
-    org: { id: org.id, name: org.name, slug: org.slug },
+    org: { id: org.id, name: org.name, slug: org.slug, program: org.program },
     role: activeMembership.role,
     teams,
     team,

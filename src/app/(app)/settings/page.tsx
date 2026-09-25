@@ -10,6 +10,8 @@ import { changeMemberRoleAction, removeMemberAction, revokeInviteAction } from "
 import { Notice } from "@/components/Notice";
 import { importNhlClubAction } from "@/server/actions/nhlClubActions";
 import { NHL_TEAMS, NHL_TEAM_NAMES } from "@/lib/connectors/nhl";
+import { setProgramAction } from "@/server/actions/orgSettingsActions";
+import { PROGRAMS, PROGRAM_IDS } from "@/lib/programs";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -52,6 +54,29 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <Notice error={error} saved={saved} />
 
       {isAdmin && (
+        <Card title="Program type">
+          <form action={setProgramAction} className="space-y-3">
+            <input type="hidden" name="organizationId" value={ctx.org.id} />
+            <div className="grid gap-2 sm:grid-cols-2">
+              {PROGRAM_IDS.map((id) => (
+                <label
+                  key={id}
+                  className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-line px-3 py-2.5 has-[:checked]:border-accent has-[:checked]:bg-accent-soft/50"
+                >
+                  <input type="radio" name="program" value={id} defaultChecked={ctx.org.program === id} className="mt-1 accent-[var(--color-accent)]" />
+                  <span>
+                    <span className="block text-sm font-semibold">{PROGRAMS[id].label}</span>
+                    <span className="block text-xs text-ink-muted">{PROGRAMS[id].blurb}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <button className="rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-white">Save program type</button>
+          </form>
+        </Card>
+      )}
+
+      {isAdmin && ctx.org.program === "pro" && (
         <Card title="Your NHL club">
           <form action={importNhlClubAction} className="flex flex-wrap items-end gap-3">
             <input type="hidden" name="organizationId" value={ctx.org.id} />
