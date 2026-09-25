@@ -21,6 +21,8 @@ Derived per season:
 """
 from __future__ import annotations
 
+import re
+
 import pandas as pd
 
 from rosteriq_models.raw import RAW, read_gz
@@ -74,15 +76,38 @@ def _lines(code: str) -> tuple[pd.DataFrame, pd.DataFrame]:
         for rf in sdir.glob("roster_*.json.gz"):
             for p in read_gz(rf)["SiteKit"]["Roster"]:
                 if isinstance(p, dict) and p.get("player_id"):
-                    bios.append({
-                        "league": HT_LEAGUES[code],
-                        "ht_id": str(p["player_id"]),
-                        # First + last (the QMJHL's `name` is "Last, First").
-                        "name": f'{p.get("first_name") or ""} {p.get("last_name") or ""}'.strip() or p.get("name"),
-                        "birth_date": p.get("birthdate") if len(str(p.get("birthdate") or "")) == 10 else None,
-                        "position": p.get("position"),
-                    })
+                    bios.append(_bio(code, str(p["player_id"]), p))
+    # Players who left a team mid-season are missing from the end-of-season
+    # rosters; their profiles (fetched by data:fetch) fill the bio.
+    for pf in sorted((base / "profiles").glob("*.json.gz")) if (base / "profiles").exists() else []:
+        p = (read_gz(pf).get("SiteKit") or {}).get("Player")
+        if isinstance(p, dict):
+            bios.append(_bio(code, pf.name.split(".")[0], p))
     return pd.DataFrame(lines), pd.DataFrame(bios)
+
+
+def height_inches(h: object) -> float | None:
+    """HockeyTech heights look like 6'02", 6-02" or (OHL) 6.02; None when absent or implausible."""
+    m = re.match(r"^\s*(\d)\s*['.-]\s*(\d{1,2})", str(h or ""))
+    if not m:
+        return None
+    v = int(m.group(1)) * 12 + int(m.group(2))
+    return float(v) if 60 <= v <= 84 else None
+
+
+def _bio(code: str, ht_id: str, p: dict) -> dict:
+    w = pd.to_numeric(p.get("weight"), errors="coerce")
+    return {
+        "league": HT_LEAGUES[code],
+        "ht_id": ht_id,
+        # First + last (the QMJHL's `name` is "Last, First").
+        "name": f'{p.get("first_name") or ""} {p.get("last_name") or ""}'.strip() or p.get("name"),
+        "birth_date": p.get("birthdate") if re.match(r"^\d{4}-\d{2}-\d{2}$", str(p.get("birthdate") or "")) else None,
+        "position": p.get("position"),
+        "height_in": height_inches(p.get("height")),
+        "weight_lb": float(w) if pd.notna(w) and 110 <= w <= 280 else None,
+        "shoots": p.get("shoots") or None,
+    }
 
 
 def load(codes: list[str] | None = None) -> pd.DataFrame:
@@ -103,7 +128,8 @@ def load(codes: list[str] | None = None) -> pd.DataFrame:
         per["team_goal_share"] = g.apply(lambda x: (x["team_goal_share"] * x["gp"]).sum() / x["gp"].sum(), include_groups=False)
         per["teams"] = g["team"].nunique()
         per = per.reset_index()
-        bio = bios.dropna(subset=["name"]).sort_values("birth_date", na_position="last").drop_duplicates(["league", "ht_id"])
+        bio = (bios.dropna(subset=["name"]).sort_values(["birth_date", "height_in"], na_position="last")
+               .drop_duplicates(["league", "ht_id"]))
         frames.append(per.merge(bio, on=["league", "ht_id"], how="left"))
     d = pd.concat(frames, ignore_index=True)
     d["ppg"] = d["points"] / d["gp"]

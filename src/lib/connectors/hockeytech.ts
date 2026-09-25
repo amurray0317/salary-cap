@@ -45,6 +45,9 @@ export const htUrls = {
   teams: (l: HtLeague, seasonId: number | string) => `${HT_BASE}?feed=modulekit&view=teamsbyseason&season_id=${id(seasonId, "season id")}&${common(l)}`,
   roster: (l: HtLeague, teamId: number | string, seasonId: number | string) =>
     `${HT_BASE}?feed=modulekit&view=roster&team_id=${id(teamId, "team id")}&season_id=${id(seasonId, "season id")}&${common(l)}`,
+  /** One player's profile: birth date, height, weight, position (fills bios missing from end-of-season rosters). */
+  profile: (l: HtLeague, playerId: number | string) =>
+    `${HT_BASE}?feed=modulekit&view=player&category=profile&player_id=${id(playerId, "player id")}&${common(l)}`,
   /** Every skater in a season, expanded stats, one request. */
   skaterStats: (l: HtLeague, seasonId: number | string) =>
     `${HT_BASE}?feed=statviewfeed&view=players&season=${id(seasonId, "season id")}&team=all&position=skaters&rookies=0&statsType=expanded` +

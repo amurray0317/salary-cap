@@ -28,6 +28,7 @@ import path from "path";
 import { gunzipSync, gzipSync } from "zlib";
 import { ConnectorHttpError, rateLimitedGet, type ConnectorKey, type FetchImpl } from "@/lib/connectors/http";
 import { HT_LEAGUES, htUrls, parseHtSeasons, parseHtTeams, type HtLeague } from "@/lib/connectors/hockeytech";
+import { isObject } from "@/lib/connectors/util";
 import { linkDraftPick, linkRankedPlayer, parseDraftPickRefs, parseRankings, parseSearchResults, type LinkOutcome } from "@/lib/prospects/draftLink";
 
 export const RAW_DIR = path.join(process.cwd(), ".data", "raw");
@@ -308,6 +309,33 @@ async function fetchHtLeague(league: HtLeague, years: number[]) {
     bump(`ht_${league.code}_seasons`);
     console.log(`[ht] ${league.name} ${s.label}: ${teams.length} teams`);
   }
+  await fetchHtProfiles(league, dir);
+}
+
+/**
+ * Rosters are end-of-season snapshots, so players who left a team mid-season
+ * have a stat line but no roster bio (no birth date). Their profiles are
+ * fetched once each, across every cached season, into <league>/profiles/.
+ */
+async function fetchHtProfiles(league: HtLeague, dir: string) {
+  const withBio = new Set<string>();
+  const statIds = new Set<string>();
+  for (const sid of fs.readdirSync(dir)) {
+    const sdir = path.join(dir, sid);
+    if (!/^\d+$/.test(sid) || !fs.statSync(sdir).isDirectory()) continue;
+    for (const f of fs.readdirSync(sdir).filter((n) => n.startsWith("roster_"))) {
+      const roster = (readGz(path.join(sdir, f)) as { SiteKit?: { Roster?: Array<{ player_id?: string; birthdate?: string }> } } | null)?.SiteKit?.Roster ?? [];
+      for (const p of roster) if (p?.player_id && /^\d{4}-\d{2}-\d{2}$/.test(p.birthdate ?? "")) withBio.add(String(p.player_id));
+    }
+    const stats = readGz(path.join(sdir, "skaters.json.gz")) as Array<{ sections?: Array<{ data?: Array<{ row?: { player_id?: string } }> }> }> | null;
+    for (const d of stats?.[0]?.sections?.[0]?.data ?? []) if (d.row?.player_id) statIds.add(String(d.row.player_id));
+  }
+  const missing = [...statIds].filter((p) => !withBio.has(p) && /^\d{1,6}$/.test(p)).sort();
+  for (const pid of missing) {
+    await cached(path.join(dir, "profiles", `${pid}.json.gz`), htUrls.profile(league, pid), (d) => isObject((d as { SiteKit?: unknown })?.SiteKit), "hockeytech");
+  }
+  bump(`ht_${league.code}_profiles`, missing.length);
+  console.log(`[ht] ${league.name}: ${missing.length} player profiles for stat lines without a roster bio`);
 }
 
 // -------------------------------------------------------------------- main
