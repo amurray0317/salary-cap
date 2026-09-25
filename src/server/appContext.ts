@@ -10,6 +10,7 @@ import { asc, eq, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
 import { getSessionUser, type SessionUser } from "@/lib/auth/session";
 import type { OrgRole } from "@/server/context";
+import { pickCurrentSeason } from "@/lib/season";
 
 export const ORG_COOKIE = "riq_org";
 export const TEAM_COOKIE = "riq_team";
@@ -78,11 +79,7 @@ export async function resolveAppContext(): Promise<AppContext> {
   const teamSeasons = team ? seasons.filter((s) => s.leagueId === team.leagueId) : seasons;
 
   const wantedSeason = store.get(SEASON_COOKIE)?.value;
-  const season =
-    teamSeasons.find((s) => s.id === wantedSeason) ??
-    teamSeasons.find((s) => s.isCurrent) ??
-    teamSeasons[0] ??
-    null;
+  const season = teamSeasons.find((s) => s.id === wantedSeason) ?? pickCurrentSeason(teamSeasons) ?? null;
 
   return {
     user,

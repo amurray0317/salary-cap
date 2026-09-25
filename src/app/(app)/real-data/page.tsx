@@ -11,15 +11,15 @@ import { RANKING_CATEGORIES } from "@/lib/connectors/nhl";
 import { MONEYPUCK_SITUATIONS } from "@/lib/connectors/moneypuck";
 import { formatDate } from "@/lib/format";
 import { PROSPECT_MODEL_VERSION, XG_MODEL_VERSION, readModelCard } from "@/lib/connectors/rosteriqModels";
+import { seasonLabel, seasonStartYear } from "@/lib/season";
 
 export const metadata: Metadata = { title: "Real data connectors" };
 
 function seasonOptions(now: Date, count = 12): Array<{ value: string; label: string }> {
-  // A season "YYYY-YY" starts in October; before October the latest one is last year's.
-  const latestStart = now.getUTCMonth() >= 9 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
+  // From July the upcoming season is listed first: rosters for it are published before opening night.
+  const latestStart = seasonStartYear(now);
   return Array.from({ length: count }, (_, i) => {
-    const start = latestStart - i;
-    const label = `${start}-${String(start + 1).slice(2)}`;
+    const label = seasonLabel(latestStart - i);
     return { value: label, label };
   });
 }
@@ -136,7 +136,7 @@ export default async function RealDataPage() {
               dataset="nhl_roster"
               submitLabel="Fetch roster → preview"
               fields={[
-                { name: "team", label: "Team tri-code", type: "text", placeholder: "CHI" },
+                { name: "team", label: "Team tri-code, or ALL for every club", type: "text", placeholder: "ALL" },
                 season,
               ]}
             />

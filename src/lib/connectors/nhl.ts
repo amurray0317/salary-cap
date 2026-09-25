@@ -40,6 +40,12 @@ export const RANKING_CATEGORIES = [
 /* URL builders (validated inputs only)                                */
 /* ------------------------------------------------------------------ */
 
+/** The 32 NHL clubs' tri-codes (2026-27). */
+export const NHL_TEAMS = [
+  "ANA", "BOS", "BUF", "CAR", "CBJ", "CGY", "CHI", "COL", "DAL", "DET", "EDM", "FLA", "LAK", "MIN", "MTL", "NJD",
+  "NSH", "NYI", "NYR", "OTT", "PHI", "PIT", "SEA", "SJS", "STL", "TBL", "TOR", "UTA", "VAN", "VGK", "WPG", "WSH",
+] as const;
+
 export function assertTeam(team: string): string {
   const t = team.trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(t)) throw new ConnectorParseError("Team must be a 3-letter NHL tri-code (e.g. CHI)");

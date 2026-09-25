@@ -34,6 +34,7 @@ import {
   NHL_CS_CREDIT,
   NHL_TERMS,
   RANKING_CATEGORIES,
+  NHL_TEAMS,
   nhlUrls,
   parseDraftPicks,
   parseDraftRankings,
@@ -105,7 +106,7 @@ export const connectorRequestSchema = z.discriminatedUnion("dataset", [
   z.object({ dataset: z.literal("nhl_players"), playerIds }),
   z.object({ dataset: z.literal("nhl_player_seasons"), playerIds }),
   z.object({ dataset: z.literal("nhl_game_logs"), playerIds: playerIds.max(10), season: seasonLabel, gameType }),
-  z.object({ dataset: z.literal("nhl_roster"), team: z.string().regex(/^[A-Z]{3}$/, "Team must be a 3-letter tri-code"), season: seasonLabel }),
+  z.object({ dataset: z.literal("nhl_roster"), team: z.string().regex(/^[A-Z]{3}$/, "Team must be a 3-letter tri-code or ALL"), season: seasonLabel }),
   z.object({ dataset: z.literal("nhl_skater_stats"), season: seasonLabel, gameType }),
   z.object({ dataset: z.literal("nhl_goalie_stats"), season: seasonLabel, gameType }),
   z.object({ dataset: z.literal("nhl_team_stats"), season: seasonLabel, gameType }),
@@ -294,9 +295,12 @@ function buildPlan(req: ConnectorRequest, env: Record<string, string | undefined
     }
     case "nhl_roster": {
       const seasonId = seasonLabelToNhlId(req.season);
-      return nhl(`NHL API — ${req.team} roster ${req.season}`, [nhlUrls.roster(req.team, seasonId)], ([r]) =>
-        parseRoster(parseJson(r!), req.team, seasonId),
-      );
+      // ALL: every club's roster in one import (32 requests, rate-limited).
+      const teams = req.team === "ALL" ? [...NHL_TEAMS] : [req.team];
+      return nhl(`NHL API — ${req.team === "ALL" ? "all 32 rosters" : `${req.team} roster`} ${req.season}`, teams.map((t) => nhlUrls.roster(t, seasonId)), (rs) => {
+        const parts = rs.map((r, i) => parseRoster(parseJson(r), teams[i]!, seasonId));
+        return { records: parts.flatMap((p) => p.records), effectiveSeason: req.season, warnings: [...new Set(parts.flatMap((p) => p.warnings))] };
+      });
     }
     case "nhl_skater_stats":
       return nhl(
