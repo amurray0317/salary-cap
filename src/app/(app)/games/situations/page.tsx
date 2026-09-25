@@ -6,6 +6,7 @@ import type { TeamSituations } from "@/lib/connectors/nhlSituations";
 import { NHL_CREDIT } from "@/lib/connectors/nhl";
 import { seasonLabel, seasonStartYear } from "@/lib/season";
 import { Card } from "@/components/ui";
+import { TeamLogo } from "@/components/NhlImages";
 
 export const metadata: Metadata = { title: "Special teams & game states" };
 
@@ -498,6 +499,7 @@ export default async function SituationsPage({
                           className={`sticky left-7 whitespace-nowrap border-b border-line/50 bg-surface px-2.5 py-1 ${mine ? "bg-accent-soft" : ""}`}
                           title={t.name}
                         >
+                          <TeamLogo team={t.team} size={20} className="mr-1.5 align-middle" />
                           <span className="font-semibold">{t.team}</span>
                           <span className="ml-2 hidden text-ink-muted xl:inline">{t.name}</span>
                         </td>

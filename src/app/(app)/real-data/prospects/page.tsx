@@ -4,6 +4,7 @@ import { resolveAppContext } from "@/server/appContext";
 import { listProspectProjections } from "@/server/services/referenceDataService";
 import { Card, EmptyState, StatTile, Td, Th } from "@/components/ui";
 import { PROSPECT_GROUP_LABELS, signed, topReasons } from "@/lib/models/labels";
+import { PlayerPhoto, TeamLogo } from "@/components/NhlImages";
 
 export const metadata: Metadata = { title: "Real data · prospects" };
 
@@ -96,10 +97,18 @@ export default async function RealDataProspectsPage({ searchParams }: { searchPa
                       <tr key={r.id} className="border-b border-line/50 last:border-0">
                         <Td right>{r.overallPick}</Td>
                         <Td>
-                          <Link href={`/real-data/players/${r.externalPlayerId}`} className="text-accent-text hover:underline">
-                            {r.playerName}
-                          </Link>
-                          <div className="text-xs text-ink-muted">{r.draftedBy ?? dash}</div>
+                          <div className="flex items-center gap-2.5">
+                            <PlayerPhoto playerId={r.externalPlayerId} name={r.playerName} size={34} />
+                            <div>
+                              <Link href={`/real-data/players/${r.externalPlayerId}`} className="text-accent-text hover:underline">
+                                {r.playerName}
+                              </Link>
+                              <div className="flex items-center gap-1 text-xs text-ink-muted">
+                                {r.draftedBy && /^[A-Z]{3}$/.test(r.draftedBy) && <TeamLogo team={r.draftedBy} size={14} />}
+                                {r.draftedBy ?? dash}
+                              </div>
+                            </div>
+                          </div>
                         </Td>
                         <Td>{r.position ?? dash}</Td>
                         <Td>{r.d0League ?? dash}</Td>

@@ -8,6 +8,7 @@ import type { schema } from "@/db/client";
 import { PROSPECT_GROUP_LABELS, XG_GROUP_LABELS, signed, topReasons } from "@/lib/models/labels";
 import { XG_GOALIE_SOURCE, XG_SOURCE } from "@/lib/models/versions";
 import { formatHeight, formatWeight } from "@/lib/preferences";
+import { PlayerPhoto, TeamLogo } from "@/components/NhlImages";
 
 export const metadata: Metadata = { title: "Real data · player" };
 
@@ -429,9 +430,16 @@ export default async function RealDataPlayerPage({ params }: { params: Promise<{
     <div className="space-y-4">
       <div>
         <Link href="/real-data/players" className="text-sm text-accent-text hover:underline">← Players & stats</Link>
-        <h1 className="mt-1 text-xl font-semibold">
-          {name} <span className="font-mono text-sm font-normal text-ink-muted">NHL id {playerId}</span>
-        </h1>
+        <div className="mt-2 flex items-center gap-4">
+          <PlayerPhoto playerId={playerId} name={name} size={84} className="shadow-md" />
+          <div className="min-w-0">
+            <h1 className="flex flex-wrap items-center gap-2">
+              {name}
+              {bio?.currentTeamAbbrev && <TeamLogo team={bio.currentTeamAbbrev} size={30} />}
+            </h1>
+            <span className="font-mono text-xs text-ink-muted">NHL id {playerId}</span>
+          </div>
+        </div>
         {bio && (
           <p className="text-sm text-ink-secondary">
             {[

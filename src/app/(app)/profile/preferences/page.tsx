@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { resolveAppContext } from "@/server/appContext";
 import { savePreferencesAction } from "@/server/actions/profileActions";
 import { START_PAGES, TIME_ZONES } from "@/lib/preferences";
+import { zoneName } from "@/lib/timezone";
 import { Notice } from "@/components/Notice";
 import { Card } from "@/components/ui";
 
@@ -46,10 +47,11 @@ export default async function PreferencesPage({ searchParams }: { searchParams: 
               <select name="timeZone" defaultValue={p.timeZone} className={input}>
                 {TIME_ZONES.map((t) => (
                   <option key={t.value} value={t.value}>
-                    {t.label}
+                    {t.value === "auto" && ctx.deviceTimeZone ? `${t.label} (${ctx.deviceTimeZone.replace(/_/g, " ")})` : t.label}
                   </option>
                 ))}
               </select>
+              <span className="mt-1 block text-xs font-normal text-ink-muted">Now showing times in {zoneName(ctx.timeZone)}.</span>
             </label>
           </div>
         </Card>

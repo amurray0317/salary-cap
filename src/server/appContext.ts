@@ -11,6 +11,7 @@ import { getDb, schema } from "@/db/client";
 import { getSessionUser, type SessionUser } from "@/lib/auth/session";
 import type { OrgRole } from "@/server/context";
 import { pickCurrentSeason } from "@/lib/season";
+import { TZ_COOKIE, isValidTimeZone, resolveTimeZone } from "@/lib/timezone";
 
 export const ORG_COOKIE = "riq_org";
 export const TEAM_COOKIE = "riq_team";
@@ -22,9 +23,13 @@ export interface AppContext {
   org: { id: string; name: string; slug: string };
   role: OrgRole;
   teams: Array<typeof schema.teams.$inferSelect>;
-  team: (typeof schema.teams.$inferSelect) | null;
+  team: typeof schema.teams.$inferSelect | null;
   seasons: Array<typeof schema.leagueSeasons.$inferSelect>;
-  season: (typeof schema.leagueSeasons.$inferSelect) | null;
+  season: typeof schema.leagueSeasons.$inferSelect | null;
+  /** IANA zone for times on screen: the user's pinned zone, or this device's (Preferences → Automatic). */
+  timeZone: string;
+  /** The zone this device last reported (null until its first page load). */
+  deviceTimeZone: string | null;
 }
 
 export async function resolveAppContext(): Promise<AppContext> {
@@ -46,23 +51,14 @@ export async function resolveAppContext(): Promise<AppContext> {
 
   const store = await cookies();
   const wantedOrg = store.get(ORG_COOKIE)?.value;
-  const activeMembership =
-    memberships.find((m) => m.organizationId === wantedOrg) ?? memberships[0];
+  const activeMembership = memberships.find((m) => m.organizationId === wantedOrg) ?? memberships[0];
   if (!activeMembership) redirect("/onboarding");
 
-  const orgRows = await db
-    .select()
-    .from(schema.organizations)
-    .where(eq(schema.organizations.id, activeMembership.organizationId))
-    .limit(1);
+  const orgRows = await db.select().from(schema.organizations).where(eq(schema.organizations.id, activeMembership.organizationId)).limit(1);
   const org = orgRows[0];
   if (!org) redirect("/onboarding");
 
-  const teams = await db
-    .select()
-    .from(schema.teams)
-    .where(eq(schema.teams.organizationId, org.id))
-    .orderBy(asc(schema.teams.name));
+  const teams = await db.select().from(schema.teams).where(eq(schema.teams.organizationId, org.id)).orderBy(asc(schema.teams.name));
 
   const wantedTeam = store.get(TEAM_COOKIE)?.value;
   const team = teams.find((t) => t.id === wantedTeam) ?? teams[0] ?? null;
@@ -79,6 +75,8 @@ export async function resolveAppContext(): Promise<AppContext> {
   const teamSeasons = team ? seasons.filter((s) => s.leagueId === team.leagueId) : seasons;
 
   const wantedSeason = store.get(SEASON_COOKIE)?.value;
+  const reported = store.get(TZ_COOKIE)?.value;
+  const deviceTimeZone = reported && isValidTimeZone(decodeURIComponent(reported)) ? decodeURIComponent(reported) : null;
   const season = teamSeasons.find((s) => s.id === wantedSeason) ?? pickCurrentSeason(teamSeasons) ?? null;
 
   return {
@@ -90,5 +88,7 @@ export async function resolveAppContext(): Promise<AppContext> {
     team,
     seasons: teamSeasons,
     season,
+    timeZone: resolveTimeZone(user.preferences.timeZone, deviceTimeZone),
+    deviceTimeZone,
   };
 }

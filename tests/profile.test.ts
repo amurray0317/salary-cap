@@ -95,7 +95,7 @@ describe("profile", () => {
   });
 
   it("preferences: defaults for missing or bad stored values; updates merge and reject invalid values", async () => {
-    expect(readPreferences(null)).toMatchObject({ startPage: "/dashboard", timeZone: "America/New_York", units: "imperial", density: "compact" });
+    expect(readPreferences(null)).toMatchObject({ startPage: "/dashboard", timeZone: "auto", units: "imperial", density: "compact" });
     expect(readPreferences({ units: "furlongs", notifications: { watchlist: false } })).toMatchObject({
       units: "imperial",
       notifications: { watchlist: false, importReady: true, weeklyDigest: false },

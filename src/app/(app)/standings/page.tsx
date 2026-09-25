@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { resolveAppContext } from "@/server/appContext";
 import { listStandings } from "@/server/services/referenceDataService";
 import { Card, EmptyState, Td, Th } from "@/components/ui";
+import { TeamLogo } from "@/components/NhlImages";
 
 export const metadata: Metadata = { title: "Standings" };
 
@@ -49,7 +50,10 @@ function StandingsTable({ rows, rankOf }: { rows: Row[]; rankOf: (r: Row) => num
             <tr key={r.id} className="border-b border-line/60 last:border-0 hover:bg-subtle">
               <Td right className="text-ink-muted">{rankOf(r) ?? dash}</Td>
               <Td className="whitespace-nowrap">
-                <span className="font-medium">{r.teamName}</span>
+                <span className="inline-flex items-center gap-2 align-middle">
+                  {r.league === "NHL" && <TeamLogo team={r.teamAbbrev} size={22} />}
+                  <span className="font-medium">{r.teamName}</span>
+                </span>
                 {r.clinch && (
                   <span className="ml-1.5 rounded bg-accent-soft px-1 text-[11px] font-medium text-accent-text" title={CLINCH[r.clinch] ?? r.clinch}>
                     {r.clinch}

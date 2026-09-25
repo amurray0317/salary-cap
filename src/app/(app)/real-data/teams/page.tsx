@@ -4,6 +4,7 @@ import { resolveAppContext } from "@/server/appContext";
 import { listTeamSeasons } from "@/server/services/referenceDataService";
 import { MONEYPUCK_SITUATIONS } from "@/lib/connectors/moneypuck";
 import { Card, EmptyState, Td, Th } from "@/components/ui";
+import { TeamLogo } from "@/components/NhlImages";
 
 export const metadata: Metadata = { title: "Real data · teams" };
 
@@ -68,7 +69,10 @@ export default async function RealDataTeamsPage({ searchParams }: { searchParams
               <tbody>
                 {data.rows.map((r) => (
                   <tr key={r.id} className="border-b border-line/50 last:border-0">
-                    <Td className="font-medium">{r.teamAbbrev ?? r.teamName ?? dash}</Td>
+                    <Td className="whitespace-nowrap font-medium">
+                      {r.teamAbbrev && <TeamLogo team={r.teamAbbrev} size={20} className="mr-1.5 align-middle" />}
+                      {r.teamAbbrev ?? r.teamName ?? dash}
+                    </Td>
                     <Td className="text-xs text-ink-secondary">{r.source === "moneypuck" ? "MoneyPuck" : "NHL API"}</Td>
                     <Td>{r.gameType === "regular" ? "Reg" : "PO"}</Td>
                     <Td right>{n(r.gamesPlayed)}</Td>

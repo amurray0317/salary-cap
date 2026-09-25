@@ -13,8 +13,14 @@ export const START_PAGES = [
   { value: "/players", label: "Players" },
 ] as const;
 
-/** Time zones offered for game times: every NHL market plus the main European hockey ones. */
+/**
+ * Time zones offered for game times. "auto" (the default) follows the device
+ * the person is using, so a scout in Helsinki and one in Calgary each see
+ * local puck drops; the rest pin a zone (every NHL market plus the main
+ * European hockey ones).
+ */
 export const TIME_ZONES = [
+  { value: "auto", label: "Automatic — this device's time zone" },
   { value: "America/New_York", label: "Eastern (New York, Toronto, Montreal)" },
   { value: "America/Chicago", label: "Central (Chicago, Dallas, Winnipeg)" },
   { value: "America/Denver", label: "Mountain (Denver, Calgary, Edmonton)" },
@@ -44,7 +50,7 @@ const timeZone = z.enum(TIME_ZONES.map((t) => t.value) as [string, ...string[]])
 
 export const preferencesSchema = z.object({
   startPage: startPage.catch("/dashboard"),
-  timeZone: timeZone.catch("America/New_York"),
+  timeZone: timeZone.catch("auto"),
   units: z.enum(["imperial", "metric"]).catch("imperial"),
   density: z.enum(["compact", "comfortable"]).catch("compact"),
   notifications: z

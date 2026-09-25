@@ -1,10 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { resolveAppContext } from "@/server/appContext";
+import { zoneName } from "@/lib/timezone";
 import { getScoreboard } from "@/server/services/scoresService";
 import type { ScoreGame } from "@/lib/connectors/nhlScores";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { EmptyState } from "@/components/ui";
+import { TeamLogo } from "@/components/NhlImages";
 
 export const metadata: Metadata = { title: "Scores" };
 export const dynamic = "force-dynamic";
@@ -56,8 +58,11 @@ function GameCard({ g, timeZone }: { g: ScoreGame; timeZone: string }) {
           return (
             <div key={t.abbrev} className="flex items-center justify-between py-0.5">
               <span className={`text-sm ${lead(t.score, other.score) ? "font-semibold" : ""}`}>
-                <span className="mr-2 inline-block w-9 font-mono text-xs text-ink-muted">{t.abbrev}</span>
-                {t.name}
+                <span className="inline-flex items-center gap-2">
+                  <TeamLogo team={t.abbrev} size={26} />
+                  <span className="w-9 font-mono text-xs text-ink-muted">{t.abbrev}</span>
+                  {t.name}
+                </span>
               </span>
               <span className="flex items-baseline gap-3 tabular-nums">
                 {showScore && t.shots !== null && <span className="text-xs text-ink-muted">{t.shots} SOG</span>}
@@ -120,7 +125,9 @@ export default async function ScoresPage({ searchParams }: { searchParams: Promi
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-xl font-semibold">Scores</h1>
-          <p className="text-sm text-ink-muted">NHL scoreboard from the public NHL API. Times Eastern. Other leagues appear as their data sources are connected.</p>
+          <p className="text-sm text-ink-muted">NHL scoreboard from the public NHL API. Puck drops in {zoneName(ctx.timeZone)}
+            {ctx.user.preferences.timeZone === "auto" ? " (this device)" : ""}. Other leagues appear as their data sources are connected.
+          </p>
         </div>
         <AutoRefresh active={active} seconds={30} />
       </div>
@@ -151,7 +158,7 @@ export default async function ScoresPage({ searchParams }: { searchParams: Promi
       ) : (
         <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {games.map((g) => (
-            <GameCard key={g.id} g={g} timeZone={ctx.user.preferences.timeZone} />
+            <GameCard key={g.id} g={g} timeZone={ctx.timeZone} />
           ))}
         </div>
       )}
