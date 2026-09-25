@@ -266,3 +266,14 @@ export async function removeMember(opts: { organizationId: string; actorId: stri
 export function registrationMode(env: Record<string, string | undefined> = process.env): "open" | "invite_only" {
   return env.REGISTRATION_MODE === "invite_only" ? "invite_only" : "open";
 }
+
+/**
+ * Whether someone may sign up without an invite. Open sign-up: always. Invite-only:
+ * only the very first account on a fresh deployment (its owner, who then invites
+ * everyone else); after that, never.
+ */
+export async function canRegisterWithoutInvite(env: Record<string, string | undefined> = process.env): Promise<boolean> {
+  if (registrationMode(env) === "open") return true;
+  const [row] = await getDb().select({ n: count() }).from(schema.users);
+  return Number(row?.n ?? 0) === 0;
+}

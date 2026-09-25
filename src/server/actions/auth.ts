@@ -10,7 +10,7 @@ import { cookies } from "next/headers";
 import { readPreferences } from "@/lib/preferences";
 import { writeAudit } from "@/server/context";
 import { ORG_COOKIE } from "@/server/appContext";
-import { InviteError, acceptInvite, lookupInvite, registrationMode } from "@/server/services/inviteService";
+import { InviteError, acceptInvite, canRegisterWithoutInvite, lookupInvite } from "@/server/services/inviteService";
 
 const registerSchema = z.object({
   fullName: z.string().min(1, "Name is required").max(120),
@@ -36,7 +36,7 @@ export async function registerAction(_prev: AuthFormState, formData: FormData): 
     const info = await lookupInvite(invite);
     if (info.status !== "valid") return { error: "This invite link is no longer valid. Ask for a new one." };
     if (info.email && info.email !== parsed.data.email) return { error: "This invite is for a different email address." };
-  } else if (registrationMode() === "invite_only") {
+  } else if (!(await canRegisterWithoutInvite())) {
     return { error: "New accounts need an invite link from an organization admin." };
   }
   const db = getDb();

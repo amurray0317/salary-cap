@@ -2,13 +2,13 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { registerAction } from "@/server/actions/auth";
 import { AuthForm } from "@/components/AuthForm";
-import { registrationMode } from "@/server/services/inviteService";
+import { canRegisterWithoutInvite } from "@/server/services/inviteService";
 
 export const metadata: Metadata = { title: "Create account" };
 
 export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ invite?: string }> }) {
   const { invite } = await searchParams;
-  const inviteOnly = registrationMode() === "invite_only";
+  const inviteOnly = !(await canRegisterWithoutInvite());
   return (
     <div className="w-full max-w-sm">
       <Link href="/" className="mb-8 flex items-center gap-2 lg:hidden">

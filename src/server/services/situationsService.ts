@@ -21,7 +21,8 @@ import { parseModelCsv, readModelFile } from "@/lib/connectors/rosteriqModels";
 import { currentSeasonLabel } from "@/lib/season";
 
 const IN_SEASON_TTL_MS = 3 * 60 * 60_000;
-const CACHE_DIR = process.env.RIQ_CACHE_DIR ?? path.join(process.cwd(), ".data", "cache", "nhl-situations");
+// On serverless hosts only /tmp is writable (VERCEL is set on Vercel).
+const CACHE_DIR = process.env.RIQ_CACHE_DIR ?? (process.env.VERCEL ? "/tmp/riq-cache/nhl-situations" : path.join(process.cwd(), ".data", "cache", "nhl-situations"));
 
 export interface SituationsResult {
   season: string;

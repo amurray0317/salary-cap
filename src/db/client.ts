@@ -32,7 +32,13 @@ export function getDb(): Db {
   if (g.__rosteriqDb) return g.__rosteriqDb;
 
   if (process.env.DATABASE_URL) {
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    // Serverless hosts run many short-lived instances: keep each one's pool small
+    // (the Supabase transaction pooler multiplexes them onto real connections).
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      max: Number(process.env.DATABASE_POOL_MAX ?? 5),
+      idleTimeoutMillis: 10_000,
+    });
     g.__rosteriqDb = drizzlePg(pool, { schema });
   } else {
     const dataDir = getDataDir();
