@@ -81,6 +81,30 @@ export const NAV: NavSection[] = [
     ],
   },
   {
+    id: "tactics",
+    label: "Tactics & situations",
+    icon: "⌖",
+    area: "Hockey ops",
+    groups: [
+      {
+        items: [
+          { label: "Special teams & game states", href: "/games/situations" },
+          {
+            label: "Team systems (video tagging)",
+            planned:
+              "Planned: tag forecheck (1-2-2, 2-1-2, 1-3-1), neutral-zone, D-zone coverage, breakouts, PP and PK formations per game from video. Public data has no player tracking, so structures are tagged by staff, not inferred.",
+          },
+          {
+            label: "Forecheck & transition",
+            planned:
+              "Planned: rush vs. cycle chances, forecheck turnovers and rebound chances from play-by-play timing and location, with RosterIQ xG.",
+          },
+          { label: "Special-teams units", planned: "Planned: player PP/PK time, points and on-ice xG per 60; shootout shooters and goalies." },
+        ],
+      },
+    ],
+  },
+  {
     id: "standings",
     label: "Standings",
     icon: "≡",
