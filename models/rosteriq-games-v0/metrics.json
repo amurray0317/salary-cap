@@ -1,0 +1,558 @@
+{
+ "question": "Which metrics go with wins (descriptive), and which pre-game information predicts them (walk-forward)",
+ "target": "home team wins, OT and shootout included; regular season",
+ "seasons": [
+  20212022,
+  20222023,
+  20232024,
+  20242025,
+  20252026
+ ],
+ "games": 6560,
+ "home_win_rate_by_season": {
+  "20212022": 0.5366,
+  "20222023": 0.5236,
+  "20232024": 0.5412,
+  "20242025": 0.5625,
+  "20252026": 0.5221
+ },
+ "descriptive": [
+  {
+   "metric": "More power-play goals",
+   "games": 3744,
+   "leader_win_pct": 0.7126
+  },
+  {
+   "metric": "Scored first",
+   "games": 6553,
+   "leader_win_pct": 0.6708
+  },
+  {
+   "metric": "More 5v5 expected goals",
+   "games": 6560,
+   "leader_win_pct": 0.6175
+  },
+  {
+   "metric": "More expected goals (all situations)",
+   "games": 6560,
+   "leader_win_pct": 0.6011
+  },
+  {
+   "metric": "More takeaways",
+   "games": 5823,
+   "leader_win_pct": 0.5605
+  },
+  {
+   "metric": "More shots on goal",
+   "games": 6322,
+   "leader_win_pct": 0.5508
+  },
+  {
+   "metric": "Won more faceoffs",
+   "games": 6242,
+   "leader_win_pct": 0.5202
+  },
+  {
+   "metric": "Fewer giveaways",
+   "games": 6076,
+   "leader_win_pct": 0.5099
+  },
+  {
+   "metric": "Drew more penalties",
+   "games": 5003,
+   "leader_win_pct": 0.5061
+  },
+  {
+   "metric": "More unblocked shot attempts",
+   "games": 6404,
+   "leader_win_pct": 0.4981
+  },
+  {
+   "metric": "More hits",
+   "games": 6282,
+   "leader_win_pct": 0.4351
+  },
+  {
+   "metric": "More blocked shots",
+   "games": 6238,
+   "leader_win_pct": 0.4123
+  }
+ ],
+ "predictive": {
+  "test_seasons": [
+   20222023,
+   20232024,
+   20242025,
+   20252026
+  ],
+  "elo_settings": {
+   "k": 10,
+   "home_advantage_elo": 25,
+   "season_carryover": 0.7
+  },
+  "pooled": {
+   "home_only": {
+    "games": 5248,
+    "log_loss": 0.69056,
+    "brier": 0.24871,
+    "accuracy": 0.5373,
+    "mean_p": 0.5354,
+    "home_win_rate": 0.5373
+   },
+   "points_pct": {
+    "games": 5248,
+    "log_loss": 0.67478,
+    "brier": 0.241,
+    "accuracy": 0.5798,
+    "mean_p": 0.5362,
+    "home_win_rate": 0.5373
+   },
+   "elo": {
+    "games": 5248,
+    "log_loss": 0.67039,
+    "brier": 0.23893,
+    "accuracy": 0.5772,
+    "mean_p": 0.5341,
+    "home_win_rate": 0.5373
+   },
+   "compact": {
+    "games": 5248,
+    "log_loss": 0.66462,
+    "brier": 0.23623,
+    "accuracy": 0.5884,
+    "mean_p": 0.5354,
+    "home_win_rate": 0.5373
+   },
+   "full": {
+    "games": 5248,
+    "log_loss": 0.66593,
+    "brier": 0.23669,
+    "accuracy": 0.5816,
+    "mean_p": 0.5355,
+    "home_win_rate": 0.5373
+   }
+  },
+  "per_season": {
+   "20222023": {
+    "home_only": {
+     "games": 1312,
+     "log_loss": 0.69237,
+     "brier": 0.24961,
+     "accuracy": 0.5236,
+     "mean_p": 0.5366,
+     "home_win_rate": 0.5236
+    },
+    "points_pct": {
+     "games": 1312,
+     "log_loss": 0.6639,
+     "brier": 0.23565,
+     "accuracy": 0.6075,
+     "mean_p": 0.5377,
+     "home_win_rate": 0.5236
+    },
+    "elo": {
+     "games": 1312,
+     "log_loss": 0.66084,
+     "brier": 0.23433,
+     "accuracy": 0.6006,
+     "mean_p": 0.5332,
+     "home_win_rate": 0.5236
+    },
+    "compact": {
+     "games": 1312,
+     "log_loss": 0.65393,
+     "brier": 0.2308,
+     "accuracy": 0.6174,
+     "mean_p": 0.5385,
+     "home_win_rate": 0.5236
+    },
+    "full": {
+     "games": 1312,
+     "log_loss": 0.65872,
+     "brier": 0.23264,
+     "accuracy": 0.6128,
+     "mean_p": 0.539,
+     "home_win_rate": 0.5236
+    }
+   },
+   "20232024": {
+    "home_only": {
+     "games": 1312,
+     "log_loss": 0.69,
+     "brier": 0.24843,
+     "accuracy": 0.5412,
+     "mean_p": 0.5301,
+     "home_win_rate": 0.5412
+    },
+    "points_pct": {
+     "games": 1312,
+     "log_loss": 0.67069,
+     "brier": 0.23906,
+     "accuracy": 0.5922,
+     "mean_p": 0.5318,
+     "home_win_rate": 0.5412
+    },
+    "elo": {
+     "games": 1312,
+     "log_loss": 0.66212,
+     "brier": 0.23498,
+     "accuracy": 0.593,
+     "mean_p": 0.535,
+     "home_win_rate": 0.5412
+    },
+    "compact": {
+     "games": 1312,
+     "log_loss": 0.66085,
+     "brier": 0.23456,
+     "accuracy": 0.5968,
+     "mean_p": 0.5287,
+     "home_win_rate": 0.5412
+    },
+    "full": {
+     "games": 1312,
+     "log_loss": 0.65705,
+     "brier": 0.23271,
+     "accuracy": 0.5976,
+     "mean_p": 0.5288,
+     "home_win_rate": 0.5412
+    }
+   },
+   "20242025": {
+    "home_only": {
+     "games": 1312,
+     "log_loss": 0.68698,
+     "brier": 0.24692,
+     "accuracy": 0.5625,
+     "mean_p": 0.5338,
+     "home_win_rate": 0.5625
+    },
+    "points_pct": {
+     "games": 1312,
+     "log_loss": 0.67349,
+     "brier": 0.24038,
+     "accuracy": 0.5831,
+     "mean_p": 0.534,
+     "home_win_rate": 0.5625
+    },
+    "elo": {
+     "games": 1312,
+     "log_loss": 0.66895,
+     "brier": 0.23823,
+     "accuracy": 0.5854,
+     "mean_p": 0.5339,
+     "home_win_rate": 0.5625
+    },
+    "compact": {
+     "games": 1312,
+     "log_loss": 0.66358,
+     "brier": 0.23584,
+     "accuracy": 0.5884,
+     "mean_p": 0.5348,
+     "home_win_rate": 0.5625
+    },
+    "full": {
+     "games": 1312,
+     "log_loss": 0.66277,
+     "brier": 0.23536,
+     "accuracy": 0.5846,
+     "mean_p": 0.5352,
+     "home_win_rate": 0.5625
+    }
+   },
+   "20252026": {
+    "home_only": {
+     "games": 1312,
+     "log_loss": 0.69288,
+     "brier": 0.24987,
+     "accuracy": 0.5221,
+     "mean_p": 0.541,
+     "home_win_rate": 0.5221
+    },
+    "points_pct": {
+     "games": 1312,
+     "log_loss": 0.69104,
+     "brier": 0.2489,
+     "accuracy": 0.5366,
+     "mean_p": 0.5412,
+     "home_win_rate": 0.5221
+    },
+    "elo": {
+     "games": 1312,
+     "log_loss": 0.68963,
+     "brier": 0.24818,
+     "accuracy": 0.5297,
+     "mean_p": 0.5344,
+     "home_win_rate": 0.5221
+    },
+    "compact": {
+     "games": 1312,
+     "log_loss": 0.68012,
+     "brier": 0.2437,
+     "accuracy": 0.5511,
+     "mean_p": 0.5393,
+     "home_win_rate": 0.5221
+    },
+    "full": {
+     "games": 1312,
+     "log_loss": 0.68517,
+     "brier": 0.24606,
+     "accuracy": 0.5312,
+     "mean_p": 0.5389,
+     "home_win_rate": 0.5221
+    }
+   }
+  },
+  "vs_home_only_log_loss_diff_ci95": {
+   "points_pct": [
+    -0.0214,
+    -0.0157,
+    -0.0101
+   ],
+   "elo": [
+    -0.0256,
+    -0.0201,
+    -0.0146
+   ],
+   "compact": [
+    -0.033,
+    -0.0258,
+    -0.0186
+   ],
+   "full": [
+    -0.0323,
+    -0.0245,
+    -0.0169
+   ]
+  },
+  "compact_vs_elo_log_loss_diff_ci95": [
+   -0.01,
+   -0.0058,
+   -0.0019
+  ],
+  "compact_vs_points_log_loss_diff_ci95": [
+   -0.0141,
+   -0.0102,
+   -0.006
+  ],
+  "full_vs_elo_log_loss_diff_ci95": [
+   -0.0091,
+   -0.0045,
+   -0.0001
+  ],
+  "single_feature": [
+   {
+    "feature": "xgf_pct_5v5",
+    "log_loss": 0.66668,
+    "vs_home_only_ci95": [
+     -0.0308,
+     -0.024,
+     -0.0166
+    ]
+   },
+   {
+    "feature": "xgf_pct",
+    "log_loss": 0.66671,
+    "vs_home_only_ci95": [
+     -0.0306,
+     -0.0238,
+     -0.0164
+    ]
+   },
+   {
+    "feature": "xga_pg",
+    "log_loss": 0.67283,
+    "vs_home_only_ci95": [
+     -0.0229,
+     -0.0177,
+     -0.0118
+    ]
+   },
+   {
+    "feature": "gf_pct",
+    "log_loss": 0.67304,
+    "vs_home_only_ci95": [
+     -0.0238,
+     -0.0173,
+     -0.0114
+    ]
+   },
+   {
+    "feature": "xgf_pg",
+    "log_loss": 0.67358,
+    "vs_home_only_ci95": [
+     -0.0228,
+     -0.017,
+     -0.0109
+    ]
+   },
+   {
+    "feature": "pts_pct",
+    "log_loss": 0.67478,
+    "vs_home_only_ci95": [
+     -0.0215,
+     -0.0157,
+     -0.0099
+    ]
+   },
+   {
+    "feature": "st_net_pg",
+    "log_loss": 0.68319,
+    "vs_home_only_ci95": [
+     -0.0117,
+     -0.0074,
+     -0.0027
+    ]
+   },
+   {
+    "feature": "pen_diff_pg",
+    "log_loss": 0.68766,
+    "vs_home_only_ci95": [
+     -0.0046,
+     -0.0029,
+     -0.0011
+    ]
+   },
+   {
+    "feature": "sh_pct",
+    "log_loss": 0.68851,
+    "vs_home_only_ci95": [
+     -0.0051,
+     -0.002,
+     0.0011
+    ]
+   },
+   {
+    "feature": "b2b",
+    "log_loss": 0.68881,
+    "vs_home_only_ci95": [
+     -0.004,
+     -0.0017,
+     0.0005
+    ]
+   },
+   {
+    "feature": "rest",
+    "log_loss": 0.68899,
+    "vs_home_only_ci95": [
+     -0.0029,
+     -0.0016,
+     -0.0002
+    ]
+   },
+   {
+    "feature": "goalie_sax_rate",
+    "log_loss": 0.68906,
+    "vs_home_only_ci95": [
+     -0.0037,
+     -0.0015,
+     0.0008
+    ]
+   },
+   {
+    "feature": "fo_pct",
+    "log_loss": 0.68916,
+    "vs_home_only_ci95": [
+     -0.004,
+     -0.0013,
+     0.0015
+    ]
+   },
+   {
+    "feature": "sv_pct",
+    "log_loss": 0.69109,
+    "vs_home_only_ci95": [
+     -0.0028,
+     0.0006,
+     0.004
+    ]
+   }
+  ],
+  "compact_model_standardised_coefficients": {
+   "xgf_pct_5v5": 0.3783,
+   "goalie_sax_rate": 0.064,
+   "st_net_pg": -0.0019,
+   "pts_pct": 0.1645,
+   "rest": 0.0384,
+   "b2b": -0.1416
+  },
+  "calibration_compact": [
+   {
+    "p_from": 0.131,
+    "p_to": 0.36,
+    "games": 525,
+    "predicted": 0.2957,
+    "actual": 0.3257
+   },
+   {
+    "p_from": 0.36,
+    "p_to": 0.422,
+    "games": 525,
+    "predicted": 0.3965,
+    "actual": 0.4476
+   },
+   {
+    "p_from": 0.422,
+    "p_to": 0.463,
+    "games": 525,
+    "predicted": 0.4438,
+    "actual": 0.4743
+   },
+   {
+    "p_from": 0.463,
+    "p_to": 0.503,
+    "games": 524,
+    "predicted": 0.4833,
+    "actual": 0.4885
+   },
+   {
+    "p_from": 0.503,
+    "p_to": 0.538,
+    "games": 525,
+    "predicted": 0.5203,
+    "actual": 0.5276
+   },
+   {
+    "p_from": 0.538,
+    "p_to": 0.572,
+    "games": 525,
+    "predicted": 0.5548,
+    "actual": 0.5333
+   },
+   {
+    "p_from": 0.572,
+    "p_to": 0.609,
+    "games": 524,
+    "predicted": 0.5904,
+    "actual": 0.5534
+   },
+   {
+    "p_from": 0.609,
+    "p_to": 0.651,
+    "games": 525,
+    "predicted": 0.6289,
+    "actual": 0.6038
+   },
+   {
+    "p_from": 0.651,
+    "p_to": 0.709,
+    "games": 525,
+    "predicted": 0.6769,
+    "actual": 0.6571
+   },
+   {
+    "p_from": 0.709,
+    "p_to": 0.898,
+    "games": 525,
+    "predicted": 0.763,
+    "actual": 0.7619
+   }
+  ]
+ },
+ "features": {
+  "shrinkage": "season-to-date rates blended with a prior worth 10 games (previous season regressed halfway to the league mean)",
+  "goalie": "starting goalie's (xG faced \u2212 goals) / (xG faced + 30), this season and last, before the game; the actual starter (assumes the starter is confirmed before puck drop)",
+  "rest": "days since the team's previous game, capped at 4; b2b = second night of a back-to-back",
+  "xg": "RosterIQ xG v1 production model (fitted on these seasons' shots; in-sample for the shot model, never sees game results). Its season totals run below MoneyPuck's in 2023-24 (\u22125.1%) and 2024-25 (\u22124.7%); a league-wide shift cancels in xG shares and in home-minus-away goalie differences, which is all this model uses",
+  "live_starter": "live predictions are made at 10:00 UTC, before starters are confirmed, and use the expected starter (most starts in the team's last 10 games); checked on 56 games of 2025-26: identical to the backtest when the guess is right (17 games), mean |difference| 0.009 overall"
+ }
+}

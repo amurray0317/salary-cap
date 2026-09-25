@@ -263,11 +263,11 @@ export const NAV: NavSection[] = [
     groups: [
       {
         items: [
+          { label: "Win drivers & model check", href: "/games/win-drivers" },
           {
-            label: "Win probability, puck line, totals",
-            planned: "Planned: from a team goal model on our xG; shown only after out-of-sample validation.",
+            label: "Puck line and totals",
+            planned: "Planned: from a team goal-scoring model on our xG; shown only after out-of-sample validation.",
           },
-          { label: "Model track record", planned: "Planned: calibration and log loss of every past prediction." },
         ],
       },
     ],
