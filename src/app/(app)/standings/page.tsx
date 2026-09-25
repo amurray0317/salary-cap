@@ -48,7 +48,7 @@ function StandingsTable({ rows, rankOf }: { rows: Row[]; rankOf: (r: Row) => num
           return (
             <tr key={r.id} className="border-b border-line/60 last:border-0 hover:bg-subtle">
               <Td right className="text-ink-muted">{rankOf(r) ?? dash}</Td>
-              <Td>
+              <Td className="whitespace-nowrap">
                 <span className="font-medium">{r.teamName}</span>
                 {r.clinch && (
                   <span className="ml-1.5 rounded bg-accent-soft px-1 text-[11px] font-medium text-accent-text" title={CLINCH[r.clinch] ?? r.clinch}>

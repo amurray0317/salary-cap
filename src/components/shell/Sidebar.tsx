@@ -8,6 +8,14 @@ import { NAV, activeHref } from "@/components/shell/nav";
 const STORE_COLLAPSED = "riq_nav_collapsed";
 const STORE_OPEN = "riq_nav_open";
 
+/** Phone tab bar: the pages used most on the go. */
+const TABS = [
+  { href: "/scores", label: "Scores", icon: "◷" },
+  { href: "/standings", label: "Standings", icon: "≡" },
+  { href: "/real-data/prospects", label: "Prospects", icon: "✚" },
+  { href: "/players", label: "Players", icon: "▤" },
+];
+
 export function Sidebar() {
   const pathname = usePathname();
   const current = activeHref(pathname);
@@ -55,15 +63,38 @@ export function Sidebar() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setMobileOpen(true)}
-        className={`no-print fixed left-3 top-2.5 z-50 rounded-lg bg-nav-from px-2.5 py-1.5 text-lg leading-none text-white shadow-md lg:hidden ${mobileOpen ? "hidden" : ""}`}
-        aria-label="Open navigation"
-        aria-expanded={mobileOpen}
+      {/* Phones: bottom tab bar; the drawer (Menu) holds everything else. */}
+      <nav
+        aria-label="Quick"
+        className="no-print fixed inset-x-0 bottom-0 z-30 flex border-t border-white/10 bg-nav-from/95 pb-[env(safe-area-inset-bottom)] text-nav-ink backdrop-blur lg:hidden"
       >
-        ☰
-      </button>
+        {TABS.map((t) => {
+          const active = current === t.href;
+          return (
+            <Link
+              key={t.href}
+              href={t.href}
+              className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold ${active ? "text-ice-bright" : "text-nav-muted"}`}
+              aria-current={active ? "page" : undefined}
+            >
+              <span aria-hidden className="text-lg leading-none">{`${t.icon}\uFE0E`}</span>
+              {t.label}
+            </Link>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold text-nav-muted"
+          aria-label="Open navigation"
+          aria-expanded={mobileOpen}
+        >
+          <span aria-hidden className="text-lg leading-none">
+            ☰
+          </span>
+          Menu
+        </button>
+      </nav>
       {mobileOpen && (
         <div className="no-print fixed inset-0 z-30 bg-nav-from/50 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} aria-hidden />
       )}
@@ -72,7 +103,7 @@ export function Sidebar() {
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         } ${compact ? "lg:w-14" : "lg:w-64"}`}
       >
-        <div className="flex items-center gap-2.5 px-4 py-5">
+        <div className="flex items-center gap-2.5 px-4 pb-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
           <span
             className="inline-block h-7 w-7 shrink-0 rounded-lg bg-linear-to-br from-ice-bright to-accent shadow-[0_0_16px_rgba(56,189,248,0.45)]"
             aria-hidden

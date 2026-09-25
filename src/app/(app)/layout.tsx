@@ -12,7 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-screen">
       <Sidebar />
       <div className="min-w-0 flex-1">
-        <header className="no-print sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-line bg-surface/90 py-2.5 pl-16 pr-4 shadow-[0_1px_0_rgba(16,24,40,0.02)] backdrop-blur lg:pl-5 lg:pr-5">
+        <header className="no-print sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-line bg-surface/90 px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] shadow-[0_1px_0_rgba(16,24,40,0.02)] backdrop-blur lg:px-5">
           <ContextSelect
             name="org"
             label="Organization"
@@ -53,16 +53,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {ctx.user.fullName}
             <span className="ml-1 rounded bg-track px-1.5 py-0.5 text-xs">{ctx.role.replace(/_/g, " ")}</span>
           </span>
-          <Link href="/settings" className="text-sm text-ink-muted hover:text-ink">
+          <Link href="/settings" className="hidden text-sm text-ink-muted hover:text-ink sm:inline">
             Settings
           </Link>
           <form action={logoutAction}>
-            <button className="rounded-md border border-line px-3 py-1.5 text-sm text-ink-secondary hover:text-ink">
-              Sign out
-            </button>
+            <button className="rounded-md border border-line px-3 py-1.5 text-sm text-ink-secondary hover:text-ink">Sign out</button>
           </form>
         </header>
-        <main className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="mx-auto max-w-[1600px] p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8">{children}</main>
       </div>
     </div>
   );
