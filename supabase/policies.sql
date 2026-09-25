@@ -226,3 +226,9 @@ alter table user_avatars enable row level security;
 create policy user_avatars_self on user_avatars
   for all using (user_id = auth.uid())
   with check (user_id = auth.uid());
+
+-- Subscriptions (migration 0014). Members can read their organization's plan;
+-- only the server (billing webhook, service role) writes it.
+alter table organization_subscriptions enable row level security;
+create policy organization_subscriptions_read on organization_subscriptions
+  for select using (is_org_member(organization_id));

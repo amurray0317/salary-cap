@@ -250,6 +250,26 @@ export const organizationInvites = pgTable(
   (t) => [uniqueIndex("organization_invites_token").on(t.tokenHash)],
 );
 
+/**
+ * An organization's paid plan, kept in step with Stripe by the billing
+ * webhook. No row = the Free plan. Ignored while billing is switched off.
+ */
+export const organizationSubscriptions = pgTable("organization_subscriptions", {
+  organizationId: uuid("organization_id")
+    .primaryKey()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  plan: text("plan").notNull(), // "pro" | "club"
+  interval: text("interval").notNull(), // "month" | "year"
+  /** Stripe subscription status: active, trialing, past_due, canceled, unpaid, incomplete… */
+  status: text("status").notNull(),
+  seats: integer("seats").notNull().default(1),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id").unique(),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const organizationMembers = pgTable(
   "organization_members",
   {

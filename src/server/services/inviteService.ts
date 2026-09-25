@@ -13,6 +13,8 @@
  */
 import { createHash, randomBytes } from "crypto";
 import { and, count, eq, gt, isNull, lt, sql } from "drizzle-orm";
+import { billingConfig } from "@/lib/billing/stripe";
+import { PLANS } from "@/lib/billing/plans";
 import { getDb, schema } from "@/db/client";
 import { ORG_ROLES, roleTier, type OrgRole } from "@/lib/auth/roles";
 
@@ -143,7 +145,13 @@ export async function lookupInvite(token: string, now = new Date()) {
 }
 
 /** Joins the invited organization with the invite's role. Returns the organization id. */
-export async function acceptInvite(opts: { token: string; userId: string; userEmail: string; now?: Date }): Promise<string> {
+export async function acceptInvite(opts: {
+  token: string;
+  userId: string;
+  userEmail: string;
+  now?: Date;
+  env?: Record<string, string | undefined>;
+}): Promise<string> {
   const db = getDb();
   const t = schema.organizationInvites;
   const now = opts.now ?? new Date();
@@ -164,6 +172,17 @@ export async function acceptInvite(opts: { token: string; userId: string; userEm
       .where(and(eq(m.organizationId, inv.organizationId), eq(m.userId, opts.userId)))
       .limit(1);
     if (existing.length) throw new InviteError("You are already a member of this organization");
+    // Seat limit of the organization's plan (only while billing is switched on).
+    if (billingConfig(opts.env ?? process.env).enabled) {
+      const [sub] = await tx
+        .select()
+        .from(schema.organizationSubscriptions)
+        .where(eq(schema.organizationSubscriptions.organizationId, inv.organizationId));
+      const limit = sub && ["active", "trialing", "past_due"].includes(sub.status) ? sub.seats : PLANS.free.seats;
+      const [{ n }] = (await tx.select({ n: count() }).from(m).where(eq(m.organizationId, inv.organizationId))) as [{ n: number }];
+      if (n >= limit)
+        throw new InviteError(`This organization's plan has ${limit} seat${limit === 1 ? "" : "s"}, all in use. Ask its admin to add a seat.`);
+    }
     // Count the use atomically: fails if another acceptance took the last use.
     const claimed = await tx
       .update(t)

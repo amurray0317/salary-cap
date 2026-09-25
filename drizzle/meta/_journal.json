@@ -99,6 +99,13 @@
       "when": 1790301240181,
       "tag": "0013_user_profile",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790302465786,
+      "tag": "0014_organization_subscriptions",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/profile/notifications", label: "Notifications" },
   { href: "/profile/preferences", label: "Preferences" },
   { href: "/settings", label: "Organization settings" },
+  { href: "/settings/billing", label: "Plan & billing" },
 ];
 
 /** Top-right account menu: photo or initials; opens profile links and Sign out. */

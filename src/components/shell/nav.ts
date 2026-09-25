@@ -512,7 +512,7 @@ export const NAV: NavSection[] = [
           { label: "Notifications", href: "/profile/notifications" },
           { label: "Preferences", href: "/profile/preferences" },
           { label: "Organization settings", href: "/settings" },
-          { label: "Plan & billing", planned: "Planned only if RosterIQ becomes a product (needs licensed data first)." },
+          { label: "Plan & billing", href: "/settings/billing" },
         ],
       },
     ],

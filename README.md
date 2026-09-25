@@ -121,6 +121,8 @@ Copy `.env.example` to `.env`. Everything is optional in local mode:
 - `SESSION_SECRET` — required in production for the local provider
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — Supabase mode
 - `LLM_PROVIDER`, `LLM_API_KEY` — reserved for the future AI assistant (off by default)
+- `BILLING_ENABLED`, `APP_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*` — paid plans (Settings → Plan &
+  billing); off by default, and while off every feature is unlocked. See `.env.example`
 - `EP_API_KEY` — EliteProspects official API key; the EP connector is disabled until it is set
 - `NODE_USE_ENV_PROXY=1` — only when outbound HTTPS goes through a proxy (Node's fetch ignores
   `HTTPS_PROXY` otherwise)
