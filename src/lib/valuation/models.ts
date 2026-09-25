@@ -83,7 +83,7 @@ export interface MarketInputs {
   age: number | null;
   platformPoints: number;
   performanceValue: number;
-  freeAgentStatus: "under_contract" | "rfa" | "ufa" | "unsigned_prospect";
+  freeAgentStatus: "under_contract" | "rfa" | "ufa" | "unsigned_prospect" | "unknown";
   comparables: ComparableRecord[];
   /** Annual cap-growth assumption used to inflate older comparables. */
   capInflationPct: number;

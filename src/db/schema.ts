@@ -101,6 +101,7 @@ export const freeAgentStatus = pgEnum("free_agent_status", [
   "rfa",
   "ufa",
   "unsigned_prospect",
+  "unknown", // e.g. imported from a public roster, which carries no contract data
 ]);
 
 export const waiverStatus = pgEnum("waiver_status", [
@@ -109,6 +110,7 @@ export const waiverStatus = pgEnum("waiver_status", [
   "cleared",
   "claimed",
   "on_waivers",
+  "unknown",
 ]);
 
 export const rosterStatus = pgEnum("roster_status", [
@@ -437,13 +439,15 @@ export const players = pgTable(
     waiverStatus: waiverStatus("waiver_status").notNull().default("required"),
     injuryStatus: text("injury_status"),
     proGamesPlayed: integer("pro_games_played").notNull().default(0),
+    /** NHL player id when the player came from (or was matched to) NHL data; links photos and league stats. */
+    nhlPlayerId: text("nhl_player_id"),
     notes: text("notes"),
     sourceId: uuid("source_id").references(() => dataSources.id),
     provenance: dataProvenance("provenance").notNull().default("user_entered"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("players_org_idx").on(t.organizationId)],
+  (t) => [index("players_org_idx").on(t.organizationId), uniqueIndex("players_org_nhl_id").on(t.organizationId, t.nhlPlayerId)],
 );
 
 export const rosters = pgTable("rosters", {

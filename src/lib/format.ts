@@ -56,6 +56,7 @@ export function statusLabel(status: string): string {
     rfa: "RFA",
     ufa: "UFA",
     unsigned_prospect: "Unsigned prospect",
+    unknown: "Not recorded",
   };
   return map[status] ?? status.replace(/_/g, " ");
 }

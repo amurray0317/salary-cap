@@ -7,14 +7,17 @@ import { InviteForm } from "@/components/InviteForm";
 import { ORG_ROLES, roleHasCapability, roleLabel, roleTier } from "@/lib/auth/roles";
 import { listOpenInvites, registrationMode } from "@/server/services/inviteService";
 import { changeMemberRoleAction, removeMemberAction, revokeInviteAction } from "@/server/actions/inviteActions";
+import { Notice } from "@/components/Notice";
+import { importNhlClubAction } from "@/server/actions/nhlClubActions";
+import { NHL_TEAMS, NHL_TEAM_NAMES } from "@/lib/connectors/nhl";
 
 export const metadata: Metadata = { title: "Settings" };
 
 const label = roleLabel;
 
-export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
   const ctx = await resolveAppContext();
-  const { error } = await searchParams;
+  const { error, saved } = await searchParams;
   const db = getDb();
   const isAdmin = roleHasCapability(ctx.role, "admin");
   // Roles this admin may grant: at or below their own tier; league admin only by a league admin.
@@ -46,10 +49,34 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Organization settings — {ctx.org.name}</h1>
 
-      {error && (
-        <p role="alert" className="rounded-md border border-critical/40 bg-critical/10 px-3 py-2 text-sm text-critical">
-          {error}
-        </p>
+      <Notice error={error} saved={saved} />
+
+      {isAdmin && (
+        <Card title="Your NHL club">
+          <form action={importNhlClubAction} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="organizationId" value={ctx.org.id} />
+            <label className="text-xs text-ink-secondary">
+              Club
+              <select name="team" defaultValue={ctx.team && NHL_TEAMS.includes(ctx.team.abbreviation as never) ? ctx.team.abbreviation : "CHI"} className="mt-1 block rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm">
+                {NHL_TEAMS.map((t) => (
+                  <option key={t} value={t}>
+                    {NHL_TEAM_NAMES[t]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 pb-1.5 text-sm text-ink-secondary">
+              <input type="checkbox" name="hideOthers" defaultChecked className="accent-[var(--color-accent)]" />
+              Hide the other teams in this organization (e.g. the fictional demo team)
+            </label>
+            <button className="rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-white">Set up from the NHL roster</button>
+          </form>
+          <p className="mt-3 text-xs text-ink-muted">
+            Brings in the club and its current NHL roster (names, positions, birth dates, size, photos, NHL ids), under the NHL&apos;s published cap figures ($104.0M
+            upper limit and $76.9M floor for 2026-27). Public NHL data has no contracts, so cap hits, waiver and free-agent status stay blank until you add them in Cap
+            &amp; contracts or import a CSV. Running it again refreshes the roster without duplicating players.
+          </p>
+        </Card>
       )}
 
       {isAdmin && (

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { and, asc, eq, ilike } from "drizzle-orm";
+import { and, asc, eq, ilike, isNull, or } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
 import { resolveAppContext } from "@/server/appContext";
 import { Card, EmptyState, Td, Th } from "@/components/ui";
 import { statusLabel } from "@/lib/format";
+import { PlayerPhoto } from "@/components/NhlImages";
 
 export const metadata: Metadata = { title: "Players" };
 
@@ -17,7 +18,8 @@ export default async function PlayersPage({
   const { q, pos, status } = await searchParams;
   const db = getDb();
 
-  const conditions = [eq(schema.players.organizationId, ctx.org.id)];
+  // Players on hidden teams (e.g. a retired demo team) leave the list with their team; free agents stay.
+  const conditions = [eq(schema.players.organizationId, ctx.org.id), or(isNull(schema.players.currentTeamId), eq(schema.teams.isActive, true))!];
   if (q) conditions.push(ilike(schema.players.fullName, `%${q}%`));
   if (pos) conditions.push(eq(schema.players.position, pos));
   if (status) conditions.push(eq(schema.players.rosterStatus, status as (typeof schema.rosterStatus.enumValues)[number]));
@@ -93,7 +95,8 @@ export default async function PlayersPage({
               <tbody>
                 {players.map(({ player, teamName }) => (
                   <tr key={player.id} className="border-b border-line/50 last:border-0 hover:bg-subtle">
-                    <Td>
+                    <Td className="whitespace-nowrap">
+                      <PlayerPhoto playerId={player.nhlPlayerId} name={player.fullName} size={28} className="mr-2 inline-block align-middle" />
                       <Link href={`/players/${player.id}`} className="font-medium hover:text-accent-text">
                         {player.fullName}
                       </Link>

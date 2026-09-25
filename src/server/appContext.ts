@@ -6,7 +6,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
 import { getSessionUser, type SessionUser } from "@/lib/auth/session";
 import type { OrgRole } from "@/server/context";
@@ -58,7 +58,12 @@ export async function resolveAppContext(): Promise<AppContext> {
   const org = orgRows[0];
   if (!org) redirect("/onboarding");
 
-  const teams = await db.select().from(schema.teams).where(eq(schema.teams.organizationId, org.id)).orderBy(asc(schema.teams.name));
+  // Hidden (inactive) teams, e.g. a retired demo team, stay in the database but leave the switcher.
+  const teams = await db
+    .select()
+    .from(schema.teams)
+    .where(and(eq(schema.teams.organizationId, org.id), eq(schema.teams.isActive, true)))
+    .orderBy(asc(schema.teams.name));
 
   const wantedTeam = store.get(TEAM_COOKIE)?.value;
   const team = teams.find((t) => t.id === wantedTeam) ?? teams[0] ?? null;

@@ -9,6 +9,7 @@ import { setPlayerStatusAction, terminateContractAction } from "@/server/actions
 import { Card, StatTile, Td, Th } from "@/components/ui";
 import { formatDate, money, moneyCompact, pct, positionLabel, statusLabel } from "@/lib/format";
 import { formatHeight, formatWeight } from "@/lib/preferences";
+import { PlayerPhoto } from "@/components/NhlImages";
 
 export const metadata: Metadata = { title: "Player profile" };
 
@@ -55,13 +56,16 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">{player.fullName}</h1>
-          <p className="text-sm text-ink-muted">
-            {positionLabel(player.position)} · {statusLabel(player.rosterStatus)} ·{" "}
-            {statusLabel(player.freeAgentStatus)}
-            {player.injuryStatus ? ` · ⚕ ${player.injuryStatus}` : ""}
-          </p>
+        <div className="flex items-center gap-4">
+          <PlayerPhoto playerId={player.nhlPlayerId} name={player.fullName} size={72} className="shadow-md" />
+          <div>
+            <h1 className="text-xl font-semibold">{player.fullName}</h1>
+            <p className="text-sm text-ink-muted">
+              {positionLabel(player.position)} · {statusLabel(player.rosterStatus)} ·{" "}
+              {statusLabel(player.freeAgentStatus)}
+              {player.injuryStatus ? ` · ⚕ ${player.injuryStatus}` : ""}
+            </p>
+          </div>
         </div>
         {canEdit && (
           <form action={setPlayerStatusAction} className="flex items-center gap-2">
