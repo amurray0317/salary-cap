@@ -264,5 +264,19 @@
     "status": 200,
     "retrievedAt": "2026-09-24T22:12:00.000Z",
     "trimming": "none (full response)"
+  },
+  {
+    "file": "hockeytech/ohl-seasons.json",
+    "url": "https://lscluster.hockeytech.com/feed/index.php?feed=modulekit&view=seasons&key=2976319eb44abe94&client_code=ohl&fmt=json&lang=en",
+    "status": 200,
+    "retrievedAt": "2026-09-25T01:05:00.000Z",
+    "trimming": "seasons list trimmed to the 6 newest"
+  },
+  {
+    "file": "hockeytech/ohl-players-83.txt",
+    "url": "https://lscluster.hockeytech.com/feed/index.php?feed=statviewfeed&view=players&season=83&team=all&position=skaters&rookies=0&statsType=expanded&rosterstatus=undefined&site_id=0&first=0&limit=5000&sort=points&league_id=1&division=-1&conference=-1&key=2976319eb44abe94&client_code=ohl&fmt=json&lang=en",
+    "status": 200,
+    "retrievedAt": "2026-09-25T01:05:00.000Z",
+    "trimming": "first 3 and last player rows"
   }
 ]

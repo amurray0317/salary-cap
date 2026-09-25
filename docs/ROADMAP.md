@@ -76,6 +76,26 @@ Standings (NHL). Items marked *planned* in the sidebar:
 - **Needs a definition:** WAR components for prospects (no public WAR exists
   for junior or European players).
 
+### Feature queue (chosen by the owner, in build order)
+
+Single power user for now (may expand later); everything in-app.
+
+1. **In-season prospect tracker:** every drafted or ranked prospect's season
+   updated daily (HockeyTech + NHL), P(regular) re-scored as games are played.
+2. **Prospect comparables:** the most similar draft-year profiles and what
+   became of them, next to the model's probability.
+3. **On-ice impact:** NHL shift charts (free) + RosterIQ xG: on-ice xGF/xGA
+   per 60, line combinations, with-or-without-you.
+4. **Alerts & daily digest (in-app):** prospect breakouts, drift alarms, new
+   Central Scouting lists, standings moves.
+5. **Player comparison:** 2–4 players side by side (stats, xG, model
+   breakdowns, contracts).
+6. **Contract value model:** projected AAV and term for upcoming UFAs/RFAs,
+   plugged into cap scenarios; before the trade deadline.
+7. **Trade analyzer:** cap impact and value on both sides.
+8. **Draft-day war room:** live board (model + Central Scouting + needs),
+   picks crossed off, best available with reasons; ready by June 2027.
+
 ### Models
 
 - **Prospect model v2 (in progress):** tiered outcome (NHL regular / top of

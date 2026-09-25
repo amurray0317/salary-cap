@@ -139,3 +139,27 @@ def test_top_of_lineup_uses_league_wide_toi_rank_by_position_and_season_length()
     assert top == set(range(11)) | {998} | set(range(100, 108))
     r = report.iloc[0]
     assert (r["teams"], r["season_games"], r["top_forwards"], r["top_defence"]) == (2, 10, 12, 8)
+
+
+def test_junior_stats_match_by_birth_date_with_nickname_fallback_and_no_guessing():
+    from rosteriq_models.prospects import v2
+
+    ht = pd.DataFrame([
+        # Draft-year (2015-16) and prior-season lines for a player listed as "Alex".
+        {"league": "OHL", "ht_id": "1", "season": "2015-16", "name": "Alex Debrincat", "birth_date": "1997-12-18", "gp": 60, "ppg": 1.68, "es_ppg": 1.1, "pp_ppg": 0.5, "gpg": 0.8, "team_goal_share": 0.36, "shots_pg": 4.0},
+        {"league": "OHL", "ht_id": "1", "season": "2014-15", "name": "Alex Debrincat", "birth_date": "1997-12-18", "gp": 68, "ppg": 1.51, "es_ppg": 1.0, "pp_ppg": 0.4, "gpg": 0.75, "team_goal_share": 0.3, "shots_pg": 3.5},
+        # Two different players share a last name and birth date: never guessed.
+        {"league": "WHL", "ht_id": "2", "season": "2015-16", "name": "Sam Smith", "birth_date": "1998-01-01", "gp": 60, "ppg": 1.0, "es_ppg": 0.8, "pp_ppg": 0.2, "gpg": 0.4, "team_goal_share": 0.2, "shots_pg": 2.0},
+        {"league": "WHL", "ht_id": "3", "season": "2015-16", "name": "Jon Smith", "birth_date": "1998-01-01", "gp": 55, "ppg": 0.5, "es_ppg": 0.4, "pp_ppg": 0.1, "gpg": 0.2, "team_goal_share": 0.1, "shots_pg": 1.0},
+        # Too few games to count as a draft-year line.
+        {"league": "USHL", "ht_id": "4", "season": "2015-16", "name": "Short Season", "birth_date": "1998-05-05", "gp": 6, "ppg": 2.0, "es_ppg": 2.0, "pp_ppg": 0.0, "gpg": 1.0, "team_goal_share": 0.1, "shots_pg": 3.0},
+    ])
+    pop = pd.DataFrame([
+        {"name": "Alexander DeBrincat", "last_name": "DeBrincat", "birth_date": "1997-12-18", "rank_year": 2016},
+        {"name": "Samuel Smith", "last_name": "Smith", "birth_date": "1998-01-01", "rank_year": 2016},
+        {"name": "Short Season", "last_name": "Season", "birth_date": "1998-05-05", "rank_year": 2016},
+    ])
+    out = v2.attach_junior_stats(pop, ht)
+    assert out.loc[0, "d0_league"] == "OHL" and out.loc[0, "d0_ppg"] == 1.68 and out.loc[0, "dm1_ppg"] == 1.51
+    assert pd.isna(out.loc[1, "d0_ppg"])  # ambiguous last name + birth date
+    assert pd.isna(out.loc[2, "d0_ppg"])  # under MIN_GP

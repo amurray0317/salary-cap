@@ -262,6 +262,24 @@ describe("gated connector imports", () => {
     expect(await db.select().from(t).where(eq(t.organizationId, fx.orgId))).toHaveLength(32);
   });
 
+  it("HockeyTech skater stats: looks up the season id, then imports every line under a league-prefixed id", async () => {
+    const f = fixtureFetch();
+    const res = await run({ dataset: "hockeytech_skater_stats", league: "ohl", season: "2025-26" }, f);
+    expect(f.calls).toHaveLength(2);
+    expect(f.calls[1]).toContain("season=83");
+    await commitImport({ importId: res.importId, organizationId: fx.orgId, userId: fx.userId });
+    const s = schema.extPlayerSeasons;
+    const rows = await db.select().from(s).where(and(eq(s.organizationId, fx.orgId), eq(s.source, "hockeytech")));
+    expect(rows).toHaveLength(4);
+    const k = rows.find((r) => r.externalPlayerId === "ohl:9385")!;
+    expect(k).toMatchObject({ league: "OHL", season: "2025-26", gameType: "regular", teamName: "SAG", position: "RW", goals: 37, points: 97, powerPlayPoints: 38, shots: 240 });
+    expect(k.metrics).toMatchObject({ es_points: 97 - 38 - 3 });
+  });
+
+  it("HockeyTech: a season the league does not have is refused with a clear message", async () => {
+    await expect(run({ dataset: "hockeytech_skater_stats", league: "ohl", season: "1990-91" })).rejects.toThrow(/No 1990-91 regular season/);
+  });
+
   it("rejects an invalid standings date before touching the network", async () => {
     const f = fixtureFetch();
     await expect(run({ dataset: "nhl_standings", date: "2026-4-17" }, f)).rejects.toThrow();

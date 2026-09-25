@@ -34,6 +34,8 @@ function requestFromForm(fd: FormData): unknown {
       return { dataset, season: str(fd, "season"), gameType: str(fd, "gameType") };
     case "nhl_standings":
       return { dataset, date: str(fd, "date") || "now" };
+    case "hockeytech_skater_stats":
+      return { dataset, league: str(fd, "league"), season: str(fd, "season") };
     case "nhl_draft_picks": {
       const round = str(fd, "round");
       return { dataset, year: Number(str(fd, "year")), round: round === "all" ? "all" : Number(round) };

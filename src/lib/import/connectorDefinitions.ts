@@ -23,6 +23,7 @@ export const CONNECTOR_IMPORT_TYPES = [
   "nhl_goalie_stats",
   "nhl_team_stats",
   "nhl_standings",
+  "hockeytech_skater_stats",
   "nhl_draft_picks",
   "nhl_draft_rankings",
   "moneypuck_skaters",
@@ -149,7 +150,7 @@ export const PROSPECT_GROUPS = ["d0_scoring", "dm1_scoring", "age", "size", "pos
 
 export interface ConnectorDatasetDef {
   type: ConnectorImportType;
-  connectorKey: "nhl_api" | "moneypuck" | "eliteprospects" | "rosteriq_models";
+  connectorKey: "nhl_api" | "moneypuck" | "eliteprospects" | "hockeytech" | "rosteriq_models";
   table: ExtTable;
   /** Value of the `source` column written on committed rows. */
   sourceTag: string;
@@ -445,6 +446,39 @@ export const CONNECTOR_DEFINITIONS: Record<ConnectorImportType, ConnectorDataset
       count("m_shootout_losses", "SO losses", "`shootoutLosses`"),
     ],
     rowKey: (v) => `${v.team_abbrev}|${v.season}|${v.game_type}`,
+  },
+
+  hockeytech_skater_stats: {
+    type: "hockeytech_skater_stats",
+    connectorKey: "hockeytech",
+    table: "ext_player_seasons",
+    sourceTag: "hockeytech",
+    label: "HockeyTech · league skater stats (OHL, WHL, QMJHL, USHL, AHL, ECHL)",
+    description:
+      "Every skater's regular-season line in one league and season from the HockeyTech feed behind the league's website (statviewfeed players, expanded). Player id is `<league>:<HockeyTech id>`.",
+    fields: [
+      text("external_player_id", "Player id", "`<league>:<player_id>`", true),
+      text("player_name", "Player", "`name` (QMJHL: `prop.shortname.seoName`)"),
+      seasonField("the season's start date"),
+      gameTypeField("always regular"),
+      text("league", "League", "OHL, WHL, QMJHL, USHL, AHL or ECHL"),
+      text("team_name", "Team", "`team_code` (the player's current team when traded)"),
+      text("situation", "Situation", "Always `all`", true),
+      positionField("`position`"),
+      count("games_played", "GP", "`games_played`"),
+      count("goals", "G", "`goals`"),
+      count("assists", "A", "`assists`"),
+      count("points", "P", "`points`"),
+      intField("plus_minus", "+/-", "`plus_minus`"),
+      count("penalty_minutes", "PIM", "`penalty_minutes`"),
+      count("shots", "Shots", "`shots` (blank where the league does not report them)"),
+      count("pp_goals", "PPG", "`power_play_goals`"),
+      count("pp_points", "PPP", "`power_play_goals` + `power_play_assists`"),
+      count("sh_goals", "SHG", "`short_handed_goals`"),
+      count("sh_points", "SHP", "`short_handed_goals` + `short_handed_assists`"),
+      intField("m_es_points", "ESP", "points minus power-play and short-handed points"),
+    ],
+    rowKey: (v) => `${v.external_player_id}|${v.season}|${v.game_type}`,
   },
 
   nhl_draft_picks: {

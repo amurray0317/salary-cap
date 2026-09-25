@@ -160,6 +160,30 @@ export default async function RealDataPage() {
               fields={[{ name: "date", label: "As of", type: "text", defaultValue: "now", placeholder: "now or YYYY-MM-DD", hint: "Each import replaces the previous standings for that season." }]}
             />
           </Card>
+          <Card title="Junior & minor-pro leagues (HockeyTech)">
+            <p className="mb-3 text-xs text-ink-muted">{status.hockeytech.terms}</p>
+            <ConnectorForm
+              {...common}
+              dataset="hockeytech_skater_stats"
+              submitLabel="Fetch league skater stats → preview"
+              fields={[
+                {
+                  name: "league",
+                  label: "League",
+                  type: "select",
+                  options: [
+                    { value: "ohl", label: "OHL" },
+                    { value: "whl", label: "WHL" },
+                    { value: "qmjhl", label: "QMJHL" },
+                    { value: "ushl", label: "USHL" },
+                    { value: "ahl", label: "AHL" },
+                    { value: "echl", label: "ECHL" },
+                  ],
+                },
+                season,
+              ]}
+            />
+          </Card>
           <Card title="Draft history & NHL Central Scouting rankings">
             <ConnectorForm
               {...common}

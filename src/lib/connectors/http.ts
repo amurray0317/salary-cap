@@ -6,7 +6,7 @@
 import { createHash } from "crypto";
 import { HostRateLimiter } from "@/lib/connectors/rateLimiter";
 
-export type ConnectorKey = "nhl_api" | "moneypuck" | "eliteprospects";
+export type ConnectorKey = "nhl_api" | "moneypuck" | "eliteprospects" | "hockeytech";
 
 export const USER_AGENT = "RosterIQ/0.1 (+https://github.com/amurray0317/salary-cap; front-office data import)";
 
@@ -15,6 +15,7 @@ export const CONNECTOR_HOSTS: Record<ConnectorKey, string[]> = {
   nhl_api: ["api-web.nhle.com", "api.nhle.com", "search.d3.nhle.com"],
   moneypuck: ["moneypuck.com"],
   eliteprospects: ["api.eliteprospects.com"],
+  hockeytech: ["lscluster.hockeytech.com"],
 };
 
 /** Minimum spacing between requests to one host (ms). */
@@ -24,6 +25,7 @@ export const HOST_MIN_INTERVAL_MS: Record<string, number> = {
   "search.d3.nhle.com": 500,
   "moneypuck.com": 2000,
   "api.eliteprospects.com": 1000,
+  "lscluster.hockeytech.com": 500,
 };
 
 const HOUR = 60 * 60 * 1000;
@@ -33,6 +35,7 @@ export const CACHE_TTL_MS: Record<ConnectorKey, number> = {
   nhl_api: 6 * HOUR,
   moneypuck: 12 * HOUR,
   eliteprospects: 24 * HOUR,
+  hockeytech: 6 * HOUR,
 };
 
 export const MAX_RESPONSE_BYTES = 10_000_000;
