@@ -1,24 +1,36 @@
 @import "tailwindcss";
 
 @theme {
-  /* RosterIQ light theme: ice blue + purple. Contrast (WCAG) noted per token. */
-  --color-canvas: #f4f7fb; /* page background */
-  --color-surface: #ffffff; /* cards, tables, sidebar */
-  --color-subtle: #eef3f9; /* row / item hover */
-  --color-track: #e3e9f2; /* meter tracks, chips, inputs */
-  --color-strong: #c3cedd; /* scrollbars, heavy dividers */
-  --color-ink: #0f172a; /* body text: 17:1 on surface */
-  --color-ink-secondary: #334155; /* 10:1 */
-  --color-ink-muted: #5b6b82; /* 5.3:1 on surface, 5.0:1 on canvas */
-  --color-accent: #6d28d9; /* purple: buttons (white text 7.1:1), meters */
-  --color-accent-soft: #e0f2fe; /* ice-blue wash: active nav, selected rows */
-  --color-accent-text: #5b21b6; /* purple links: 8.6:1 on surface, 7.9:1 on accent-soft */
-  --color-ice: #0284c7; /* ice blue for marks and focus: 4.1:1 (graphics need 3:1) */
-  --color-ice-bright: #38bdf8; /* decorative only (brand), never text */
+  /* RosterIQ: light content, deep indigo/violet navigation, ice-blue highlights.
+     WCAG contrast noted per token (4.5:1 text, 3:1 graphics). */
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans Variable", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --color-canvas: #f4f6fd; /* page background (cool lavender-white) */
+  --color-surface: #ffffff; /* cards, tables */
+  --color-subtle: #eef2fc; /* table header rows, row hover */
+  --color-track: #e2e8f5; /* meter tracks, chips, inputs */
+  --color-strong: #c3cce0; /* scrollbars, heavy dividers */
+  --color-ink: #0b1224; /* body text: 18:1 on surface */
+  --color-ink-secondary: #2e3a55; /* 11:1 */
+  --color-ink-muted: #5a6784; /* 5.7:1 on surface, 5.2:1 on canvas */
+  --color-accent: #6d28d9; /* violet: buttons (white 7.1:1), links */
+  --color-accent-2: #4f46e5; /* indigo: second stop of the button gradient (white 6.3:1) */
+  --color-accent-soft: #e0f2fe; /* ice-blue wash: selected items */
+  --color-accent-text: #5b21b6; /* links: 9.0:1 on surface */
+  --color-ice: #0284c7; /* ice blue for data marks and focus: 4.1:1 (graphics need 3:1) */
+  --color-ice-bright: #38bdf8; /* active nav pill (dark text on it 8.7:1), brand */
   --color-good: #15803d; /* 5.0:1 */
   --color-warn: #b45309; /* 5.0:1 */
   --color-critical: #b91c1c; /* 6.5:1 */
-  --color-line: #dbe3ee;
+  --color-line: #dde3f0;
+
+  /* Navigation panel (deep indigo → violet gradient). */
+  --color-nav-from: #1e1b4b;
+  --color-nav-to: #3b0764;
+  --color-nav-ink: #e9e7ff; /* 12.4:1 on the darker stop */
+  --color-nav-muted: #a5b4fc; /* planned items: 7.5:1 */
+  --color-nav-heading: #7dd3fc; /* area headings: 9.0:1 */
 }
 
 :root {
@@ -28,6 +40,7 @@
 body {
   background: var(--color-canvas);
   color: var(--color-ink);
+  font-family: var(--font-sans);
   font-feature-settings: "tnum";
 }
 
@@ -45,4 +58,22 @@ body {
   .no-print {
     display: none !important;
   }
+}
+
+/* Page titles and card titles use the display face, bold. */
+h1 {
+  font-family: var(--font-display);
+  font-size: 1.625rem;
+  line-height: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+h2,
+h3 {
+  font-family: var(--font-display);
+}
+
+/* Primary buttons (bg-accent): violet → indigo gradient. */
+.bg-accent {
+  background-image: linear-gradient(135deg, var(--color-accent), var(--color-accent-2));
 }

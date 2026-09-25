@@ -12,7 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-screen">
       <Sidebar />
       <div className="min-w-0 flex-1">
-        <header className="no-print sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-line bg-canvas/95 px-4 py-2.5 backdrop-blur">
+        <header className="no-print sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-line bg-surface/90 py-2.5 pl-16 pr-4 shadow-[0_1px_0_rgba(16,24,40,0.02)] backdrop-blur lg:pl-5 lg:pr-5">
           <ContextSelect
             name="org"
             label="Organization"
@@ -62,7 +62,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </button>
           </form>
         </header>
-        <main className="p-6">{children}</main>
+        <main className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

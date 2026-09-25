@@ -7,10 +7,10 @@ export const metadata: Metadata = { title: "Create account" };
 
 export default function RegisterPage() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-12">
-      <Link href="/" className="mb-8 flex items-center gap-2">
+    <div className="w-full max-w-sm">
+      <Link href="/" className="mb-8 flex items-center gap-2 lg:hidden">
         <span className="inline-block h-6 w-6 rounded bg-linear-to-br from-ice-bright to-accent" aria-hidden />
-        <span className="text-lg font-semibold">RosterIQ</span>
+        <span className="font-display text-lg font-extrabold">RosterIQ</span>
       </Link>
       <h1 className="text-2xl font-semibold">Create your account</h1>
       <p className="mb-6 mt-1 text-sm text-ink-muted">
@@ -31,6 +31,6 @@ export default function RegisterPage() {
           Sign in
         </Link>
       </p>
-    </main>
+    </div>
   );
 }

@@ -14,14 +14,14 @@ export function Card({
   className?: string;
 }) {
   return (
-    <section className={`rounded-lg border border-line bg-surface ${className}`}>
+    <section className={`rounded-xl border border-line/80 bg-surface shadow-[0_1px_2px_rgba(16,24,40,0.04),0_6px_20px_-8px_rgba(30,27,75,0.12)] ${className}`}>
       {(title || action) && (
-        <header className="flex items-center justify-between border-b border-line px-3.5 py-2">
-          {title && <h2 className="text-sm font-medium text-ink-secondary">{title}</h2>}
+        <header className="flex items-center justify-between border-b border-line px-4 py-2.5">
+          {title && <h2 className="text-sm font-bold text-ink">{title}</h2>}
           {action}
         </header>
       )}
-      <div className="p-3.5">{children}</div>
+      <div className="p-4">{children}</div>
     </section>
   );
 }
@@ -40,9 +40,10 @@ export function StatTile({
   const toneClass =
     tone === "good" ? "text-good" : tone === "warn" ? "text-warn" : tone === "critical" ? "text-critical" : "text-ink";
   return (
-    <div className="rounded-lg border border-line bg-surface px-3.5 py-2.5">
-      <div className="text-xs uppercase tracking-wide text-ink-muted">{label}</div>
-      <div className={`mt-1 text-2xl font-semibold tabular-nums ${toneClass}`}>{value}</div>
+    <div className="relative overflow-hidden rounded-xl border border-line/80 bg-surface px-4 pb-3 pt-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_6px_20px_-8px_rgba(30,27,75,0.12)]">
+      <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-ice-bright via-accent to-accent-2" />
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{label}</div>
+      <div className={`mt-1 font-display text-[28px] font-extrabold leading-tight tracking-tight tabular-nums ${toneClass}`}>{value}</div>
       {detail && <div className="mt-0.5 text-xs text-ink-muted">{detail}</div>}
     </div>
   );
@@ -132,7 +133,7 @@ export function EmptyState({ title, body, cta }: { title: string; body: string; 
   );
 }
 
-export const thCls = "px-2.5 py-1.5 text-left text-[11px] font-medium uppercase tracking-wide text-ink-muted";
+export const thCls = "bg-subtle px-2.5 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-secondary first:rounded-l-md last:rounded-r-md";
 export const tdCls = "px-2.5 py-1 text-[13px]";
 
 export function Th({ children, right = false }: { children: React.ReactNode; right?: boolean }) {
