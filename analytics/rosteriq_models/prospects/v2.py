@@ -44,6 +44,8 @@ import unicodedata
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from rosteriq_models import explainable as ex
 from rosteriq_models.export import MODELS
@@ -158,6 +160,7 @@ def load_rank_links(yrs: list[int]) -> pd.DataFrame:
                 "css_midterm": r["midtermRank"],
                 "position": src.get("positionCode"),
                 "height_in": src.get("heightInInches"),
+                "css_league": src.get("lastAmateurLeague"),
                 "weight_lb": src.get("weightInPounds"),
                 "player_id": int(o["playerId"]) if o["status"] == "linked" else None,
                 "link_status": o["status"],
@@ -252,6 +255,95 @@ def pop_bias(pop: pd.DataFrame, tr_years: list[int], te_years: list[int], col: s
     for name, m in (("trained_on_drafted_only", m_drafted), ("trained_on_all_ranked", m_all)):
         pr = m.predict_proba(pop_features(te, col))[:, 1]
         out[name] = {"all_ranked": scores(y, pr), "not_drafted_that_year": scores(y[und], pr[und])}
+    return out
+
+
+# ------------------------------------------------- population + junior stats
+
+HT_STAT_COLS = ["d0_ppg", "d0_es_ppg", "d0_pp_ppg", "d0_gpg", "d0_team_goal_share", "d0_shots_pg", "dm1_ppg"]
+
+
+def season_label(start_year: int) -> str:
+    return f"{start_year}-{(start_year + 1) % 100:02d}"
+
+
+def attach_junior_stats(pop: pd.DataFrame, ht: pd.DataFrame) -> pd.DataFrame:
+    """Draft-year (D0) and prior-season (D-1) HockeyTech lines for each ranked
+    player, matched by normalised name + exact birth date. D0 = the league
+    where he played the most games that season (at least MIN_GP)."""
+    from rosteriq_models.prospects.hockeytech import MIN_GP
+
+    h = ht.dropna(subset=["birth_date", "name"]).copy()
+    h["key"] = h["name"].map(norm) + "|" + h["birth_date"]
+    # Nicknames differ between lists (Alex / Alexander, Tim / Timothy): when
+    # the full name does not match, last name + birth date is used if exactly
+    # one junior player has it.
+    h["last_key"] = h["name"].map(lambda n: norm(n).split(" ")[-1]) + "|" + h["birth_date"]
+    people = h[["last_key", "key"]].drop_duplicates()
+    counts = people["last_key"].value_counts()
+    last_to_key = dict(people[people["last_key"].map(counts) == 1].itertuples(index=False, name=None))
+    h = h.sort_values("gp", ascending=False).drop_duplicates(["key", "season"])
+    by = h.set_index(["key", "season"])
+    out = pop.copy()
+    full = out["name"].map(norm) + "|" + out["birth_date"]
+    known = set(h["key"])
+    out["key"] = [
+        k if k in known else last_to_key.get(norm(ln).split(" ")[-1] + "|" + bd, k)
+        for k, ln, bd in zip(full, out["last_name"], out["birth_date"])
+    ]
+    for tag, off in (("d0", 1), ("dm1", 2)):
+        keys = list(zip(out["key"], [season_label(y - off) for y in out["rank_year"]]))
+        sub = by.reindex(keys)
+        ok = (sub["gp"] >= MIN_GP).to_numpy()
+        for c in ("league", "gp", "ppg", "es_ppg", "pp_ppg", "gpg", "team_goal_share", "shots_pg"):
+            out[f"{tag}_{c}"] = np.where(ok, sub[c].to_numpy(), np.nan if c != "league" else None)
+    return out
+
+
+def junior_features(df: pd.DataFrame, col: str) -> np.ndarray:
+    base = pop_features(df, col)
+    cols = []
+    for c in HT_STAT_COLS:
+        v = df[c].astype(float)
+        cols += [v.fillna(v.median() if v.notna().any() else 0.0).clip(upper=v.quantile(0.995) if v.notna().any() else None), v.isna().astype(float)]
+    lg = [(df["d0_league"] == L).astype(float) for L in ("OHL", "WHL", "QMJHL")]  # USHL = reference
+    return np.column_stack([base, *cols, *lg])
+
+
+def junior_population(pop: pd.DataFrame, tr_years: list[int], te_years: list[int]) -> dict:
+    """Ranked players whose draft-year league is OHL/WHL/QMJHL/USHL, drafted or
+    not: Central Scouting inputs alone vs + real draft-year production."""
+    ht_lg = {"OHL", "WHL", "QMJHL", "USHL"}
+    listed = pop["css_league"].isin(ht_lg)
+    cov = {
+        "ranked_listed_in_these_leagues": int(listed.sum()),
+        "matched_to_draft_year_line": int((listed & pop["d0_league"].notna()).sum()),
+    }
+    cov["match_rate"] = round(cov["matched_to_draft_year_line"] / max(cov["ranked_listed_in_these_leagues"], 1), 4)
+    s = pop[pop["d0_league"].isin(ht_lg)]
+    out = {"coverage": cov, "players": int(len(s)), "not_drafted_that_year": int((~s["drafted_this_year"]).sum())}
+    fit = lambda X, y: make_pipeline(StandardScaler(), LogisticRegression(C=0.5, max_iter=5000)).fit(X, y)  # noqa: E731
+    for label in ("nhl_regular", "top_lineup"):
+        for col in ("css_final", "css_midterm"):
+            p = s[s[col].notna()]
+            tr, te = p[p["rank_year"].isin(tr_years)], p[p["rank_year"].isin(te_years)].reset_index(drop=True)
+            if te[label].sum() == 0 or tr[label].sum() == 0:
+                continue
+            y = te[label].to_numpy(int)
+            und = ~te["drafted_this_year"].to_numpy()
+            preds = {
+                "css_only": fit(pop_features(tr, col), tr[label]).predict_proba(pop_features(te, col))[:, 1],
+                "css_plus_junior_stats": fit(junior_features(tr, col), tr[label]).predict_proba(junior_features(te, col))[:, 1],
+                "css_plus_junior_stats_drafted_only_training": fit(junior_features(tr[tr["drafted_this_year"]], col), tr.loc[tr["drafted_this_year"], label])
+                .predict_proba(junior_features(te, col))[:, 1],
+            }
+            out[f"{label}:{col}"] = {
+                "train_rows": int(len(tr)),
+                "test_rows": int(len(te)),
+                "test": {k: scores(y, v) for k, v in preds.items()},
+                "test_not_drafted_that_year": {k: scores(y[und], v[und]) for k, v in preds.items()},
+                "bootstrap_vs_css_only": bootstrap(y, {k: preds[k] for k in ("css_only", "css_plus_junior_stats")}, "css_only", {"all": np.ones(len(y), bool)}),
+            }
     return out
 
 
@@ -366,6 +458,14 @@ def main() -> None:
     }
     bias = {f"{label}:{col}": pop_bias(pop, pop_tr, te_y, col, label)
             for label in ("nhl_regular", "top_lineup") for col in ("css_final", "css_midterm")}
+    junior = None
+    try:
+        from rosteriq_models.prospects import hockeytech
+
+        pop = attach_junior_stats(pop, hockeytech.load())
+        junior = junior_population(pop, pop_tr, te_y)
+    except FileNotFoundError as err:
+        print(f"skipping junior-stats population analysis: {err}")
 
     result = {
         "question": "Tiered outcomes; the full Central Scouting-ranked population; benchmarks vs draft position and Central Scouting final and midterm rank.",
@@ -389,7 +489,8 @@ def main() -> None:
         "test_top_lineup": int(test["top_lineup"].sum()),
         "test": results,
         "bootstrap": boots,
-        "population": {"years": list(POP_YEARS), "linker_recall_on_known_drafted": recall, "summary": pop_summary, "drafted_only_bias": bias},
+        "population": {"years": list(POP_YEARS), "linker_recall_on_known_drafted": recall, "summary": pop_summary, "drafted_only_bias": bias,
+                       "with_junior_stats": junior},
     }
     card["v2_research"] = result
     card_path.write_text(json.dumps(card, indent=1, default=str))
