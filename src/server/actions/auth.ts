@@ -7,6 +7,7 @@ import { getDb, schema } from "@/db/client";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, destroySession, setSessionCookie } from "@/lib/auth/session";
 import { cookies } from "next/headers";
+import { readPreferences } from "@/lib/preferences";
 import { writeAudit } from "@/server/context";
 import { ORG_COOKIE } from "@/server/appContext";
 import { InviteError, acceptInvite, lookupInvite, registrationMode } from "@/server/services/inviteService";
@@ -108,7 +109,7 @@ export async function loginAction(_prev: AuthFormState, formData: FormData): Pro
   }
   const token = await createSession(user.id);
   await setSessionCookie(token);
-  redirect(safeNext(formData.get("next")) ?? "/dashboard");
+  redirect(safeNext(formData.get("next")) ?? readPreferences(user.preferences).startPage);
 }
 
 export async function logoutAction(): Promise<void> {

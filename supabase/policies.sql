@@ -218,3 +218,11 @@ alter table organization_invites enable row level security;
 create policy organization_invites_rw on organization_invites
   for all using (is_org_member(organization_id))
   with check (is_org_member(organization_id));
+
+-- Profile photos (migration 0013). Direct access is limited to the owner;
+-- teammates see photos through the app's /api/avatar route, which checks a
+-- shared organization.
+alter table user_avatars enable row level security;
+create policy user_avatars_self on user_avatars
+  for all using (user_id = auth.uid())
+  with check (user_id = auth.uid());

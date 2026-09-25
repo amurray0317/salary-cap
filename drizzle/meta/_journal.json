@@ -92,6 +92,13 @@
       "when": 1790300321427,
       "tag": "0012_organization_invites",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790301240181,
+      "tag": "0013_user_profile",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ import { Card, Td, Th } from "@/components/ui";
 import type { schema } from "@/db/client";
 import { PROSPECT_GROUP_LABELS, XG_GROUP_LABELS, signed, topReasons } from "@/lib/models/labels";
 import { XG_GOALIE_SOURCE, XG_SOURCE } from "@/lib/models/versions";
+import { formatHeight, formatWeight } from "@/lib/preferences";
 
 export const metadata: Metadata = { title: "Real data · player" };
 
@@ -438,8 +439,8 @@ export default async function RealDataPlayerPage({ params }: { params: Promise<{
               bio.shootsCatches && `${goalie ? "Catches" : "Shoots"} ${bio.shootsCatches}`,
               bio.dateOfBirth && `Born ${bio.dateOfBirth}`,
               [bio.birthCity, bio.birthCountry].filter(Boolean).join(", "),
-              bio.heightCm && `${bio.heightCm} cm`,
-              bio.weightKg && `${bio.weightKg} kg`,
+              bio.heightCm && formatHeight(bio.heightCm, ctx.user.preferences.units),
+              bio.weightKg && formatWeight(bio.weightKg, ctx.user.preferences.units),
               bio.currentTeamAbbrev && `Current team ${bio.currentTeamAbbrev}`,
               bio.isActive === false && "Inactive",
             ]

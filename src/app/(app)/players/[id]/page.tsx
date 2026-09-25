@@ -8,6 +8,7 @@ import { valuatePlayer } from "@/server/services/valuationService";
 import { setPlayerStatusAction, terminateContractAction } from "@/server/actions/contractActions";
 import { Card, StatTile, Td, Th } from "@/components/ui";
 import { formatDate, money, moneyCompact, pct, positionLabel, statusLabel } from "@/lib/format";
+import { formatHeight, formatWeight } from "@/lib/preferences";
 
 export const metadata: Metadata = { title: "Player profile" };
 
@@ -105,8 +106,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             {[
               ["Shoots/catches", player.shootsCatches ?? "—"],
-              ["Height", player.heightCm ? `${player.heightCm} cm` : "—"],
-              ["Weight", player.weightKg ? `${player.weightKg} kg` : "—"],
+              ["Height", formatHeight(player.heightCm, ctx.user.preferences.units)],
+              ["Weight", formatWeight(player.weightKg, ctx.user.preferences.units)],
               ["Nationality", player.nationality ?? "—"],
               ["Draft", player.draftYear ? `${player.draftYear} · R${player.draftRound} · #${player.draftOverall}` : "—"],
               ["Pro games", String(player.proGamesPlayed)],

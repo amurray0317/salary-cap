@@ -21,12 +21,13 @@ const STATUS: Record<ScoreGame["status"], string> = {
 };
 const TYPE: Record<ScoreGame["gameType"], string> = { preseason: "Preseason", regular: "", playoffs: "Playoffs", other: "" };
 
-function startTime(iso: string) {
+/** Puck drop in the viewer's time zone (Preferences → Time zone). */
+function startTime(iso: string, timeZone: string) {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" });
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone, timeZoneName: "short" });
 }
 
-function GameCard({ g }: { g: ScoreGame }) {
+function GameCard({ g, timeZone }: { g: ScoreGame; timeZone: string }) {
   const inPlay = g.status === "live" || g.status === "intermission";
   const showScore = inPlay || g.status === "final";
   const lead = (a: number | null, b: number | null) => showScore && a !== null && b !== null && a > b;
@@ -38,7 +39,7 @@ function GameCard({ g }: { g: ScoreGame }) {
         : g.status === "final"
           ? `Final${g.finishedIn ? `/${g.finishedIn}` : ""}`
           : g.status === "scheduled"
-            ? startTime(g.startTimeUTC)
+            ? startTime(g.startTimeUTC, timeZone)
             : STATUS[g.status];
   return (
     <section className={`rounded-lg border bg-surface ${inPlay ? "border-ice" : "border-line"}`}>
@@ -99,7 +100,7 @@ function GameCard({ g }: { g: ScoreGame }) {
 }
 
 export default async function ScoresPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
-  await resolveAppContext();
+  const ctx = await resolveAppContext();
   const sp = await searchParams;
   const date = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : "now";
   let board;
@@ -150,7 +151,7 @@ export default async function ScoresPage({ searchParams }: { searchParams: Promi
       ) : (
         <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {games.map((g) => (
-            <GameCard key={g.id} g={g} />
+            <GameCard key={g.id} g={g} timeZone={ctx.user.preferences.timeZone} />
           ))}
         </div>
       )}

@@ -4,13 +4,13 @@ import { getDb, schema } from "@/db/client";
 import { resolveAppContext } from "@/server/appContext";
 import { Card, Td, Th } from "@/components/ui";
 import { InviteForm } from "@/components/InviteForm";
-import { ORG_ROLES, roleHasCapability, roleTier } from "@/lib/auth/roles";
+import { ORG_ROLES, roleHasCapability, roleLabel, roleTier } from "@/lib/auth/roles";
 import { listOpenInvites, registrationMode } from "@/server/services/inviteService";
 import { changeMemberRoleAction, removeMemberAction, revokeInviteAction } from "@/server/actions/inviteActions";
 
 export const metadata: Metadata = { title: "Settings" };
 
-const label = (r: string) => r.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const label = roleLabel;
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const ctx = await resolveAppContext();

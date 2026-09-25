@@ -17,6 +17,7 @@ import { Card, StatTile, Td, Th } from "@/components/ui";
 import { roleHasCapability } from "@/lib/auth/roles";
 import { TREND_LABELS, type TrendClassification } from "@/lib/scouting/trends";
 import { formatDate, pct } from "@/lib/format";
+import { formatHeight, formatWeight } from "@/lib/preferences";
 
 export const metadata: Metadata = { title: "Prospect profile" };
 
@@ -109,7 +110,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
           <h1 className="mt-1 text-xl font-semibold">{p.fullName}</h1>
           <p className="text-sm text-ink-muted">
             {p.position} · {p.shootsCatches ? `${p.shootsCatches}-hand` : "hand unknown"} · {p.classYear} ·{" "}
-            {prospect.schoolName ?? "no school"} · {p.heightCm ? `${p.heightCm} cm` : "—"} / {p.weightKg ? `${p.weightKg} kg` : "—"} · {p.nationality ?? "—"}
+            {prospect.schoolName ?? "no school"} · {formatHeight(p.heightCm, ctx.user.preferences.units)} / {formatWeight(p.weightKg, ctx.user.preferences.units)} · {p.nationality ?? "—"}
           </p>
           <p className="text-sm text-ink-muted">
             {p.nhlDraftStatus === "drafted"

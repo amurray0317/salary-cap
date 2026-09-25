@@ -31,7 +31,7 @@ const MODULES = [
 
 export default async function LandingPage() {
   const user = await getSessionUser();
-  if (user) redirect("/dashboard");
+  if (user) redirect(user.preferences.startPage);
   return (
     <main className="mx-auto max-w-5xl px-6 py-16">
       <header className="flex items-center justify-between">

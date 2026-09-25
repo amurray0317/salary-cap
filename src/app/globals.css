@@ -77,3 +77,13 @@ h3 {
 .bg-accent {
   background-image: linear-gradient(135deg, var(--color-accent), var(--color-accent-2));
 }
+
+/* Preferences → Tables: comfortable adds breathing room to every data table. */
+[data-density="comfortable"] td {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+[data-density="comfortable"] th {
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+}

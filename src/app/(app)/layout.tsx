@@ -1,15 +1,16 @@
-import Link from "next/link";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { ContextSelect } from "@/components/shell/ContextSelect";
 import { resolveAppContext } from "@/server/appContext";
 import { setContextAction } from "@/server/actions/contextActions";
-import { logoutAction } from "@/server/actions/auth";
+import { ProfileMenu } from "@/components/shell/ProfileMenu";
+import { avatarUrl } from "@/components/Avatar";
+import { roleLabel } from "@/lib/auth/roles";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await resolveAppContext();
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen" data-density={ctx.user.preferences.density}>
       <Sidebar />
       <div className="min-w-0 flex-1">
         <header className="no-print sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-line bg-surface/90 px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] shadow-[0_1px_0_rgba(16,24,40,0.02)] backdrop-blur lg:px-5">
@@ -49,16 +50,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               className="w-52 rounded-md border border-line bg-surface px-3 py-1.5 text-sm placeholder:text-ink-muted focus:border-accent focus:outline-none"
             />
           </form>
-          <span className="ml-2 hidden text-sm text-ink-muted lg:inline" title={ctx.user.email}>
-            {ctx.user.fullName}
-            <span className="ml-1 rounded bg-track px-1.5 py-0.5 text-xs">{ctx.role.replace(/_/g, " ")}</span>
-          </span>
-          <Link href="/settings" className="hidden text-sm text-ink-muted hover:text-ink sm:inline">
-            Settings
-          </Link>
-          <form action={logoutAction}>
-            <button className="rounded-md border border-line px-3 py-1.5 text-sm text-ink-secondary hover:text-ink">Sign out</button>
-          </form>
+          <ProfileMenu
+            name={ctx.user.fullName}
+            email={ctx.user.email}
+            jobTitle={ctx.user.jobTitle}
+            role={roleLabel(ctx.role)}
+            orgName={ctx.org.name}
+            avatarSrc={avatarUrl(ctx.user)}
+          />
         </header>
         <main className="mx-auto max-w-[1600px] p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8">{children}</main>
       </div>

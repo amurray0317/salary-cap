@@ -183,9 +183,25 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash"),
   fullName: text("full_name").notNull(),
+  jobTitle: text("job_title"),
+  /** Display preferences and notification choices (see src/lib/preferences.ts). */
+  preferences: jsonb("preferences").notNull().default({}),
+  /** Set when a profile photo is saved; also versions the photo URL. */
+  avatarUpdatedAt: timestamp("avatar_updated_at", { withTimezone: true }),
   authProvider: text("auth_provider").notNull().default("local"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Profile photos, kept apart from users so the image is only read when shown. Resized to 256 px before upload. */
+export const userAvatars = pgTable("user_avatars", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  mime: text("mime").notNull(),
+  /** Base64 image bytes (at most ~200 KB decoded). */
+  data: text("data").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

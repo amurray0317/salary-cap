@@ -483,7 +483,11 @@ export const NAV: NavSection[] = [
     groups: [
       {
         items: [
-          { label: "Profile & settings", href: "/settings" },
+          { label: "My profile", href: "/profile" },
+          { label: "Account & security", href: "/profile/account" },
+          { label: "Notifications", href: "/profile/notifications" },
+          { label: "Preferences", href: "/profile/preferences" },
+          { label: "Organization settings", href: "/settings" },
           { label: "Plan & billing", planned: "Planned only if RosterIQ becomes a product (needs licensed data first)." },
         ],
       },
