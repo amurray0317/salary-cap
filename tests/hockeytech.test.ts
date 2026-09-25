@@ -43,6 +43,12 @@ describe("HockeyTech parsers", () => {
     expect(parseHtTeams(json("ohl-teams-83.json"))[0]).toEqual({ teamId: "7", name: "Barrie Colts", code: "BAR", division: "Central Division" });
   });
 
+  it("builds names first-last (the QMJHL's own `name` is 'Last, First')", () => {
+    const r = parseHtRoster({ SiteKit: { Roster: [{ player_id: "1", name: "Aucoin, Yan", first_name: "Yan", last_name: "Aucoin", birthdate: "2007-01-02" }] } });
+    expect(r[0]!.name).toBe("Yan Aucoin");
+    expect(parseHtRoster({ SiteKit: { Roster: [{ player_id: "2", name: "Only Name" }] } })[0]!.name).toBe("Only Name");
+  });
+
   it("fails loudly on a missing envelope", () => {
     expect(() => parseHtSkaterStats("not json")).toThrow(/not JSON/);
     expect(() => parseHtSkaterStats("([{}])")).toThrow(/sections/);

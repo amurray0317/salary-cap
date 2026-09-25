@@ -14,6 +14,10 @@ Derived per season:
   * share of team goals: the player's points divided by the goals of the
     team he played for (summed over his teams, weighted by games), a
     standard junior measure that adjusts for playing on a strong or weak team
+  * era/league-relative rates (`<rate>_rel`): each rate divided by the mean
+    of that league and season among players with at least MIN_GP games, so
+    a 1.0 PPG in a high-scoring year counts for less than in a low one
+    (junior scoring rose between the 2008-15 and 2016-19 draft classes)
 """
 from __future__ import annotations
 
@@ -23,6 +27,7 @@ from rosteriq_models.raw import RAW, read_gz
 
 HT_LEAGUES = {"ohl": "OHL", "whl": "WHL", "qmjhl": "QMJHL", "ushl": "USHL"}
 MIN_GP = 10
+RATES = ("ppg", "gpg", "es_ppg", "pp_ppg", "shots_pg")
 
 
 def _lines(code: str) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -72,7 +77,8 @@ def _lines(code: str) -> tuple[pd.DataFrame, pd.DataFrame]:
                     bios.append({
                         "league": HT_LEAGUES[code],
                         "ht_id": str(p["player_id"]),
-                        "name": p.get("name") or f'{p.get("first_name", "")} {p.get("last_name", "")}'.strip(),
+                        # First + last (the QMJHL's `name` is "Last, First").
+                        "name": f'{p.get("first_name") or ""} {p.get("last_name") or ""}'.strip() or p.get("name"),
                         "birth_date": p.get("birthdate") if len(str(p.get("birthdate") or "")) == 10 else None,
                         "position": p.get("position"),
                     })
@@ -105,4 +111,13 @@ def load(codes: list[str] | None = None) -> pd.DataFrame:
     d["es_ppg"] = (d["points"] - d["pp_points"] - d["sh_points"]) / d["gp"]
     d["pp_ppg"] = d["pp_points"] / d["gp"]
     d["shots_pg"] = d["shots"] / d["shots_gp"].where(d["shots_gp"] > 0)
+    return add_relative_rates(d)
+
+
+def add_relative_rates(d: pd.DataFrame) -> pd.DataFrame:
+    """`<rate>_rel` = rate / mean rate of the same league and season (players with >= MIN_GP games)."""
+    d = d.copy()
+    for c in RATES:
+        base = d[c].where(d["gp"] >= MIN_GP)
+        d[f"{c}_rel"] = d[c] / base.groupby([d["league"], d["season"]]).transform("mean")
     return d

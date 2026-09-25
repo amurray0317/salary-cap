@@ -154,6 +154,25 @@ exercise the workflow, not to describe real athletes.
     players): trained on drafted players only, the model predicts 181.6 regulars for the
     2016–2019 ranked lists vs 125 actual (log loss 0.209); trained on everyone ranked, 147.3
     (0.195). Live pre-draft scoring therefore trains on the whole ranked population.
+  - *Junior draft-year production for the whole ranked population* (HockeyTech: OHL, WHL,
+    QMJHL, USHL, 2003-04 on; drafted or not; matched by name + exact birth date): 95.6% of
+    ranked players listed in those leagues matched (1,114 of 1,165); 1,954 players, 843 not
+    drafted that year. Features: draft-year PPG, even-strength and PP PPG, goals, shots (not
+    reported by the WHL), share of team goals, D-1 PPG, league. Two fixes were needed before
+    the result meant anything: QMJHL rosters store names "Last, First" (no QMJHL player
+    matched; 77.9% overall), and junior scoring rose between classes (draft-year PPG 0.611 in
+    2008–15, 0.646 in 2016–19), which made raw rates over-predict newer classes (log loss
+    +0.045 [+0.026, +0.067] vs Central Scouting alone). With rates divided by the league-season
+    mean, 2016–2019 test (paired bootstrap 95%, vs Central Scouting inputs alone):
+
+    | Comparison | Regular: AUC | Regular: log loss | Top: AUC | Top: log loss |
+    |---|---|---|---|---|
+    | + junior stats vs midterm only | +0.013 [−0.006, +0.033] | −0.006 [−0.021, +0.013] | +0.023 [−0.001, +0.057] | −0.004 [−0.022, +0.012] |
+    | + junior stats vs final only | −0.002 [−0.020, +0.013] | +0.001 [−0.013, +0.015] | +0.007 [−0.021, +0.031] | +0.001 [−0.015, +0.018] |
+
+    Neutral against the final list and positive in direction against the midterm list, with
+    no interval clear of zero: not yet worth adding to live scoring. Both models still expect
+    about 20% more regulars than the 2016–2019 classes produced (e.g. 94.3 and 99.0 vs 76).
   - *Calibration*: the 2016–2019 drafts produced about 10–15% fewer regulars than every model
     expected, draft position included, even after scaling for shortened seasons. After round 1
     the stats model over-predicts in almost every draft year (a selected group: teams passed on
